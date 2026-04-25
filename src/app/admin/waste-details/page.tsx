@@ -14,16 +14,12 @@ import {
   BarChart3,
   Building,
   Info,
-  Database,
-  ArrowRight,
   PlusCircle,
   Edit,
   Trash2
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
-import { useMemo, Suspense, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-
 import { mrfData } from "@/lib/mrf-data";
 
 interface CollectionRecord {
@@ -54,7 +50,7 @@ function StateWasteReconciliationContent() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const districts = useMemo(() => {
+  const districtList = useMemo(() => {
     const dSet = new Set(mrfData.map(m => m.district));
     return Array.from(dSet).sort();
   }, []);
@@ -77,8 +73,8 @@ function StateWasteReconciliationContent() {
           <div className="flex items-center gap-3 text-primary">
             <Calculator className="h-10 w-10" />
             <div>
-              <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">State-wide Waste Reconciliation Hub</CardTitle>
-              <CardDescription className="font-bold italic text-muted-foreground">Unified chronological audit for the State of Odisha.</CardDescription>
+              <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">State Waste Reconciliation Hub</CardTitle>
+              <CardDescription className="font-bold italic text-muted-foreground">Authoritative State-wide audit tracking (Cycle Start: April 2026).</CardDescription>
             </div>
           </div>
           <Button className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
@@ -95,13 +91,13 @@ function StateWasteReconciliationContent() {
                 <p className="text-3xl font-black text-primary">{stateStats.totalVerified.toLocaleString()} KG</p>
             </div>
             <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-6 shadow-inner">
-                <p className="text-[10px] font-black uppercase text-primary mb-1">State Operational Efficiency</p>
+                <p className="text-[10px] font-black uppercase text-primary mb-1">State Efficiency Score</p>
                 <p className="text-3xl font-black text-primary">{stateStats.efficiency.toFixed(1)}%</p>
             </div>
         </CardContent>
       </Card>
 
-      {districts.map((district) => (
+      {districtList.map((district) => (
         <Card key={district} className="border-2 shadow-xl overflow-hidden">
           <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
@@ -138,8 +134,8 @@ function StateWasteReconciliationContent() {
                                                     <Calendar className="h-5 w-5 text-primary" />
                                                     <span className="font-black text-lg uppercase tracking-tighter text-foreground">{month}</span>
                                                 </div>
-                                                <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-3">
-                                                  {monthRecords.length} CIRCUITS LOGGED
+                                                <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px]">
+                                                  {monthRecords.length} RECEIPTS LOGGED
                                                 </Badge>
                                             </div>
                                         </AccordionTrigger>
@@ -227,12 +223,13 @@ function StateWasteReconciliationContent() {
                         })}
                     </Accordion>
 
-                    <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden opacity-80">
+                    {/* Yearly District Audit Summaries - Always Visible Empty Space */}
+                    <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
                         <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
                             <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
                                 <BarChart3 className="h-10 w-10" /> Yearly District Audit Summary: {year}
                             </CardTitle>
-                            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Aggregate performance metric for {district} district.</CardDescription>
+                            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Finalized performance metrics for {district} district.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             <ScrollArea className="w-full">
@@ -240,10 +237,12 @@ function StateWasteReconciliationContent() {
                                     <Table className="text-muted-foreground">
                                         <TableHeader className="bg-muted/50">
                                             <TableRow>
+                                                <TableHead className="w-[180px] uppercase font-black border text-center">Route ID</TableHead>
+                                                <TableHead className="w-[180px] uppercase font-black border text-center">Associated MRF</TableHead>
                                                 <TableHead className="w-[180px] uppercase font-black border text-center">Collection Freq (Year)</TableHead>
                                                 <TableHead className="w-[180px] text-right uppercase font-black border">Total Verified (Kg)</TableHead>
-                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Paper</TableHead>
                                                 <TableHead className="w-[100px] text-right uppercase font-black border">Total Plastic</TableHead>
+                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Paper</TableHead>
                                                 <TableHead className="w-[100px] text-right uppercase font-black border">Total Metal</TableHead>
                                                 <TableHead className="w-[100px] text-right uppercase font-black border">Total Glass</TableHead>
                                                 <TableHead className="w-[100px] text-right uppercase font-black border">Total Sanitation</TableHead>
@@ -252,8 +251,8 @@ function StateWasteReconciliationContent() {
                                         </TableHeader>
                                         <TableBody>
                                             <TableRow>
-                                                <TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
-                                                    Yearly State-District Audit Data will generate post-December {year}.
+                                                <TableCell colSpan={10} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
+                                                    Yearly State-District Audit Data will populate post-December {year}.
                                                 </TableCell>
                                             </TableRow>
                                         </TableBody>
@@ -273,9 +272,9 @@ function StateWasteReconciliationContent() {
         <CardContent className="py-6 flex items-start gap-4">
           <Info className="h-6 w-6 text-primary mt-1 shrink-0" />
           <div className="space-y-1">
-            <p className="text-sm font-black uppercase tracking-tight">State-District Audit Protocol</p>
+            <p className="text-sm font-black uppercase tracking-tight">State-wide Auditing Protocol</p>
             <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-              This hub provides a state-wide reconciliation view. Submissions from every district are grouped by reporting month. The global state-wide summary at the top calculates cumulative performance across all districts. Yearly audit summaries for each district are generated automatically upon cycle completion in December.
+              This hub provides a state-wide reconciliation ledger. Submissions from every district are grouped by reporting month. Yearly district performance reports generate automatically upon cycle completion. The "Grand Total" boxes calculate the aggregate efficiency of the State of Odisha.
             </p>
           </div>
         </CardContent>

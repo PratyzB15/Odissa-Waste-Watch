@@ -22,8 +22,6 @@ import {
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-
-// District Data Imports
 import { mrfData } from "@/lib/mrf-data";
 
 interface CollectionRecord {
@@ -58,7 +56,6 @@ function BlockWasteReconciliationContent() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Filter MRFs belonging to this block
   const blockUlbs = useMemo(() => {
     return mrfData.filter(m => m.blockCovered.toLowerCase() === blockName.toLowerCase());
   }, [blockName]);
@@ -75,7 +72,7 @@ function BlockWasteReconciliationContent() {
             <Calculator className="h-10 w-10" />
             <div>
               <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">Block Waste Reconciliation Hub</CardTitle>
-              <CardDescription className="font-bold italic text-muted-foreground">Logistical oversight for {blockName}, {districtName}.</CardDescription>
+              <CardDescription className="font-bold italic text-muted-foreground">High-fidelity oversight for {blockName}, {districtName}.</CardDescription>
             </div>
           </div>
           <Button className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
@@ -94,7 +91,7 @@ function BlockWasteReconciliationContent() {
                 <CardDescription className="text-[10px] font-bold uppercase tracking-widest">{ulb.ulbName}</CardDescription>
               </div>
             </div>
-            <Badge variant="outline" className="border-primary/30 text-primary font-black uppercase text-[10px] bg-primary/5">
+            <Badge variant="outline" className="border-primary/30 text-primary font-black uppercase text-[10px] bg-primary/5 px-4 py-1">
               Baseline Target: {ulb.dryWasteKg} Kg (Avg)
             </Badge>
           </CardHeader>
@@ -102,7 +99,7 @@ function BlockWasteReconciliationContent() {
             {yearGroups.map((year) => (
                 <div key={year} className="space-y-6">
                     <div className="flex items-center gap-4">
-                        <h2 className="text-2xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} CYCLE</h2>
+                        <h2 className="text-2xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} FISCAL CYCLE</h2>
                         <div className="h-px flex-1 bg-primary/10"></div>
                     </div>
 
@@ -110,8 +107,12 @@ function BlockWasteReconciliationContent() {
                         {MONTHS.map((month) => {
                             const monthRecords = records.filter(r => {
                                 const d = new Date(r.date);
-                                return d.getFullYear().toString() === year && d.toLocaleString('default', { month: 'long' }) === month && r.mrf === ulb.mrfId;
+                                return d.getFullYear().toString() === year && 
+                                       d.toLocaleString('default', { month: 'long' }) === month && 
+                                       r.mrf === ulb.mrfId;
                             });
+
+                            const verifiedMonthTotal = monthRecords.reduce((sum, r) => sum + r.driverSubmitted, 0);
 
                             return (
                                 <AccordionItem value={month} key={month} className="border-none">
@@ -122,7 +123,9 @@ function BlockWasteReconciliationContent() {
                                                     <Calendar className="h-5 w-5 text-primary" />
                                                     <span className="font-black text-lg uppercase tracking-tighter text-foreground">{month}</span>
                                                 </div>
-                                                <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px]">{monthRecords.length} CIRCUITS</Badge>
+                                                <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-3">
+                                                    {monthRecords.length} RECEIPTS LOGGED
+                                                </Badge>
                                             </div>
                                         </AccordionTrigger>
                                         <AccordionContent className="p-0">
@@ -148,7 +151,7 @@ function BlockWasteReconciliationContent() {
                                                         </TableHeader>
                                                         <TableBody>
                                                             {monthRecords.map((row, rIdx) => (
-                                                                <TableRow key={rIdx} className="hover:bg-primary/[0.01] border-b last:border-0 h-14 transition-colors">
+                                                                <TableRow key={rIdx} className="hover:bg-primary/[0.01] border-b h-14 transition-colors">
                                                                     <TableCell className="border-r font-mono text-center font-bold text-muted-foreground">{row.date}</TableCell>
                                                                     <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
                                                                     <TableCell className="border-r p-0">
@@ -193,7 +196,7 @@ function BlockWasteReconciliationContent() {
                                                             {monthRecords.length === 0 && (
                                                                 <TableRow>
                                                                     <TableCell colSpan={13} className="h-24 text-center text-muted-foreground italic uppercase font-black tracking-widest opacity-20">
-                                                                        No Active Submissions for {month}
+                                                                        No Syncronized Submissions for {month}
                                                                     </TableCell>
                                                                 </TableRow>
                                                             )}
@@ -203,23 +206,22 @@ function BlockWasteReconciliationContent() {
                                                 <ScrollBar orientation="horizontal" />
                                             </ScrollArea>
 
-                                            {/* Monthly Performance Row */}
                                             <div className="bg-muted/30 border-t p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
                                                 <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Waste Collected (Avg)</p>
+                                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">ULB Baseline (Avg)</p>
                                                     <p className="text-xl font-black">{ulb.dryWasteKg} KG</p>
                                                 </div>
                                                 <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
                                                     <p className="text-[10px] font-black uppercase text-primary mb-1">Total Verified</p>
-                                                    <p className="text-xl font-black text-primary">0.0 KG</p>
+                                                    <p className="text-xl font-black text-primary">{verifiedMonthTotal.toFixed(1)} KG</p>
                                                 </div>
                                                 <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                    <p className="text-[10px] font-black uppercase text-destructive mb-1">Discrepancy</p>
-                                                    <p className="text-xl font-black text-destructive">0.0 KG</p>
+                                                    <p className="text-[10px] font-black uppercase text-destructive mb-1">Monthly Discrepancy</p>
+                                                    <p className="text-xl font-black text-destructive">{(ulb.dryWasteKg - verifiedMonthTotal).toFixed(1)} KG</p>
                                                 </div>
                                                 <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-4 shadow-inner">
                                                     <p className="text-[10px] font-black uppercase text-primary mb-1">Efficiency Score</p>
-                                                    <p className="text-xl font-black text-primary">0%</p>
+                                                    <p className="text-xl font-black text-primary">{(ulb.dryWasteKg > 0 ? (verifiedMonthTotal / ulb.dryWasteKg) * 100 : 0).toFixed(1)}%</p>
                                                 </div>
                                             </div>
                                         </AccordionContent>
@@ -229,11 +231,11 @@ function BlockWasteReconciliationContent() {
                         })}
                     </Accordion>
 
-                    {/* Yearly Block Audit Placeholder */}
+                    {/* Yearly Block Audit summary placeholder */}
                     <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden opacity-80">
                         <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
                             <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
-                                <BarChart3 className="h-10 w-10" /> Yearly Block Audit: {year}
+                                <BarChart3 className="h-10 w-10" /> Yearly Audit Report: {year}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -242,7 +244,7 @@ function BlockWasteReconciliationContent() {
                                     <Table className="text-muted-foreground">
                                         <TableHeader className="bg-muted/50">
                                             <TableRow>
-                                                <TableHead className="w-[180px] uppercase font-black border text-center">Collection Freq (Year)</TableHead>
+                                                <TableHead className="w-[150px] uppercase font-black border text-center">Collection Freq (Year)</TableHead>
                                                 <TableHead className="w-[180px] text-right uppercase font-black border">Total Verified (Kg)</TableHead>
                                                 <TableHead className="w-[100px] text-right uppercase font-black border">Total Paper</TableHead>
                                                 <TableHead className="w-[100px] text-right uppercase font-black border">Total Plastic</TableHead>
@@ -255,7 +257,7 @@ function BlockWasteReconciliationContent() {
                                         <TableBody>
                                             <TableRow>
                                                 <TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
-                                                    Yearly Aggregate Audit will fill post-December {year}.
+                                                    Yearly Aggregate Audit Data will generate post-December {year}.
                                                 </TableCell>
                                             </TableRow>
                                         </TableBody>
@@ -275,9 +277,9 @@ function BlockWasteReconciliationContent() {
         <CardContent className="py-6 flex items-start gap-4">
           <Info className="h-6 w-6 text-primary mt-1 shrink-0" />
           <div className="space-y-1">
-            <p className="text-sm font-black uppercase tracking-tight">Block-Level Audit Integration</p>
+            <p className="text-sm font-black uppercase tracking-tight">Data Integrity Protocol</p>
             <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-              This page monitors historical waste convergence for all constituent ULB nodes within the block. Monthly summary boxes compare actual verification totals against jurisdictional baseline targets. Yearly audit reports are generated upon cycle completion for state-wide synchronization.
+              This hub provides block-wide oversight. Every record is verified in real-time against nodal declarations. Summary boxes at the foot of each month calculate local efficacy. Yearly aggregate reports for each ULB node are generated automatically after the December reporting cycle.
             </p>
           </div>
         </CardContent>

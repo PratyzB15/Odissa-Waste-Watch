@@ -9,15 +9,15 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { 
   Calendar, 
   Calculator, 
-  PlusCircle, 
-  Trash2, 
-  Edit, 
   MapPin,
   TrendingUp,
   BarChart3,
   Info,
   Database,
-  ArrowRight
+  ArrowRight,
+  PlusCircle,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
@@ -49,35 +49,28 @@ function ULBWasteReconciliationContent() {
   const ulbParam = searchParams.get('ulb') || 'Facility Node';
   
   const [mounted, setMounted] = useState(false);
-  // Zero-state initialization - No mock data
   const [records, setRecords] = useState<CollectionRecord[]>([]);
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Logical grouping: Year -> Month
-  const yearGroups = useMemo(() => {
-    // Current application logic starts from 2026 per instruction
-    return ["2026", "2027"];
-  }, []);
+  const yearGroups = ["2026", "2027"];
 
   if (!mounted) return null;
 
   return (
     <div className="space-y-12">
       <Card className="border-2 border-primary/20 bg-primary/[0.01] shadow-md">
-        <CardHeader className="bg-primary/5 border-b">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3 text-primary">
-              <Calculator className="h-10 w-10" />
-              <div>
-                <CardTitle className="text-2xl font-black uppercase tracking-tight">ULB Waste Reconciliation Ledger</CardTitle>
-                <CardDescription className="font-bold italic">High-fidelity reconciliation for {ulbParam}.</CardDescription>
-              </div>
+        <CardHeader className="bg-primary/5 border-b flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-primary">
+            <Calculator className="h-10 w-10" />
+            <div>
+              <CardTitle className="text-2xl font-black uppercase tracking-tight">Waste Reconciliation Hub</CardTitle>
+              <CardDescription className="font-bold italic text-muted-foreground">Facility Node: {ulbParam}</CardDescription>
             </div>
-            <Button className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
-              <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
-            </Button>
           </div>
+          <Button className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
+              <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
+          </Button>
         </CardHeader>
       </Card>
 
@@ -88,7 +81,7 @@ function ULBWasteReconciliationContent() {
             <div className="h-px flex-1 bg-primary/20"></div>
           </div>
 
-          <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="April">
+          <Accordion type="single" collapsible className="w-full space-y-4">
             {MONTHS.map((month) => {
                 const monthRecords = records.filter(r => {
                     const d = new Date(r.date);
@@ -105,7 +98,7 @@ function ULBWasteReconciliationContent() {
                                         <span className="font-black text-xl uppercase tracking-tighter text-foreground">{month}</span>
                                     </div>
                                     <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[8px] bg-primary/5 px-3">
-                                        {monthRecords.length} RECEIPTS LOGGED
+                                        {monthRecords.length} RECEIPTS SYNCED
                                     </Badge>
                                 </div>
                             </AccordionTrigger>
@@ -115,7 +108,7 @@ function ULBWasteReconciliationContent() {
                                         <Table className="border-collapse border text-[10px]">
                                             <TableHeader className="bg-muted/80">
                                                 <TableRow>
-                                                    <TableHead className="w-[120px] uppercase font-black border text-center">Date of Collection</TableHead>
+                                                    <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
                                                     <TableHead className="w-[120px] uppercase font-black border text-center">Route ID</TableHead>
                                                     <TableHead className="w-[200px] uppercase font-black border text-right px-6 bg-blue-50/20">Total Waste from GPs (Click)</TableHead>
                                                     <TableHead className="w-[150px] text-right uppercase font-black border bg-primary/5 text-primary">Driver Submitted (Kg)</TableHead>
@@ -196,17 +189,12 @@ function ULBWasteReconciliationContent() {
             })}
           </Accordion>
 
-          {/* Yearly Audit Placeholder - Always visible but empty until cycle completion */}
           <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
             <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
-              <div className="flex justify-between items-center">
-                <div className="space-y-1">
-                  <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
-                    <BarChart3 className="h-10 w-10" /> Yearly Audit Summary: {year}
-                  </CardTitle>
-                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Comprehensive jurisdictional performance for the fiscal year.</CardDescription>
-                </div>
-              </div>
+                <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
+                    <BarChart3 className="h-10 w-10" /> Yearly Audit Report: {year}
+                </CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Comprehensive jurisdictional performance for the fiscal year.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
                 <ScrollArea className="w-full">
@@ -230,7 +218,7 @@ function ULBWasteReconciliationContent() {
                             <TableBody>
                                 <TableRow>
                                     <TableCell colSpan={11} className="h-40 text-center italic font-black uppercase tracking-widest opacity-20">
-                                        Yearly Audit Data will generate automatically upon closure of the December {year} cycle.
+                                        Yearly Audit Data will generate automatically post-December {year}.
                                     </TableCell>
                                 </TableRow>
                             </TableBody>
@@ -238,10 +226,6 @@ function ULBWasteReconciliationContent() {
                     </div>
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
-                <div className="bg-muted/10 p-6 border-t border-dashed flex justify-between items-center opacity-40">
-                    <p className="text-[10px] font-bold italic">Official Fiscal Record - Government of Odisha SWM Portal</p>
-                    <Badge variant="outline" className="font-black uppercase px-6 py-1 tracking-widest border-primary/20">PENDING FINALIZATION</Badge>
-                </div>
             </CardContent>
           </Card>
         </div>
@@ -251,9 +235,9 @@ function ULBWasteReconciliationContent() {
         <CardContent className="py-6 flex items-start gap-4">
           <Info className="h-6 w-6 text-primary mt-1 shrink-0" />
           <div className="space-y-1">
-            <p className="text-sm font-black uppercase tracking-tight">ULB Data Integrity Protocol</p>
+            <p className="text-sm font-black uppercase tracking-tight">Facility Hub Integration</p>
             <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-              Every record in this ledger is verified in real-time. Discrepancy checks are strictly enforced against GP nodal declarations. Yearly audit reports consolidate all 12 monthly cycles to provide a finalized jurisdictional performance metric.
+              This hub reconciles nodal declarations with logistical verified tonnage. Submissions are grouped chronologically. Any significant variance triggers an audit flag. Yearly aggregate reports for the fiscal cycle provide high-fidelity performance metrics.
             </p>
           </div>
         </CardContent>
@@ -264,7 +248,7 @@ function ULBWasteReconciliationContent() {
 
 export default function ULBWasteDetailsPage() {
   return (
-    <Suspense fallback={<div className="p-12 text-center text-muted-foreground animate-pulse">Syncing reconciliation hub...</div>}>
+    <Suspense fallback={<div className="p-12 text-center text-muted-foreground animate-pulse">Loading reconciliation hub...</div>}>
       <ULBWasteReconciliationContent />
     </Suspense>
   );

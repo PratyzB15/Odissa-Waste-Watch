@@ -21,7 +21,6 @@ import {
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-
 import { mrfData } from "@/lib/mrf-data";
 
 interface CollectionRecord {
@@ -64,7 +63,7 @@ function DistrictWasteReconciliationContent() {
     return { totalAvg, totalVerified, efficiency };
   }, [districtName, records]);
 
-  const districtBlocks = useMemo(() => {
+  const blockList = useMemo(() => {
     const blocksSet = new Set(mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase()).map(m => m.blockCovered));
     return Array.from(blocksSet).sort();
   }, [districtName]);
@@ -81,7 +80,7 @@ function DistrictWasteReconciliationContent() {
             <Calculator className="h-10 w-10" />
             <div>
               <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">District Waste Reconciliation Hub</CardTitle>
-              <CardDescription className="font-bold italic text-muted-foreground">Comprehensive District-wide oversight for {districtName}.</CardDescription>
+              <CardDescription className="font-bold italic text-muted-foreground">Comprehensive block-level oversight for {districtName}.</CardDescription>
             </div>
           </div>
           <Button className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
@@ -94,31 +93,28 @@ function DistrictWasteReconciliationContent() {
                 <p className="text-3xl font-black text-foreground">{districtStats.totalAvg.toLocaleString()} KG</p>
             </div>
             <div className="bg-background border-2 border-dashed rounded-xl p-6 shadow-sm">
-                <p className="text-[10px] font-black uppercase text-primary mb-1">Total District Verified</p>
+                <p className="text-[10px] font-black uppercase text-primary mb-1">Total Verified (District)</p>
                 <p className="text-3xl font-black text-primary">{districtStats.totalVerified.toLocaleString()} KG</p>
             </div>
             <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-6 shadow-inner">
-                <p className="text-[10px] font-black uppercase text-primary mb-1">District Efficiency Score</p>
+                <p className="text-[10px] font-black uppercase text-primary mb-1">District Efficacy Score</p>
                 <p className="text-3xl font-black text-primary">{districtStats.efficiency.toFixed(1)}%</p>
             </div>
         </CardContent>
       </Card>
 
-      {districtBlocks.map((block) => {
-        const blockAvgWaste = mrfData.filter(m => m.blockCovered === block && m.district.toLowerCase() === districtName.toLowerCase()).reduce((sum, m) => sum + m.dryWasteKg, 0);
+      {blockList.map((block) => {
+        const blockAvgLoad = mrfData.filter(m => m.blockCovered === block && m.district.toLowerCase() === districtName.toLowerCase()).reduce((sum, m) => sum + m.dryWasteKg, 0);
 
         return (
             <Card key={block} className="border-2 shadow-xl overflow-hidden">
               <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Building className="h-7 w-7 text-primary" />
-                  <div>
-                    <CardTitle className="text-xl font-black uppercase text-primary">Block Node: {block}</CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">{districtName} District Audit</CardDescription>
-                  </div>
+                  <CardTitle className="text-xl font-black uppercase text-primary">Block Node: {block}</CardTitle>
                 </div>
                 <Badge variant="outline" className="border-primary/30 text-primary font-black uppercase text-[10px] bg-primary/5 px-4 py-1">
-                  Block Target: {blockAvgWaste.toLocaleString()} Kg (Avg)
+                  Block Target: {blockAvgLoad.toLocaleString()} Kg (Avg)
                 </Badge>
               </CardHeader>
               <CardContent className="p-6 space-y-12">
@@ -138,9 +134,7 @@ function DistrictWasteReconciliationContent() {
                                            r.block === block;
                                 });
 
-                                const monthlyTotalVerified = monthRecords.reduce((sum, r) => sum + r.driverSubmitted, 0);
-                                const monthlyDiscrepancy = blockAvgWaste - monthlyTotalVerified;
-                                const monthlyEfficiency = blockAvgWaste > 0 ? (monthlyTotalVerified / blockAvgWaste) * 100 : 0;
+                                const verifiedMonthTotal = monthRecords.reduce((sum, r) => sum + r.driverSubmitted, 0);
 
                                 return (
                                     <AccordionItem value={month} key={month} className="border-none">
@@ -151,8 +145,8 @@ function DistrictWasteReconciliationContent() {
                                                         <Calendar className="h-5 w-5 text-primary" />
                                                         <span className="font-black text-lg uppercase tracking-tighter text-foreground">{month}</span>
                                                     </div>
-                                                    <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-3">
-                                                        {monthRecords.length} RECEIPTS SYNCED
+                                                    <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px]">
+                                                        {monthRecords.length} RECEIPTS LOGGED
                                                     </Badge>
                                                 </div>
                                             </AccordionTrigger>
@@ -162,7 +156,7 @@ function DistrictWasteReconciliationContent() {
                                                         <Table className="border-collapse border text-[10px]">
                                                             <TableHeader className="bg-muted/80">
                                                                 <TableRow>
-                                                                    <TableHead className="w-[120px] uppercase font-black border text-center">Date of Collection</TableHead>
+                                                                    <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
                                                                     <TableHead className="w-[120px] uppercase font-black border text-center">Route ID</TableHead>
                                                                     <TableHead className="w-[200px] uppercase font-black border text-right px-6 bg-blue-50/20">Total Waste from GPs (Click)</TableHead>
                                                                     <TableHead className="w-[150px] text-right uppercase font-black border bg-primary/5 text-primary">Driver Submitted (Kg)</TableHead>
@@ -179,7 +173,7 @@ function DistrictWasteReconciliationContent() {
                                                             </TableHeader>
                                                             <TableBody>
                                                                 {monthRecords.map((row, rIdx) => (
-                                                                    <TableRow key={rIdx} className="hover:bg-primary/[0.01] border-b h-14 transition-colors">
+                                                                    <TableRow key={rIdx} className="hover:bg-primary/[0.01] border-b last:border-0 h-14 transition-colors">
                                                                         <TableCell className="border-r font-mono text-center font-bold text-muted-foreground">{row.date}</TableCell>
                                                                         <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
                                                                         <TableCell className="border-r p-0">
@@ -194,18 +188,10 @@ function DistrictWasteReconciliationContent() {
                                                                                         <MapPin className="h-3 w-3" /> GP Contribution Breakdown
                                                                                     </div>
                                                                                     <Table>
-                                                                                        <TableHeader className="bg-muted/50">
-                                                                                          <TableRow>
-                                                                                            <TableHead className="text-[8px] uppercase font-black">GP Node</TableHead>
-                                                                                            <TableHead className="text-[8px] uppercase font-black text-right">Load (Kg)</TableHead>
-                                                                                          </TableRow>
-                                                                                        </TableHeader>
+                                                                                        <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[8px] uppercase font-black">GP Node</TableHead><TableHead className="text-[8px] uppercase font-black text-right">Load (Kg)</TableHead></TableRow></TableHeader>
                                                                                         <TableBody>
                                                                                             {row.gpBreakdown.map((gp, i) => (
-                                                                                                <TableRow key={i} className="h-10 border-b border-dashed last:border-0">
-                                                                                                  <TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell>
-                                                                                                  <TableCell className="text-right font-mono font-black text-blue-700">{gp.amount.toFixed(1)}</TableCell>
-                                                                                                </TableRow>
+                                                                                                <TableRow key={i} className="h-10 border-b border-dashed last:border-0"><TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell><TableCell className="text-right font-mono font-black text-blue-700">{gp.amount.toFixed(1)}</TableCell></TableRow>
                                                                                             ))}
                                                                                         </TableBody>
                                                                                     </Table>
@@ -214,13 +200,13 @@ function DistrictWasteReconciliationContent() {
                                                                         </TableCell>
                                                                         <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02]">{row.driverSubmitted.toFixed(1)} KG</TableCell>
                                                                         <TableCell className="border-r text-right font-mono font-black text-destructive">{(row.totalGpLoad - row.driverSubmitted).toFixed(1)} KG</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.plastic}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.paper}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.metal}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.cloth}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.glass}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.sanitation}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.others}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono">{row.paper}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono">{row.metal}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono">{row.others}</TableCell>
                                                                         <TableCell className="border text-center">
                                                                             <div className="flex justify-center gap-1">
                                                                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-primary"><Edit className="h-3 w-3"/></Button>
@@ -232,7 +218,7 @@ function DistrictWasteReconciliationContent() {
                                                                 {monthRecords.length === 0 && (
                                                                     <TableRow>
                                                                         <TableCell colSpan={13} className="h-24 text-center text-muted-foreground italic uppercase font-black tracking-widest opacity-20">
-                                                                            No Syncronized Submissions for {month}
+                                                                            Awaiting verified Block submissions for {month}
                                                                         </TableCell>
                                                                     </TableRow>
                                                                 )}
@@ -244,20 +230,20 @@ function DistrictWasteReconciliationContent() {
 
                                                 <div className="bg-muted/30 border-t p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
                                                     <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                        <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Block Load (Avg)</p>
-                                                        <p className="text-xl font-black">{blockAvgWaste.toLocaleString()} KG</p>
+                                                        <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Block Baseline (Avg)</p>
+                                                        <p className="text-xl font-black">{blockAvgLoad.toLocaleString()} KG</p>
                                                     </div>
                                                     <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                        <p className="text-[10px] font-black uppercase text-primary mb-1">Total Verified</p>
-                                                        <p className="text-xl font-black text-primary">{monthlyTotalVerified.toFixed(1)} KG</p>
+                                                        <p className="text-[10px] font-black uppercase text-primary mb-1">Verified Total</p>
+                                                        <p className="text-xl font-black text-primary">{verifiedMonthTotal.toFixed(1)} KG</p>
                                                     </div>
                                                     <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                        <p className="text-[10px] font-black uppercase text-destructive mb-1">Discrepancy</p>
-                                                        <p className="text-xl font-black text-destructive">{monthlyDiscrepancy.toFixed(1)} KG</p>
+                                                        <p className="text-[10px] font-black uppercase text-destructive mb-1">Monthly Variance</p>
+                                                        <p className="text-xl font-black text-destructive">{(blockAvgLoad - verifiedMonthTotal).toFixed(1)} KG</p>
                                                     </div>
                                                     <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-4 shadow-inner">
-                                                        <p className="text-[10px] font-black uppercase text-primary mb-1">Efficiency Score</p>
-                                                        <p className="text-xl font-black text-primary">{monthlyEfficiency.toFixed(1)}%</p>
+                                                        <p className="text-[10px] font-black uppercase text-primary mb-1">Block Efficiency</p>
+                                                        <p className="text-xl font-black text-primary">{(blockAvgLoad > 0 ? (verifiedMonthTotal / blockAvgLoad) * 100 : 0).toFixed(1)}%</p>
                                                     </div>
                                                 </div>
                                             </AccordionContent>
@@ -267,11 +253,13 @@ function DistrictWasteReconciliationContent() {
                             })}
                         </Accordion>
 
-                        <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden opacity-80">
+                        {/* Yearly District Aggregate Placeholder */}
+                        <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
                             <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
                                 <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
                                     <BarChart3 className="h-10 w-10" /> Yearly Block Audit Summary: {year}
                                 </CardTitle>
+                                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Finalized performance metrics for {block}.</CardDescription>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <ScrollArea className="w-full">
@@ -292,7 +280,7 @@ function DistrictWasteReconciliationContent() {
                                             <TableBody>
                                                 <TableRow>
                                                     <TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
-                                                        Yearly Aggregate Audit will fill post-December {year}.
+                                                        Yearly Aggregate Audit Data will generate post-December {year}.
                                                     </TableCell>
                                                 </TableRow>
                                             </TableBody>
@@ -313,9 +301,9 @@ function DistrictWasteReconciliationContent() {
         <CardContent className="py-6 flex items-start gap-4">
           <Info className="h-6 w-6 text-primary mt-1 shrink-0" />
           <div className="space-y-1">
-            <p className="text-sm font-black uppercase tracking-tight">District-Level Audit Protocol</p>
+            <p className="text-sm font-black uppercase tracking-tight">District Auditing Protocol</p>
             <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-              This hub provides a comprehensive view of block-level waste convergence across the district. Monthly summary boxes compare actual verification totals against jurisdictional baseline targets. Yearly audit reports are generated upon cycle completion for state-wide synchronization.
+              This hub provides a comprehensive district-wide audit trail. Submissions are aggregated by Block and Month. Discrepancy analysis is calculated against the official demographic baseline for each administrative block. Yearly aggregate reports for each block are generated automatically after the December reporting cycle.
             </p>
           </div>
         </CardContent>
