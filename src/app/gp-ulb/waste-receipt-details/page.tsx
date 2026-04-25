@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -21,11 +20,15 @@ import {
   Save,
   Route,
   MapPin,
-  ListPlus
+  ListPlus,
+  Sparkles,
+  Loader2,
+  UploadCloud
 } from 'lucide-react';
 import React, { useMemo, Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { extractWasteReceiptData } from '@/ai/flows/invoice-data-extraction';
 
 // District Data Imports for Logistical Resolution
 import { angulDistrictData } from "@/lib/disAngul";
@@ -69,6 +72,7 @@ function WasteReceiptDetailsContent() {
   const blockParam = searchParams.get('block') || '';
   
   const [mounted, setMounted] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
 
   // GP Form State
   const [gpFormData, setGpFormData] = useState({
@@ -103,6 +107,37 @@ function WasteReceiptDetailsContent() {
     return source.getGpDetails(gpName);
   }, [mounted, districtParam, blockParam, gpName, role]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsExtracting(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      try {
+        const result = await extractWasteReceiptData({ receiptImage: base64 });
+        if (result) {
+          if (result.dateOfCollection) setGpFormData(prev => ({ ...prev, dateOfCollection: result.dateOfCollection! }));
+          if (result.totalWaste) setGpFormData(prev => ({ ...prev, totalCollected: result.totalWaste! }));
+          if (result.plastic) setGpFormData(prev => ({ ...prev, plastic: result.plastic! }));
+          if (result.paper) setGpFormData(prev => ({ ...prev, paper: result.paper! }));
+          if (result.metal) setGpFormData(prev => ({ ...prev, metal: result.metal! }));
+          if (result.glass) setGpFormData(prev => ({ ...prev, glass: result.glass! }));
+          if (result.sanitation) setGpFormData(prev => ({ ...prev, sanitation: result.sanitation! }));
+          if (result.others) setGpFormData(prev => ({ ...prev, others: result.others! }));
+          
+          toast({ title: "Extraction Complete", description: "Form fields populated from receipt photo." });
+        }
+      } catch (err) {
+        toast({ title: "Extraction Failed", description: "Could not read the receipt photo.", variant: "destructive" });
+      } finally {
+        setIsExtracting(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleGpSubmit = () => {
     console.log("GP Submitting Verified Data:", { ...gpFormData, context: routeContext });
     toast({ title: "Data Transmitted", description: "The collection receipt has been successfully transmitted to the ULB Hub." });
@@ -112,7 +147,6 @@ function WasteReceiptDetailsContent() {
   const ulbVerificationData = useMemo(() => {
     if (!mounted || role !== 'ulb' || !districtParam) return { drRecs: [], gpRecs: [] };
     
-    // Simulate high-fidelity synced records for ULB view
     const drRecs = [
       { id: 1, driver: "Ramesh Kumar", phone: "9876543210", routeId: "AANGN1", date: "2024-07-28", mrf: ulbParam, total: 155, plastic: 50, paper: 40, metal: 15, glass: 20, sanitation: 10, others: 20 },
       { id: 2, driver: "Sita Majhi", phone: "7752XXXXXX", routeId: "AANGT2", date: "2024-07-28", mrf: ulbParam, total: 88, plastic: 20, paper: 30, metal: 10, glass: 15, sanitation: 5, others: 8 }
@@ -131,107 +165,154 @@ function WasteReceiptDetailsContent() {
   // RENDER GP FORM
   if (role === 'gp') {
     return (
-      <Card className="max-w-4xl mx-auto border-2 shadow-xl border-primary/20 overflow-hidden">
-        <CardHeader className="bg-primary/5 border-b pb-6">
-            <CardTitle className="text-xl font-headline font-black uppercase tracking-tight text-primary flex items-center gap-2">
-                <Save className="h-6 w-6" /> GP Waste Collection Receipt
-            </CardTitle>
-            <CardDescription className="font-bold text-primary opacity-70">Submit verified collection load for {gpName} node.</CardDescription>
-        </CardHeader>
-        
-        <ScrollArea className="h-[75vh]">
-            <CardContent className="p-8 space-y-10">
-                <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
-                        <Route className="h-3 w-3 text-primary" /> Nodal Context
-                    </h3>
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Date of Collection</Label>
-                            <Input type="date" value={gpFormData.dateOfCollection} onChange={(e) => setGpFormData({...gpFormData, dateOfCollection: e.target.value})} className="font-bold bg-muted/20" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">District Node</Label>
-                            <Input value={districtParam.toUpperCase()} disabled className="font-bold bg-muted/20 uppercase" />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Administrative Block</Label>
-                            <Input value={blockParam.toUpperCase()} disabled className="font-bold bg-muted/20 uppercase" />
-                        </div>
-                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Assigned Route ID</Label>
-                            <Input value={routeContext?.routes?.[0]?.routeId || 'CIRCUIT-01'} disabled className="font-mono font-black text-primary border-primary/10" />
-                        </div>
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase opacity-60">Tagged Processing Facility (MRF)</Label>
-                        <Input value={(routeContext?.mapping?.taggedMrf || ulbParam).toUpperCase()} disabled className="font-black text-primary border-primary/20" />
-                    </div>
-                </div>
+      <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-8">
+        {/* Left Pane: AI Extraction Assistant */}
+        <div className="lg:col-span-4 space-y-6">
+          <Card className="border-2 border-primary/20 shadow-lg bg-primary/[0.02]">
+              <CardHeader className="pb-4">
+                  <CardTitle className="text-sm font-black uppercase flex items-center gap-2 text-primary">
+                      <Sparkles className="h-4 w-4" /> AI Receipt Assistant
+                  </CardTitle>
+                  <CardDescription className="text-[10px] font-bold">Upload a photo to automatically fill the form.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div className="border-2 border-dashed border-primary/20 rounded-2xl p-8 text-center space-y-4 hover:bg-primary/5 transition-colors cursor-pointer relative group">
+                      <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={handleFileUpload} 
+                          className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                          disabled={isExtracting}
+                      />
+                      <div className="p-4 rounded-full bg-primary/10 w-fit mx-auto group-hover:scale-110 transition-transform">
+                          {isExtracting ? <Loader2 className="h-8 w-8 text-primary animate-spin" /> : <UploadCloud className="h-8 w-8 text-primary" />}
+                      </div>
+                      <div>
+                          <p className="text-xs font-black uppercase text-primary">{isExtracting ? 'Extracting Data...' : 'Upload Receipt Photo'}</p>
+                          <p className="text-[9px] text-muted-foreground mt-1">PNG, JPG up to 10MB</p>
+                      </div>
+                  </div>
+              </CardContent>
+          </Card>
+          
+          <Card className="border-2 border-dashed bg-muted/20">
+              <CardContent className="py-6 flex items-start gap-4">
+                  <ClipboardList className="h-6 w-6 text-primary mt-1 shrink-0" />
+                  <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase tracking-tight">GP Administrative Roster</p>
+                      <p className="text-[9px] text-muted-foreground font-medium italic leading-relaxed">
+                          The AI assistant is optimized to identify the official regional identifiers for {districtParam} district and {blockParam} block.
+                      </p>
+                  </div>
+              </CardContent>
+          </Card>
+        </div>
 
-                <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
-                        <Database className="h-3 w-3 text-primary" /> Verified Quantification (Kg)
-                    </h3>
-                    <div className="bg-muted/10 border-2 border-dashed rounded-2xl p-6">
-                        <div className="space-y-1.5 max-w-sm mx-auto text-center">
-                            <Label className="text-xs font-black uppercase text-primary">Total Amount Collected</Label>
-                            <Input 
-                                type="number" 
-                                placeholder="0.0" 
-                                value={gpFormData.totalCollected} 
-                                onChange={(e) => setGpFormData({...gpFormData, totalCollected: e.target.value})}
-                                className="h-12 text-center text-xl font-black border-primary/20"
-                            />
+        {/* Right Pane: Main Form */}
+        <div className="lg:col-span-8">
+          <Card className="border-2 shadow-xl border-primary/20 overflow-hidden">
+            <CardHeader className="bg-primary/5 border-b pb-6">
+                <CardTitle className="text-xl font-headline font-black uppercase tracking-tight text-primary flex items-center gap-2">
+                    <Save className="h-6 w-6" /> GP Waste Collection Receipt
+                </CardTitle>
+                <CardDescription className="font-bold text-primary opacity-70">Submit verified collection load for {gpName} node.</CardDescription>
+            </CardHeader>
+            
+            <ScrollArea className="h-[75vh]">
+                <CardContent className="p-8 space-y-10">
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
+                            <Route className="h-3 w-3 text-primary" /> Nodal Context
+                        </h3>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Date of Collection</Label>
+                                <Input type="date" value={gpFormData.dateOfCollection} onChange={(e) => setGpFormData({...gpFormData, dateOfCollection: e.target.value})} className="font-bold bg-muted/20" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">District Node</Label>
+                                <Input value={districtParam.toUpperCase()} disabled className="font-bold bg-muted/20 uppercase" />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Administrative Block</Label>
+                                <Input value={blockParam.toUpperCase()} disabled className="font-bold bg-muted/20 uppercase" />
+                            </div>
+                             <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Assigned Route ID</Label>
+                                <Input value={routeContext?.routes?.[0]?.routeId || 'CIRCUIT-01'} disabled className="font-mono font-black text-primary border-primary/10" />
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-60">Tagged Processing Facility (MRF)</Label>
+                            <Input value={(routeContext?.mapping?.taggedMrf || ulbParam).toUpperCase()} disabled className="font-black text-primary border-primary/20" />
                         </div>
                     </div>
-                </div>
 
-                <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
-                        <ListPlus className="h-3 w-3 text-primary" /> Stream Breakdown
-                    </h3>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Plastic (gm)</Label>
-                            <Input type="number" placeholder="0.0" value={gpFormData.plastic} onChange={(e) => setGpFormData({...gpFormData, plastic: e.target.value})} className="font-mono font-bold" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Paper (Kg)</Label>
-                            <Input type="number" placeholder="0.0" value={gpFormData.paper} onChange={(e) => setGpFormData({...gpFormData, paper: e.target.value})} className="font-mono font-bold" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Metal (Kg)</Label>
-                            <Input type="number" placeholder="0.0" value={gpFormData.metal} onChange={(e) => setGpFormData({...gpFormData, metal: e.target.value})} className="font-mono font-bold" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Glass (Kg)</Label>
-                            <Input type="number" placeholder="0.0" value={gpFormData.glass} onChange={(e) => setGpFormData({...gpFormData, glass: e.target.value})} className="font-mono font-bold" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Sanitation Waste (Kg)</Label>
-                            <Input type="number" placeholder="0.0" value={gpFormData.sanitation} onChange={(e) => setGpFormData({...gpFormData, sanitation: e.target.value})} className="font-mono font-bold" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Others (Kg)</Label>
-                            <Input type="number" placeholder="0.0" value={gpFormData.others} onChange={(e) => setGpFormData({...gpFormData, others: e.target.value})} className="font-mono font-bold" />
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
+                            <Database className="h-3 w-3 text-primary" /> Verified Quantification (Kg)
+                        </h3>
+                        <div className="bg-muted/10 border-2 border-dashed rounded-2xl p-6">
+                            <div className="space-y-1.5 max-w-sm mx-auto text-center">
+                                <Label className="text-xs font-black uppercase text-primary">Total Amount Collected</Label>
+                                <Input 
+                                    type="number" 
+                                    placeholder="0.0" 
+                                    value={gpFormData.totalCollected} 
+                                    onChange={(e) => setGpFormData({...gpFormData, totalCollected: e.target.value})}
+                                    className="h-12 text-center text-xl font-black border-primary/20"
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
-            </CardContent>
-        </ScrollArea>
-        <CardFooter className="bg-primary/5 border-t p-6">
-            <Button onClick={handleGpSubmit} className="w-full h-14 text-lg font-black uppercase tracking-[0.1em] shadow-xl hover:scale-[1.01] transition-all">
-                <Save className="mr-2 h-6 w-6" /> Finalize & Transmit Receipt
-            </Button>
-        </CardFooter>
-      </Card>
+
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
+                            <ListPlus className="h-3 w-3 text-primary" /> Stream Breakdown
+                        </h3>
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Plastic (gm)</Label>
+                                <Input type="number" placeholder="0.0" value={gpFormData.plastic} onChange={(e) => setGpFormData({...gpFormData, plastic: e.target.value})} className="font-mono font-bold" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Paper (Kg)</Label>
+                                <Input type="number" placeholder="0.0" value={gpFormData.paper} onChange={(e) => setGpFormData({...gpFormData, paper: e.target.value})} className="font-mono font-bold" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Metal (Kg)</Label>
+                                <Input type="number" placeholder="0.0" value={gpFormData.metal} onChange={(e) => setGpFormData({...gpFormData, metal: e.target.value})} className="font-mono font-bold" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Glass (Kg)</Label>
+                                <Input type="number" placeholder="0.0" value={gpFormData.glass} onChange={(e) => setGpFormData({...gpFormData, glass: e.target.value})} className="font-mono font-bold" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Sanitation Waste (Kg)</Label>
+                                <Input type="number" placeholder="0.0" value={gpFormData.sanitation} onChange={(e) => setGpFormData({...gpFormData, sanitation: e.target.value})} className="font-mono font-bold" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Others (Kg)</Label>
+                                <Input type="number" placeholder="0.0" value={gpFormData.others} onChange={(e) => setGpFormData({...gpFormData, others: e.target.value})} className="font-mono font-bold" />
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </ScrollArea>
+            <CardFooter className="bg-primary/5 border-t p-6">
+                <Button onClick={handleGpSubmit} disabled={isExtracting} className="w-full h-14 text-lg font-black uppercase tracking-[0.1em] shadow-xl hover:scale-[1.01] transition-all">
+                    <Save className="mr-2 h-6 w-6" /> Finalize & Transmit Receipt
+                </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
     );
   }
 
-  // RENDER ULB VERIFICATION HUB
+  // RENDER ULB VERIFICATION HUB (UNCHANGED TABLES)
   return (
     <div className="space-y-6">
       <Card className="border-2 border-primary/20 bg-primary/[0.01] shadow-md">
