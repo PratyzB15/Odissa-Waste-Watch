@@ -13,6 +13,7 @@ import {
   ClipboardList,
   TableProperties,
   MailWarning,
+  Calculator,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -39,6 +40,7 @@ export function OfficialSidebar({ isMobile = false }: { isMobile?: boolean }) {
 
   const navItems = [
     { href: '/official/block-dashboard', icon: LayoutDashboard, label: 'Block Dashboard', role: 'block' },
+    { href: '/official/block-waste-details', icon: Calculator, label: 'Waste Details', role: 'block' },
     { href: '/official/dashboard', icon: Home, label: 'Overview Dashboard', role: 'district' },
     { href: '/official/steering-committee', icon: Users, label: 'Steering Committee Status' },
     { href: '/official/gp-information', icon: TableProperties, label: 'Information about GPs' },
