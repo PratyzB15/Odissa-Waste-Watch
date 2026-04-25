@@ -1,4 +1,3 @@
-
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -172,7 +171,7 @@ function DistrictDashboardContent() {
       'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData,
       'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData,
       'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData,
-      'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
+      'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
       'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'balasore': balasoreDistrictData,
       'baleswar': baleswarDistrictData, 'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
       'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
@@ -397,7 +396,7 @@ function DistrictDashboardContent() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 py-3"><CardTitle className="text-sm font-black uppercase">Nodal Activity Status</CardTitle></CardHeader><CardContent className="h-[350px] pt-8"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={districtData.activeSummary} margin={{ left: 20, right: 30 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} /><XAxis type="number" fontSize={10} /><YAxis dataKey="name" type="category" fontSize={10} fontWeights="black" width={80} /><Tooltip content={<CustomActiveTooltip />} /><Bar dataKey="value" name="Nodes" radius={[0, 4, 4, 0]} barSize={50} /></BarChart></ResponsiveContainer></CardContent></Card>
-        <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 pb-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><PieChartIcon className="h-5 w-5 text-primary" /> Waste Stream Composition (%)</CardTitle></CardHeader><CardContent className="h-[350px] pt-6"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={districtData.compositionData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">{districtData.compositionData.map((entry, index) => <Cell key={index} fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} />)}</Pie><Tooltip /><RechartsLegend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 'bold'}} /></PieChart></ResponsiveContainer></CardContent></Card>
+        <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 pb-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><PieIcon className="h-5 w-5 text-primary" /> Waste Stream Composition (%)</CardTitle></CardHeader><CardContent className="h-[350px] pt-6"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={districtData.compositionData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">{districtData.compositionData.map((entry, index) => <Cell key={index} fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} />)}</Pie><Tooltip /><RechartsLegend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 'bold'}} /></PieChart></ResponsiveContainer></CardContent></Card>
       </div>
 
       <Card className="border-2 border-primary/20 bg-muted/5 shadow-xl">

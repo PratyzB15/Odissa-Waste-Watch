@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { UploadCloud, Loader2, Save, Calendar, Truck, Anchor, MapPin, Building, Route, ListPlus, Phone, LayoutGrid, FileSearch, Sparkles } from 'lucide-react';
+import { UploadCloud, Loader2, Save, Calendar, Truck, Anchor, MapPin, Building, Route, ListPlus, Phone, LayoutGrid, FileSearch, Sparkles, Info } from 'lucide-react';
 import React, { useState, useMemo, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
