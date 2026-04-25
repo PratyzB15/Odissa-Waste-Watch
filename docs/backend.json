@@ -1,39 +1,9 @@
-
 {
-  "entities": {
-    "Admin": {
-      "title": "Admin",
-      "description": "State-level administrative user with pre-approved access.",
-      "type": "object",
-      "properties": {
-        "email": {
-          "type": "string",
-          "format": "email",
-          "description": "Pre-approved administrative email."
-        },
-        "hashedPassword": {
-          "type": "string",
-          "description": "Securely hashed password stored after the first login."
-        },
-        "name": {
-          "type": "string",
-          "description": "Full name of the administrator."
-        }
-      },
-      "required": [
-        "email"
-      ]
-    }
-  },
+  "entities": {},
   "auth": {
     "providers": [
       "password"
     ]
   },
-  "firestore": {
-    "/admins/{email}": {
-      "schema": "#/backend/entities/Admin",
-      "description": "Collection of authorized administrators. Pre-populated with yogendra1yogi@gmail.com."
-    }
-  }
+  "firestore": {}
 }
