@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -30,7 +31,7 @@ import { jagatsinghpurDistrictData } from "@/lib/disJagatsinghpur";
 import { jajpurDistrictData } from "@/lib/disJajpur";
 import { jharsugudaDistrictData } from "@/lib/disJharsuguda";
 import { kalahandiDistrictData } from "@/lib/disKalahandi";
-import { kandhamal DistrictData } from "@/lib/disKandhamal";
+import { kandhamalDistrictData } from "@/lib/disKandhamal";
 import { kendraparaDistrictData } from "@/lib/disKendrapara";
 import { kendujharDistrictData } from "@/lib/disKendujhar";
 import { khordhaDistrictData } from "@/lib/disKhordha";

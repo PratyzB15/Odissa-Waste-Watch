@@ -12,7 +12,7 @@ import {
   Users,
   Database,
 } from 'lucide-react';
-import Link from 'next/next/link';
+import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 import { OdishaLogo } from '@/components/odisha-logo';
