@@ -59,7 +59,6 @@ function StateWasteReconciliationContent() {
     return Array.from(dSet).sort();
   }, []);
 
-  // State-wide aggregation logic
   const stateStats = useMemo(() => {
     const totalAvg = mrfData.reduce((sum, m) => sum + m.dryWasteKg, 0);
     const totalVerified = records.reduce((sum, r) => sum + r.driverSubmitted, 0);
@@ -226,7 +225,6 @@ function StateWasteReconciliationContent() {
                         })}
                     </Accordion>
 
-                    {/* Yearly State-District Audit Placeholder */}
                     <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden opacity-80">
                         <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
                             <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">

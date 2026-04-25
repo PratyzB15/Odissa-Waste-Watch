@@ -17,13 +17,13 @@ import {
   BarChart3,
   Building,
   Info,
-  Database
+  Database,
+  ArrowRight
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
-// District Data Imports
 import { mrfData } from "@/lib/mrf-data";
 
 interface CollectionRecord {
@@ -57,7 +57,6 @@ function DistrictWasteReconciliationContent() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // District-wide aggregation stats
   const districtStats = useMemo(() => {
     const totalAvg = mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase()).reduce((sum, m) => sum + m.dryWasteKg, 0);
     const totalVerified = records.reduce((sum, r) => sum + r.driverSubmitted, 0);
@@ -65,7 +64,6 @@ function DistrictWasteReconciliationContent() {
     return { totalAvg, totalVerified, efficiency };
   }, [districtName, records]);
 
-  // Filter Blocks belonging to this district
   const districtBlocks = useMemo(() => {
     const blocksSet = new Set(mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase()).map(m => m.blockCovered));
     return Array.from(blocksSet).sort();
@@ -83,7 +81,7 @@ function DistrictWasteReconciliationContent() {
             <Calculator className="h-10 w-10" />
             <div>
               <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">District Waste Reconciliation Hub</CardTitle>
-              <CardDescription className="font-bold italic text-muted-foreground">Comprehensive logistical oversight for District: {districtName}.</CardDescription>
+              <CardDescription className="font-bold italic text-muted-foreground">Comprehensive District-wide oversight for {districtName}.</CardDescription>
             </div>
           </div>
           <Button className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
@@ -100,16 +98,14 @@ function DistrictWasteReconciliationContent() {
                 <p className="text-3xl font-black text-primary">{districtStats.totalVerified.toLocaleString()} KG</p>
             </div>
             <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-6 shadow-inner">
-                <p className="text-[10px] font-black uppercase text-primary mb-1">Operational Efficiency</p>
+                <p className="text-[10px] font-black uppercase text-primary mb-1">District Efficiency Score</p>
                 <p className="text-3xl font-black text-primary">{districtStats.efficiency.toFixed(1)}%</p>
             </div>
         </CardContent>
       </Card>
 
       {districtBlocks.map((block) => {
-        // Calculate average waste for the block from mrfData baseline
-        const blockMrfs = mrfData.filter(m => m.blockCovered === block && m.district.toLowerCase() === districtName.toLowerCase());
-        const blockAvgWaste = blockMrfs.reduce((sum, m) => sum + m.dryWasteKg, 0);
+        const blockAvgWaste = mrfData.filter(m => m.blockCovered === block && m.district.toLowerCase() === districtName.toLowerCase()).reduce((sum, m) => sum + m.dryWasteKg, 0);
 
         return (
             <Card key={block} className="border-2 shadow-xl overflow-hidden">
@@ -118,18 +114,18 @@ function DistrictWasteReconciliationContent() {
                   <Building className="h-7 w-7 text-primary" />
                   <div>
                     <CardTitle className="text-xl font-black uppercase text-primary">Block Node: {block}</CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">{districtName} District</CardDescription>
+                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">{districtName} District Audit</CardDescription>
                   </div>
                 </div>
                 <Badge variant="outline" className="border-primary/30 text-primary font-black uppercase text-[10px] bg-primary/5 px-4 py-1">
-                  Baseline Target: {blockAvgWaste.toLocaleString()} Kg (Avg)
+                  Block Target: {blockAvgWaste.toLocaleString()} Kg (Avg)
                 </Badge>
               </CardHeader>
               <CardContent className="p-6 space-y-12">
                 {yearGroups.map((year) => (
                     <div key={year} className="space-y-6">
                         <div className="flex items-center gap-4">
-                            <h2 className="text-2xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} CYCLE</h2>
+                            <h2 className="text-2xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} FISCAL</h2>
                             <div className="h-px flex-1 bg-primary/10"></div>
                         </div>
 
@@ -228,7 +224,7 @@ function DistrictWasteReconciliationContent() {
                                                             {monthRecords.length === 0 && (
                                                                 <TableRow>
                                                                     <TableCell colSpan={13} className="h-24 text-center text-muted-foreground italic uppercase font-black tracking-widest opacity-20">
-                                                                        No Active Submissions for {month}
+                                                                        No Syncronized Submissions for {month}
                                                                     </TableCell>
                                                                 </TableRow>
                                                             )}
@@ -241,15 +237,15 @@ function DistrictWasteReconciliationContent() {
                                             {/* Monthly Performance Row */}
                                             <div className="bg-muted/30 border-t p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
                                                 <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Waste Collected (Avg)</p>
+                                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Block Load (Avg)</p>
                                                     <p className="text-xl font-black">{blockAvgWaste.toLocaleString()} KG</p>
                                                 </div>
                                                 <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                    <p className="text-[10px] font-black uppercase text-primary mb-1">Total Verified</p>
+                                                    <p className="text-[10px] font-black uppercase text-primary mb-1">Block Verified</p>
                                                     <p className="text-xl font-black text-primary">{monthlyTotalVerified.toFixed(1)} KG</p>
                                                 </div>
                                                 <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                    <p className="text-[10px] font-black uppercase text-destructive mb-1">Discrepancy</p>
+                                                    <p className="text-[10px] font-black uppercase text-destructive mb-1">Block Discrepancy</p>
                                                     <p className="text-xl font-black text-destructive">{monthlyDiscrepancy.toFixed(1)} KG</p>
                                                 </div>
                                                 <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-4 shadow-inner">
@@ -264,13 +260,11 @@ function DistrictWasteReconciliationContent() {
                         })}
                     </Accordion>
 
-                    {/* Yearly Block Audit Placeholder */}
                     <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden opacity-80">
                         <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
                             <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
                                 <BarChart3 className="h-10 w-10" /> Yearly Block Audit Summary: {year}
                             </CardTitle>
-                            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Aggregate performance metric for {block} block.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             <ScrollArea className="w-full">
@@ -291,7 +285,7 @@ function DistrictWasteReconciliationContent() {
                                         <TableBody>
                                             <TableRow>
                                                 <TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
-                                                    Yearly Aggregate Audit Data will generate post-December {year}.
+                                                    Yearly Aggregate Audit will fill post-December {year}.
                                                 </TableCell>
                                             </TableRow>
                                         </TableBody>
@@ -311,9 +305,9 @@ function DistrictWasteReconciliationContent() {
         <CardContent className="py-6 flex items-start gap-4">
           <Info className="h-6 w-6 text-primary mt-1 shrink-0" />
           <div className="space-y-1">
-            <p className="text-sm font-black uppercase tracking-tight">District Master Audit Integration</p>
+            <p className="text-sm font-black uppercase tracking-tight">District-Level Audit Protocol</p>
             <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-              This hub monitors cross-block waste convergence across the district. Month-wise cards provide verified circuit logs for every administrative block node. Monthly summary boxes compare actual verification totals against jurisdictional baseline targets. Yearly audit reports are generated upon cycle completion for state-wide synchronization.
+              This hub provides a comprehensive view of block-level waste convergence across the district. Monthly summary boxes compare actual verification totals against jurisdictional baseline targets. Yearly audit reports are generated upon cycle completion for state-wide synchronization.
             </p>
           </div>
         </CardContent>
