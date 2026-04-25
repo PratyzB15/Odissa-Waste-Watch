@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Loader2, ArrowRight, UserCheck } from 'lucide-react';
+import { Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { checkEmailAuthorized, adminLoginAction } from './actions';
 
@@ -47,7 +47,10 @@ export default function AdminLoginPage() {
         setName(result.name);
       }
       setStep('login');
-      toast({ title: 'Email Verified', description: result.isFirstLogin ? 'Welcome! Set your account details.' : 'Please enter your password.' });
+      toast({ 
+        title: 'Email Verified', 
+        description: result.isFirstLogin ? 'Welcome! Set your administrative password.' : 'Please enter your password.' 
+      });
     } else {
       setEmailError(result.error || 'Invalid Email');
     }
@@ -63,7 +66,7 @@ export default function AdminLoginPage() {
     }
     
     if (isFirstLogin && !name) {
-      toast({ title: 'Name required', description: 'Please enter your full name for the first login.', variant: 'destructive' });
+      toast({ title: 'Name required', description: 'Please enter your full name for the account setup.', variant: 'destructive' });
       return;
     }
 
@@ -79,8 +82,8 @@ export default function AdminLoginPage() {
 
     if (result.success) {
       toast({ 
-        title: 'Authenticated', 
-        description: `Welcome, ${name || email}. Accessing State Dashboard.` 
+        title: 'Authenticated Successfully', 
+        description: `Welcome back, ${name || email}.` 
       });
       router.push('/admin');
     } else {
@@ -90,99 +93,96 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-secondary p-4 font-body">
-      <Card className="w-full max-w-md shadow-lg border-2 border-primary/10">
-        <CardHeader className="text-center">
-          <Link href="/" className="inline-block mb-4">
-            <OdishaLogo className="h-14 w-14 mx-auto" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f0f1ed] p-4 font-body">
+      <Card className="w-full max-w-md shadow-xl border-none">
+        <CardHeader className="text-center pb-2">
+          <Link href="/" className="inline-block mb-2">
+            <OdishaLogo className="h-16 w-16 mx-auto" />
           </Link>
-          <CardTitle className="text-3xl font-headline font-black uppercase tracking-tight text-primary">State Admin Login</CardTitle>
-          <CardDescription className="font-medium italic">Authorized personnel access only.</CardDescription>
+          <CardTitle className="text-3xl font-headline font-black uppercase tracking-tight text-[#1a1a1a]">Admin Login</CardTitle>
+          <CardDescription className="text-muted-foreground font-medium">
+            Enter your credentials to access the dashboard.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {step === 'email' ? (
             <div className="space-y-6">
+               <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-bold text-gray-700">Name</Label>
+                <Input 
+                  id="name"
+                  placeholder="Enter your full name" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-11 bg-[#f9f9f6] border-gray-200"
+                />
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Official Email</Label>
+                <Label htmlFor="email" className="text-sm font-bold text-gray-700">Email</Label>
                 <Input 
                   id="email"
                   type="email" 
-                  placeholder="admin@odisha.gov.in" 
+                  placeholder="example@gmail.com" 
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
                     setEmailError('');
                   }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleVerifyEmail()}
-                  className={`h-11 font-bold border-2 ${emailError ? 'border-destructive focus:ring-destructive' : 'border-primary/10 focus:border-primary'}`}
+                  className={`h-11 bg-[#eef4ff] border-transparent focus:ring-0 ${emailError ? 'border-red-500 bg-red-50' : ''}`}
                 />
-                {emailError && <p className="text-[10px] font-black text-destructive uppercase mt-1">{emailError}</p>}
+                {emailError && <p className="text-xs font-bold text-red-600 uppercase mt-1">{emailError}</p>}
               </div>
+
               <Button 
                 onClick={handleVerifyEmail}
-                className="w-full h-12 text-lg font-black uppercase tracking-widest shadow-xl"
+                className="w-full h-11 text-base font-bold bg-[#4c7c32] hover:bg-[#3d6328] transition-all shadow-md"
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <ArrowRight className="mr-2 h-5 w-5" />}
+                {isLoading ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : null}
                 {isLoading ? 'Verifying...' : 'Next'}
               </Button>
             </div>
           ) : (
             <form onSubmit={handleLogin} className="space-y-6">
-              <div className="p-3 rounded-lg bg-primary/5 border border-primary/10 flex items-center gap-3 mb-2">
-                <UserCheck className="h-5 w-5 text-primary" />
-                <div className="text-[11px] font-bold text-primary truncate max-w-[280px]">{email}</div>
-                <Button variant="link" size="sm" onClick={() => setStep('email')} className="ml-auto text-[10px] font-black text-muted-foreground uppercase">Change</Button>
+              <div className="p-3 rounded-lg bg-green-50 border border-green-100 flex items-center gap-3 mb-2">
+                <CheckCircle2 className="h-5 w-5 text-[#4c7c32]" />
+                <div className="text-xs font-bold text-[#4c7c32] truncate flex-1">{email}</div>
+                <Button variant="link" size="sm" onClick={() => setStep('email')} className="h-auto p-0 text-[10px] font-black uppercase text-muted-foreground">Change</Button>
               </div>
 
-              {isFirstLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Your Full Name</Label>
-                  <Input 
-                    id="name"
-                    placeholder="Enter your name" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-11 font-bold border-2 border-primary/10 focus:border-primary"
-                    required
-                  />
-                  <p className="text-[9px] font-bold text-primary italic">This name will be saved for your profile.</p>
-                </div>
-              )}
-
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-                  {isFirstLogin ? 'Set New Password' : 'Login Password'}
-                </Label>
+                <Label htmlFor="password" className="text-sm font-bold text-gray-700">Password</Label>
                 <Input 
                   id="password"
                   type="password" 
-                  placeholder="********" 
+                  placeholder=".........." 
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
                     setPasswordError('');
                   }}
-                  className={`h-11 font-bold border-2 ${passwordError ? 'border-destructive focus:ring-destructive' : 'border-primary/10 focus:border-primary'}`}
+                  className={`h-11 bg-[#eef4ff] border-transparent focus:ring-0 ${passwordError ? 'border-red-500 bg-red-50' : ''}`}
+                  autoFocus
                 />
-                {passwordError && <p className="text-[10px] font-black text-destructive uppercase mt-1">{passwordError}</p>}
-                {isFirstLogin && <p className="text-[9px] font-bold text-primary italic">Enter any password to secure your account for future logins.</p>}
+                {passwordError && <p className="text-xs font-bold text-red-600 uppercase mt-1">{passwordError}</p>}
+                {isFirstLogin && <p className="text-[10px] font-bold text-[#4c7c32] italic mt-1 leading-tight">First-time login detected. This password will be securely saved for your future access.</p>}
               </div>
 
               <Button 
                 type="submit" 
-                className="w-full h-12 text-lg font-black uppercase tracking-widest shadow-xl transition-all hover:scale-[1.02]"
+                className="w-full h-11 text-base font-bold bg-[#4c7c32] hover:bg-[#3d6328] transition-all shadow-md"
                 disabled={isLoading}
               >
                 {isLoading ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : null}
-                {isLoading ? 'Authenticating...' : isFirstLogin ? 'Set Up Account' : 'Enter Dashboard'}
+                {isLoading ? 'Processing...' : 'Login'}
               </Button>
             </form>
           )}
         </CardContent>
       </Card>
-      <div className="mt-6 text-center">
-        <Button variant="link" asChild className="text-muted-foreground hover:text-primary font-bold">
+      <div className="mt-8 text-center">
+        <Button variant="link" asChild className="text-gray-500 hover:text-[#4c7c32] font-bold">
           <Link href="/roles">← Back to Role Selection</Link>
         </Button>
       </div>
