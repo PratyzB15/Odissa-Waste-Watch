@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,8 +13,6 @@ import {
   TrendingUp,
   BarChart3,
   Info,
-  Database,
-  ArrowRight,
   PlusCircle,
   Edit,
   Trash2
@@ -54,6 +51,8 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+const FISCAL_YEARS = ["2026", "2027"];
+
 function ULBWasteReconciliationContent() {
   const searchParams = useSearchParams();
   const ulbParam = searchParams.get('ulb') || 'Facility Node';
@@ -65,7 +64,7 @@ function ULBWasteReconciliationContent() {
   
   const wasteDetailsQuery = useMemo(() => {
     if (!db || !ulbParam) return null;
-    return query(collection(db, 'wasteDetails'), where('mrf', '==', ulbParam), orderBy('date', 'desc'));
+    return query(collection(db, 'wasteDetails'), where('mrf', '==', ulbParam), orderBy('date', 'asc'));
   }, [db, ulbParam]);
   
   const { data: records = [] } = useCollection(wasteDetailsQuery) as { data: CollectionRecord[] };
@@ -79,8 +78,6 @@ function ULBWasteReconciliationContent() {
   });
 
   useEffect(() => { setMounted(true); }, []);
-
-  const yearGroups = ["2026", "2027"];
 
   const handleOpenAddDialog = () => {
     setEditingRecord(null);
@@ -161,7 +158,7 @@ function ULBWasteReconciliationContent() {
         </CardHeader>
       </Card>
 
-      {yearGroups.map((year) => (
+      {FISCAL_YEARS.map((year) => (
         <div key={year} className="space-y-8">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} FISCAL CYCLE</h2>
@@ -185,7 +182,7 @@ function ULBWasteReconciliationContent() {
                                         <Calendar className="h-5 w-5 text-primary" />
                                         <span className="font-black text-lg uppercase tracking-tighter text-foreground">{month}</span>
                                     </div>
-                                    <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[8px] bg-primary/5 px-3">
+                                    <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-3">
                                         {monthRecords.length} RECEIPTS SYNCED
                                     </Badge>
                                 </div>
@@ -208,7 +205,7 @@ function ULBWasteReconciliationContent() {
                                                     <TableHead className="w-[90px] text-right uppercase font-black border">Glass</TableHead>
                                                     <TableHead className="w-[90px] text-right uppercase font-black border">Sanitation</TableHead>
                                                     <TableHead className="w-[90px] text-right uppercase font-black border">Others</TableHead>
-                                                    <TableHead className="w-[100px] uppercase font-black border text-center">Actions</TableHead>
+                                                    <TableHead className="w-[120px] uppercase font-black border text-center">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -290,11 +287,38 @@ function ULBWasteReconciliationContent() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                <TableRow>
-                                    <TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
-                                        Yearly Aggregate Audit Data will generate post-December {year}.
-                                    </TableCell>
-                                </TableRow>
+                                {(() => {
+                                  const yearly = records.filter(r => new Date(r.date).getFullYear().toString() === year);
+                                  const isYearDone = yearly.length > 0 && records.some(r => new Date(r.date).getFullYear().toString() === year && new Date(r.date).getMonth() === 11);
+                                  
+                                  if (!isYearDone) {
+                                    return <TableRow><TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">Yearly Aggregate Audit Data will generate post-December {year}.</TableCell></TableRow>;
+                                  }
+
+                                  const totals = yearly.reduce((acc, curr) => ({
+                                    freq: acc.freq + 1,
+                                    verified: acc.verified + curr.driverSubmitted,
+                                    paper: acc.paper + curr.paper,
+                                    plastic: acc.plastic + curr.plastic,
+                                    metal: acc.metal + curr.metal,
+                                    glass: acc.glass + curr.glass,
+                                    sani: acc.sani + curr.sanitation,
+                                    others: acc.others + curr.others
+                                  }), { freq: 0, verified: 0, paper: 0, plastic: 0, metal: 0, glass: 0, sani: 0, others: 0 });
+
+                                  return (
+                                    <TableRow className="bg-primary/5 font-black text-primary">
+                                        <TableCell className="border text-center">{totals.freq} Circuits</TableCell>
+                                        <TableCell className="border text-right">{totals.verified.toFixed(1)} KG</TableCell>
+                                        <TableCell className="border text-right">{totals.paper.toFixed(1)}</TableCell>
+                                        <TableCell className="border text-right">{totals.plastic.toFixed(1)}</TableCell>
+                                        <TableCell className="border text-right">{totals.metal.toFixed(1)}</TableCell>
+                                        <TableCell className="border text-right">{totals.glass.toFixed(1)}</TableCell>
+                                        <TableCell className="border text-right">{totals.sani.toFixed(1)}</TableCell>
+                                        <TableCell className="border text-right">{totals.others.toFixed(1)}</TableCell>
+                                    </TableRow>
+                                  );
+                                })()}
                             </TableBody>
                         </Table>
                     </div>
@@ -306,7 +330,7 @@ function ULBWasteReconciliationContent() {
       ))}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-2">
           <DialogHeader><DialogTitle className="text-xl font-black uppercase">{editingRecord ? 'Edit Entry' : 'Add New Entry'}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Date</Label><Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
@@ -316,6 +340,10 @@ function ULBWasteReconciliationContent() {
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Plastic (Kg)</Label><Input type="number" value={formData.plastic} onChange={e => setFormData({...formData, plastic: e.target.value})} /></div>
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Paper (Kg)</Label><Input type="number" value={formData.paper} onChange={e => setFormData({...formData, paper: e.target.value})} /></div>
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Metal (Kg)</Label><Input type="number" value={formData.metal} onChange={e => setFormData({...formData, metal: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Cloth (Kg)</Label><Input type="number" value={formData.cloth} onChange={e => setFormData({...formData, cloth: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Glass (Kg)</Label><Input type="number" value={formData.glass} onChange={e => setFormData({...formData, glass: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Sanitation (Kg)</Label><Input type="number" value={formData.sanitation} onChange={e => setFormData({...formData, sanitation: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Others (Kg)</Label><Input type="number" value={formData.others} onChange={e => setFormData({...formData, others: e.target.value})} /></div>
             <div className="md:col-span-2 space-y-1">
               <Label className="text-xs uppercase font-bold">GP Breakdown (GPName:Amount, one per line)</Label>
               <Textarea value={formData.gpBreakdownRaw} onChange={e => setFormData({...formData, gpBreakdownRaw: e.target.value})} rows={3} />
@@ -324,18 +352,6 @@ function ULBWasteReconciliationContent() {
           <DialogFooter><Button onClick={handleSubmit} className="font-black uppercase px-8">Save Record</Button></DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Card className="border-2 border-dashed bg-muted/20">
-        <CardContent className="py-6 flex items-start gap-4">
-          <Info className="h-6 w-6 text-primary mt-1 shrink-0" />
-          <div className="space-y-1">
-            <p className="text-sm font-black uppercase tracking-tight">Facility Hub Integration</p>
-            <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-              This hub reconciles nodal declarations with logistical verified tonnage. Submissions are grouped chronologically.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

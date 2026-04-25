@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -53,10 +52,12 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+const FISCAL_YEARS = ["2026", "2027"];
+
 function StateWasteReconciliationContent() {
   const [mounted, setMounted] = useState(false);
   const db = useFirestore();
-  const wasteDetailsQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'desc')) : null, [db]);
+  const wasteDetailsQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'asc')) : null, [db]);
   const { data: records = [] } = useCollection(wasteDetailsQuery) as { data: CollectionRecord[] };
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -80,8 +81,6 @@ function StateWasteReconciliationContent() {
     const efficiency = totalAvg > 0 ? (totalVerified / totalAvg) * 100 : 0;
     return { totalAvg, totalVerified, efficiency };
   }, [records]);
-
-  const yearGroups = ["2026", "2027"];
 
   const handleOpenAddDialog = () => {
     setEditingRecord(null);
@@ -188,7 +187,7 @@ function StateWasteReconciliationContent() {
             </Badge>
           </CardHeader>
           <CardContent className="p-6 space-y-12">
-            {yearGroups.map((year) => (
+            {FISCAL_YEARS.map((year) => (
                 <div key={year} className="space-y-6">
                     <div className="flex items-center gap-4">
                         <h2 className="text-2xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} FISCAL</h2>
@@ -237,7 +236,7 @@ function StateWasteReconciliationContent() {
                                                                 <TableHead className="w-[90px] text-right uppercase font-black border">Glass</TableHead>
                                                                 <TableHead className="w-[90px] text-right uppercase font-black border">Sanitation</TableHead>
                                                                 <TableHead className="w-[90px] text-right uppercase font-black border">Others</TableHead>
-                                                                <TableHead className="w-[100px] uppercase font-black border text-center">Actions</TableHead>
+                                                                <TableHead className="w-[120px] uppercase font-black border text-center">Actions</TableHead>
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
@@ -308,12 +307,10 @@ function StateWasteReconciliationContent() {
                                     <Table className="text-muted-foreground">
                                         <TableHeader className="bg-muted/50">
                                             <TableRow>
-                                                <TableHead className="w-[180px] uppercase font-black border text-center">Route ID</TableHead>
-                                                <TableHead className="w-[180px] uppercase font-black border text-center">Associated MRF</TableHead>
-                                                <TableHead className="w-[180px] uppercase font-black border text-center">Collection Freq (Year)</TableHead>
+                                                <TableHead className="w-[150px] uppercase font-black border text-center">Collection Freq (Year)</TableHead>
                                                 <TableHead className="w-[180px] text-right uppercase font-black border">Total Verified (Kg)</TableHead>
-                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Plastic</TableHead>
                                                 <TableHead className="w-[100px] text-right uppercase font-black border">Total Paper</TableHead>
+                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Plastic</TableHead>
                                                 <TableHead className="w-[100px] text-right uppercase font-black border">Total Metal</TableHead>
                                                 <TableHead className="w-[100px] text-right uppercase font-black border">Total Glass</TableHead>
                                                 <TableHead className="w-[100px] text-right uppercase font-black border">Total Sanitation</TableHead>
@@ -323,11 +320,35 @@ function StateWasteReconciliationContent() {
                                         <TableBody>
                                             {(() => {
                                               const yearly = records.filter(r => new Date(r.date).getFullYear().toString() === year && r.district === district);
-                                              if (yearly.length === 0 || new Date().getMonth() !== 0) { // Only fill after December
-                                                return <TableRow><TableCell colSpan={10} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">Yearly State-District Audit Data will populate post-December {year}.</TableCell></TableRow>;
+                                              const isYearDone = yearly.length > 0 && yearly.some(r => new Date(r.date).getMonth() === 11);
+                                              
+                                              if (!isYearDone) {
+                                                return <TableRow><TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">Yearly State-District Audit Data will populate post-December {year}.</TableCell></TableRow>;
                                               }
-                                              // High-fidelity aggregation logic
-                                              return null; 
+
+                                              const totals = yearly.reduce((acc, curr) => ({
+                                                freq: acc.freq + 1,
+                                                verified: acc.verified + curr.driverSubmitted,
+                                                paper: acc.paper + curr.paper,
+                                                plastic: acc.plastic + curr.plastic,
+                                                metal: acc.metal + curr.metal,
+                                                glass: acc.glass + curr.glass,
+                                                sani: acc.sani + curr.sanitation,
+                                                others: acc.others + curr.others
+                                              }), { freq: 0, verified: 0, paper: 0, plastic: 0, metal: 0, glass: 0, sani: 0, others: 0 });
+
+                                              return (
+                                                <TableRow className="bg-primary/5 font-black text-primary">
+                                                    <TableCell className="border text-center">{totals.freq} Circuits</TableCell>
+                                                    <TableCell className="border text-right">{totals.verified.toFixed(1)} KG</TableCell>
+                                                    <TableCell className="border text-right">{totals.paper.toFixed(1)}</TableCell>
+                                                    <TableCell className="border text-right">{totals.plastic.toFixed(1)}</TableCell>
+                                                    <TableCell className="border text-right">{totals.metal.toFixed(1)}</TableCell>
+                                                    <TableCell className="border text-right">{totals.glass.toFixed(1)}</TableCell>
+                                                    <TableCell className="border text-right">{totals.sani.toFixed(1)}</TableCell>
+                                                    <TableCell className="border text-right">{totals.others.toFixed(1)}</TableCell>
+                                                </TableRow>
+                                              );
                                             })()}
                                         </TableBody>
                                     </Table>
@@ -343,7 +364,7 @@ function StateWasteReconciliationContent() {
       ))}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-2">
           <DialogHeader><DialogTitle className="text-xl font-black uppercase">{editingRecord ? 'Edit Entry' : 'Add New Entry'}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Date</Label><Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>

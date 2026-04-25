@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -15,8 +14,6 @@ import {
   BarChart3,
   Warehouse,
   Info,
-  Database,
-  ArrowRight,
   PlusCircle,
   Edit,
   Trash2
@@ -56,6 +53,8 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+const FISCAL_YEARS = ["2026", "2027"];
+
 function BlockWasteReconciliationContent() {
   const searchParams = useSearchParams();
   const blockName = searchParams.get('block') || 'Block Node';
@@ -66,7 +65,7 @@ function BlockWasteReconciliationContent() {
   
   const wasteDetailsQuery = useMemo(() => {
     if (!db || !blockName) return null;
-    return query(collection(db, 'wasteDetails'), where('block', '==', blockName), orderBy('date', 'desc'));
+    return query(collection(db, 'wasteDetails'), where('block', '==', blockName), orderBy('date', 'asc'));
   }, [db, blockName]);
   
   const { data: records = [] } = useCollection(wasteDetailsQuery) as { data: CollectionRecord[] };
@@ -84,8 +83,6 @@ function BlockWasteReconciliationContent() {
   const blockUlbs = useMemo(() => {
     return mrfData.filter(m => m.blockCovered.toLowerCase() === blockName.toLowerCase());
   }, [blockName]);
-
-  const yearGroups = ["2026", "2027"];
 
   const handleOpenAddDialog = () => {
     setEditingRecord(null);
@@ -181,7 +178,7 @@ function BlockWasteReconciliationContent() {
             </Badge>
           </CardHeader>
           <CardContent className="p-6 space-y-12">
-            {yearGroups.map((year) => (
+            {FISCAL_YEARS.map((year) => (
                 <div key={year} className="space-y-8">
                   <div className="flex items-center gap-4">
                     <h2 className="text-2xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} FISCAL CYCLE</h2>
@@ -209,7 +206,7 @@ function BlockWasteReconciliationContent() {
                                                 <Calendar className="h-5 w-5 text-primary" />
                                                 <span className="font-black text-lg uppercase tracking-tighter text-foreground">{month}</span>
                                             </div>
-                                            <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[8px] bg-primary/5 px-3">
+                                            <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-3">
                                                 {monthRecords.length} RECEIPTS SYNCED
                                             </Badge>
                                         </div>
@@ -232,7 +229,7 @@ function BlockWasteReconciliationContent() {
                                                             <TableHead className="w-[90px] text-right uppercase font-black border">Glass</TableHead>
                                                             <TableHead className="w-[90px] text-right uppercase font-black border">Sanitation</TableHead>
                                                             <TableHead className="w-[90px] text-right uppercase font-black border">Others</TableHead>
-                                                            <TableHead className="w-[100px] uppercase font-black border text-center">Actions</TableHead>
+                                                            <TableHead className="w-[120px] uppercase font-black border text-center">Actions</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
@@ -333,11 +330,38 @@ function BlockWasteReconciliationContent() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        <TableRow>
-                                            <TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
-                                                Yearly Aggregate Audit Data will generate post-December {year}.
-                                            </TableCell>
-                                        </TableRow>
+                                        {(() => {
+                                          const yearly = records.filter(r => new Date(r.date).getFullYear().toString() === year && r.mrf === ulb.mrfId);
+                                          const isYearDone = yearly.length > 0 && yearly.some(r => new Date(r.date).getMonth() === 11);
+                                          
+                                          if (!isYearDone) {
+                                            return <TableRow><TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">Yearly Aggregate Audit Data will generate post-December {year}.</TableCell></TableRow>;
+                                          }
+
+                                          const totals = yearly.reduce((acc, curr) => ({
+                                            freq: acc.freq + 1,
+                                            verified: acc.verified + curr.driverSubmitted,
+                                            paper: acc.paper + curr.paper,
+                                            plastic: acc.plastic + curr.plastic,
+                                            metal: acc.metal + curr.metal,
+                                            glass: acc.glass + curr.glass,
+                                            sani: acc.sani + curr.sanitation,
+                                            others: acc.others + curr.others
+                                          }), { freq: 0, verified: 0, paper: 0, plastic: 0, metal: 0, glass: 0, sani: 0, others: 0 });
+
+                                          return (
+                                            <TableRow className="bg-primary/5 font-black text-primary">
+                                                <TableCell className="border text-center">{totals.freq} Circuits</TableCell>
+                                                <TableCell className="border text-right">{totals.verified.toFixed(1)} KG</TableCell>
+                                                <TableCell className="border text-right">{totals.paper.toFixed(1)}</TableCell>
+                                                <TableCell className="border text-right">{totals.plastic.toFixed(1)}</TableCell>
+                                                <TableCell className="border text-right">{totals.metal.toFixed(1)}</TableCell>
+                                                <TableCell className="border text-right">{totals.glass.toFixed(1)}</TableCell>
+                                                <TableCell className="border text-right">{totals.sani.toFixed(1)}</TableCell>
+                                                <TableCell className="border text-right">{totals.others.toFixed(1)}</TableCell>
+                                            </TableRow>
+                                          );
+                                        })()}
                                     </TableBody>
                                 </Table>
                             </div>
