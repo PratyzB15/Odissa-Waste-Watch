@@ -1,16 +1,33 @@
 
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { User, Calendar, Database, FileText, Truck, Anchor, LayoutGrid, ClipboardList } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { 
+  User, 
+  Calendar, 
+  Database, 
+  FileText, 
+  Truck, 
+  Anchor, 
+  LayoutGrid, 
+  ClipboardList,
+  Save,
+  Route,
+  MapPin,
+  ListPlus
+} from 'lucide-react';
 import React, { useMemo, Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
-// District Data Imports
+// District Data Imports for Logistical Resolution
 import { angulDistrictData } from "@/lib/disAngul";
 import { balangirDistrictData } from "@/lib/disBalangir";
 import { bhadrakDistrictData } from "@/lib/disBhadrak";
@@ -42,18 +59,34 @@ import { nuapadaDistrictData } from "@/lib/disNuapada";
 import { puriDistrictData } from "@/lib/disPuri";
 import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
-function GpUlbWasteReceiptDetailsContent() {
+function WasteReceiptDetailsContent() {
+  const { toast } = useToast();
   const searchParams = useSearchParams();
+  const role = searchParams.get('role');
+  const gpName = searchParams.get('gp') || '';
   const ulbParam = searchParams.get('ulb') || '';
   const districtParam = searchParams.get('district') || '';
+  const blockParam = searchParams.get('block') || '';
   
   const [mounted, setMounted] = useState(false);
+
+  // GP Form State
+  const [gpFormData, setGpFormData] = useState({
+    dateOfCollection: new Date().toISOString().split('T')[0],
+    totalCollected: '',
+    plastic: '',
+    paper: '',
+    metal: '',
+    glass: '',
+    sanitation: '',
+    others: '',
+  });
+
   useEffect(() => { setMounted(true); }, []);
 
-  const data = useMemo(() => {
-    if (!mounted || !districtParam) return { driverReceipts: [], gpReceipts: [] };
-    
-    const sourceMap: Record<string, any> = {
+  const routeContext = useMemo(() => {
+    if (!mounted || !districtParam || !blockParam || role !== 'gp') return null;
+    const districtsMap: Record<string, any> = {
       'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData,
       'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData,
       'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData,
@@ -65,41 +98,140 @@ function GpUlbWasteReceiptDetailsContent() {
       'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
       'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
     };
+    const source = districtsMap[districtParam.toLowerCase()];
+    if (!source) return null;
+    return source.getGpDetails(gpName);
+  }, [mounted, districtParam, blockParam, gpName, role]);
 
-    const source = sourceMap[districtParam.toLowerCase()];
-    if (!source) return { driverReceipts: [], gpReceipts: [] };
+  const handleGpSubmit = () => {
+    console.log("GP Submitting Verified Data:", { ...gpFormData, context: routeContext });
+    toast({ title: "Data Transmitted", description: "The collection receipt has been successfully transmitted to the ULB Hub." });
+    setGpFormData({ dateOfCollection: new Date().toISOString().split('T')[0], totalCollected: '', plastic: '', paper: '', metal: '', glass: '', sanitation: '', others: '' });
+  };
 
-    const filteredSchedules = (source.data.collectionSchedules || []).filter((s: any) => 
-      s.ulb.toLowerCase().trim().includes(ulbParam.toLowerCase().trim()) || 
-      ulbParam.toLowerCase().trim().includes(s.ulb.toLowerCase().trim())
+  const ulbVerificationData = useMemo(() => {
+    if (!mounted || role !== 'ulb' || !districtParam) return { drRecs: [], gpRecs: [] };
+    
+    // Simulate high-fidelity synced records for ULB view
+    const drRecs = [
+      { id: 1, driver: "Ramesh Kumar", phone: "9876543210", routeId: "AANGN1", date: "2024-07-28", mrf: ulbParam, total: 155, plastic: 50, paper: 40, metal: 15, glass: 20, sanitation: 10, others: 20 },
+      { id: 2, driver: "Sita Majhi", phone: "7752XXXXXX", routeId: "AANGT2", date: "2024-07-28", mrf: ulbParam, total: 88, plastic: 20, paper: 30, metal: 10, glass: 15, sanitation: 5, others: 8 }
+    ];
+
+    const gpRecs = [
+      { id: 1, date: "2024-07-28", district: districtParam, block: blockParam, mrf: ulbParam, routeId: "AANGN1", total: 160, plasticGm: 52000, paper: 42, metal: 16, glass: 22, sanitation: 12, others: 16 },
+      { id: 2, date: "2024-07-28", district: districtParam, block: blockParam, mrf: ulbParam, routeId: "AANGT2", total: 90, plasticGm: 21000, paper: 32, metal: 11, glass: 16, sanitation: 6, others: 5 }
+    ];
+
+    return { drRecs, gpRecs };
+  }, [mounted, role, districtParam, blockParam, ulbParam]);
+
+  if (!mounted) return null;
+
+  // RENDER GP FORM
+  if (role === 'gp') {
+    return (
+      <Card className="max-w-4xl mx-auto border-2 shadow-xl border-primary/20 overflow-hidden">
+        <CardHeader className="bg-primary/5 border-b pb-6">
+            <CardTitle className="text-xl font-headline font-black uppercase tracking-tight text-primary flex items-center gap-2">
+                <Save className="h-6 w-6" /> GP Waste Collection Receipt
+            </CardTitle>
+            <CardDescription className="font-bold text-primary opacity-70">Submit verified collection load for {gpName} node.</CardDescription>
+        </CardHeader>
+        
+        <ScrollArea className="h-[75vh]">
+            <CardContent className="p-8 space-y-10">
+                <div className="space-y-4">
+                    <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
+                        <Route className="h-3 w-3 text-primary" /> Nodal Context
+                    </h3>
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-60">Date of Collection</Label>
+                            <Input type="date" value={gpFormData.dateOfCollection} onChange={(e) => setGpFormData({...gpFormData, dateOfCollection: e.target.value})} className="font-bold bg-muted/20" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-60">District Node</Label>
+                            <Input value={districtParam.toUpperCase()} disabled className="font-bold bg-muted/20 uppercase" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-60">Administrative Block</Label>
+                            <Input value={blockParam.toUpperCase()} disabled className="font-bold bg-muted/20 uppercase" />
+                        </div>
+                         <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-60">Assigned Route ID</Label>
+                            <Input value={routeContext?.routes?.[0]?.routeId || 'CIRCUIT-01'} disabled className="font-mono font-black text-primary border-primary/10" />
+                        </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black uppercase opacity-60">Tagged Processing Facility (MRF)</Label>
+                        <Input value={(routeContext?.mapping?.taggedMrf || ulbParam).toUpperCase()} disabled className="font-black text-primary border-primary/20" />
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
+                        <Database className="h-3 w-3 text-primary" /> Verified Quantification (Kg)
+                    </h3>
+                    <div className="bg-muted/10 border-2 border-dashed rounded-2xl p-6">
+                        <div className="space-y-1.5 max-w-sm mx-auto text-center">
+                            <Label className="text-xs font-black uppercase text-primary">Total Amount Collected</Label>
+                            <Input 
+                                type="number" 
+                                placeholder="0.0" 
+                                value={gpFormData.totalCollected} 
+                                onChange={(e) => setGpFormData({...gpFormData, totalCollected: e.target.value})}
+                                className="h-12 text-center text-xl font-black border-primary/20"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
+                        <ListPlus className="h-3 w-3 text-primary" /> Stream Breakdown
+                    </h3>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-60">Plastic (gm)</Label>
+                            <Input type="number" placeholder="0.0" value={gpFormData.plastic} onChange={(e) => setGpFormData({...gpFormData, plastic: e.target.value})} className="font-mono font-bold" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-60">Paper (Kg)</Label>
+                            <Input type="number" placeholder="0.0" value={gpFormData.paper} onChange={(e) => setGpFormData({...gpFormData, paper: e.target.value})} className="font-mono font-bold" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-60">Metal (Kg)</Label>
+                            <Input type="number" placeholder="0.0" value={gpFormData.metal} onChange={(e) => setGpFormData({...gpFormData, metal: e.target.value})} className="font-mono font-bold" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-60">Glass (Kg)</Label>
+                            <Input type="number" placeholder="0.0" value={gpFormData.glass} onChange={(e) => setGpFormData({...gpFormData, glass: e.target.value})} className="font-mono font-bold" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-60">Sanitation Waste (Kg)</Label>
+                            <Input type="number" placeholder="0.0" value={gpFormData.sanitation} onChange={(e) => setGpFormData({...gpFormData, sanitation: e.target.value})} className="font-mono font-bold" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-60">Others (Kg)</Label>
+                            <Input type="number" placeholder="0.0" value={gpFormData.others} onChange={(e) => setGpFormData({...gpFormData, others: e.target.value})} className="font-mono font-bold" />
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </ScrollArea>
+        <CardFooter className="bg-primary/5 border-t p-6">
+            <Button onClick={handleGpSubmit} className="w-full h-14 text-lg font-black uppercase tracking-[0.1em] shadow-xl hover:scale-[1.01] transition-all">
+                <Save className="mr-2 h-6 w-6" /> Finalize & Transmit Receipt
+            </Button>
+        </CardFooter>
+      </Card>
     );
+  }
 
-    const drRecs = filteredSchedules.map((s: any) => ({
-      date: "01/07/2024",
-      routeId: s.routeId || "CIRCUIT",
-      vehicleNo: s.vehicleNo || "-",
-      totalWeight: s.wasteGeneratedKg || 0,
-      plastic: (s.wasteGeneratedKg || 0) * 0.40,
-      paper: (s.wasteGeneratedKg || 0) * 0.25,
-      metal: (s.wasteGeneratedKg || 0) * 0.10,
-      cloth: (s.wasteGeneratedKg || 0) * 0.10,
-      glass: (s.wasteGeneratedKg || 0) * 0.05,
-      sanitation: (s.wasteGeneratedKg || 0) * 0.05,
-      others: (s.wasteGeneratedKg || 0) * 0.05,
-    }));
-
-    const gpRecs = filteredSchedules.map((s: any) => ({
-      date: "01/07/2024",
-      gpName: s.gpName.split('(')[0].trim(),
-      block: s.block,
-      generatedWeight: s.wasteGeneratedKg || 0
-    }));
-
-    return { driverReceipts: drRecs, gpReceipts: gpRecs };
-  }, [mounted, ulbParam, districtParam]);
-
-  if (!mounted) return <div className="p-12 text-center animate-pulse">Syncing verification ledgers...</div>;
-
+  // RENDER ULB VERIFICATION HUB
   return (
     <div className="space-y-6">
       <Card className="border-2 border-primary/20 bg-primary/[0.01] shadow-md">
@@ -108,7 +240,7 @@ function GpUlbWasteReceiptDetailsContent() {
             <ClipboardList className="h-8 w-8 text-primary" />
             <div>
               <CardTitle className="text-2xl font-headline font-black uppercase tracking-tight text-primary">Waste Receipt Verification Hub</CardTitle>
-              <CardDescription className="font-bold">Authoritative digital paper trail for {ulbParam} facility node.</CardDescription>
+              <CardDescription className="font-bold italic">Authoritative digital paper trail for {ulbParam} facility node.</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -122,43 +254,45 @@ function GpUlbWasteReceiptDetailsContent() {
                 <Truck className="h-6 w-6 text-primary" />
                 <span className="font-black text-xl uppercase tracking-tighter text-foreground">Receipts from Drivers</span>
                 <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[10px] bg-primary/5 px-3">
-                  {data.driverReceipts.length} SYNCED
+                  {ulbVerificationData.drRecs.length} SYNCED
                 </Badge>
               </div>
             </AccordionTrigger>
             <AccordionContent className="p-0">
               <ScrollArea className="w-full">
-                <div className="min-w-[1400px]">
+                <div className="min-w-[1500px]">
                   <Table className="border-collapse border text-[10px]">
                     <TableHeader className="bg-muted/80">
                       <TableRow>
+                        <TableHead className="w-[200px] uppercase font-black border">Driver Name</TableHead>
+                        <TableHead className="w-[120px] uppercase font-black border text-center">Phone No.</TableHead>
+                        <TableHead className="w-[120px] uppercase font-black border text-center">Route ID</TableHead>
                         <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
-                        <TableHead className="w-[150px] uppercase font-black border">Route ID</TableHead>
-                        <TableHead className="w-[120px] uppercase font-black border text-center">Vehicle No.</TableHead>
-                        <TableHead className="w-[120px] uppercase font-black border text-right">Total (Kg)</TableHead>
+                        <TableHead className="w-[150px] uppercase font-black border">Tagged MRF</TableHead>
+                        <TableHead className="w-[120px] uppercase font-black border text-right bg-primary/5 text-primary">Total (Kg)</TableHead>
                         <TableHead className="w-[100px] uppercase font-black border text-right">Plastic</TableHead>
                         <TableHead className="w-[100px] uppercase font-black border text-right">Paper</TableHead>
                         <TableHead className="w-[100px] uppercase font-black border text-right">Metal</TableHead>
-                        <TableHead className="w-[100px] uppercase font-black border text-right">Cloth</TableHead>
                         <TableHead className="w-[100px] uppercase font-black border text-right">Glass</TableHead>
                         <TableHead className="w-[100px] uppercase font-black border text-right">Sanitation</TableHead>
                         <TableHead className="w-[100px] uppercase font-black border text-right">Others</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data.driverReceipts.map((row, i) => (
-                        <TableRow key={i} className="hover:bg-primary/[0.01] border-b h-12">
-                          <TableCell className="border-r font-mono text-center">{row.date}</TableCell>
-                          <TableCell className="border-r font-black text-primary uppercase">{row.routeId}</TableCell>
-                          <TableCell className="border-r text-center font-bold">{row.vehicleNo}</TableCell>
-                          <TableCell className="border-r text-right font-mono font-black text-primary text-sm bg-primary/[0.02]">{row.totalWeight.toLocaleString()}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.plastic.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.paper.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.metal.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.cloth.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.glass.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.sanitation.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.others.toFixed(1)}</TableCell>
+                      {ulbVerificationData.drRecs.map((row) => (
+                        <TableRow key={row.id} className="hover:bg-primary/[0.01] border-b h-12">
+                          <TableCell className="border-r font-black uppercase text-foreground">{row.driver}</TableCell>
+                          <TableCell className="border-r font-mono text-center font-bold text-muted-foreground">{row.phone}</TableCell>
+                          <TableCell className="border-r font-mono text-center font-black text-primary">{row.routeId}</TableCell>
+                          <TableCell className="border-r text-center font-bold">{row.date}</TableCell>
+                          <TableCell className="border-r text-[9px] font-black uppercase text-primary">{row.mrf}</TableCell>
+                          <TableCell className="border-r text-right font-mono font-black text-primary text-sm bg-primary/[0.02]">{row.total.toLocaleString()} KG</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.plastic}</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.paper}</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.metal}</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.glass}</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.sanitation}</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.others}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -177,32 +311,51 @@ function GpUlbWasteReceiptDetailsContent() {
                 <LayoutGrid className="h-6 w-6 text-primary" />
                 <span className="font-black text-xl uppercase tracking-tighter text-foreground">Receipts from GP Portal</span>
                 <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[10px] bg-primary/5 px-3">
-                  {data.gpReceipts.length} SYNCED
+                  {ulbVerificationData.gpRecs.length} SYNCED
                 </Badge>
               </div>
             </AccordionTrigger>
             <AccordionContent className="p-0">
               <ScrollArea className="w-full">
-                <Table className="border-collapse border text-[10px]">
-                  <TableHeader className="bg-muted/80">
-                    <TableRow>
-                      <TableHead className="w-[150px] uppercase font-black border text-center">Collection Date</TableHead>
-                      <TableHead className="w-[200px] uppercase font-black border">GP Node</TableHead>
-                      <TableHead className="w-[180px] uppercase font-black border text-center">Block</TableHead>
-                      <TableHead className="w-[150px] uppercase font-black border text-right pr-8">Generated Weight (Kg)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.gpReceipts.map((row, i) => (
-                      <TableRow key={i} className="hover:bg-primary/[0.01] border-b h-12">
-                        <TableCell className="border-r font-mono text-center">{row.date}</TableCell>
-                        <TableCell className="border-r font-black text-primary uppercase">{row.gpName}</TableCell>
-                        <TableCell className="border-r text-center font-bold uppercase">{row.block}</TableCell>
-                        <TableCell className="border-r text-right font-mono font-black text-primary text-sm bg-primary/[0.02] pr-8">{row.generatedWeight.toLocaleString()}</TableCell>
+                <div className="min-w-[1500px]">
+                  <Table className="border-collapse border text-[10px]">
+                    <TableHeader className="bg-muted/80">
+                      <TableRow>
+                        <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
+                        <TableHead className="w-[150px] uppercase font-black border">District</TableHead>
+                        <TableHead className="w-[150px] uppercase font-black border">Block</TableHead>
+                        <TableHead className="w-[150px] uppercase font-black border">Tagged MRF</TableHead>
+                        <TableHead className="w-[120px] uppercase font-black border text-center">Route ID</TableHead>
+                        <TableHead className="w-[120px] uppercase font-black border text-right bg-blue-50 text-blue-800">Total (Kg)</TableHead>
+                        <TableHead className="w-[100px] uppercase font-black border text-right">Plastic (gm)</TableHead>
+                        <TableHead className="w-[100px] uppercase font-black border text-right">Paper</TableHead>
+                        <TableHead className="w-[100px] uppercase font-black border text-right">Metal</TableHead>
+                        <TableHead className="w-[100px] uppercase font-black border text-right">Glass</TableHead>
+                        <TableHead className="w-[100px] uppercase font-black border text-right">Sanitation</TableHead>
+                        <TableHead className="w-[100px] uppercase font-black border text-right">Others</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {ulbVerificationData.gpRecs.map((row) => (
+                        <TableRow key={row.id} className="hover:bg-primary/[0.01] border-b h-12">
+                          <TableCell className="border-r font-mono text-center font-bold text-muted-foreground">{row.date}</TableCell>
+                          <TableCell className="border-r font-black uppercase text-foreground">{row.district}</TableCell>
+                          <TableCell className="border-r font-black uppercase text-foreground">{row.block}</TableCell>
+                          <TableCell className="border-r text-[9px] font-black uppercase text-primary">{row.mrf}</TableCell>
+                          <TableCell className="border-r font-mono text-center font-black text-primary">{row.routeId}</TableCell>
+                          <TableCell className="border-r text-right font-mono font-black text-blue-800 text-sm bg-blue-50/50">{row.total.toLocaleString()} KG</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.plasticGm.toLocaleString()}</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.paper}</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.metal}</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.glass}</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.sanitation}</TableCell>
+                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.others}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <ScrollBar orientation="horizontal" />
               </ScrollArea>
             </AccordionContent>
           </Card>
@@ -212,10 +365,10 @@ function GpUlbWasteReceiptDetailsContent() {
   );
 }
 
-export default function GpUlbWasteReceiptDetailsPage() {
+export default function WasteReceiptDetailsPage() {
   return (
-    <Suspense fallback={<div className="p-12 text-center">Loading verification ledger...</div>}>
-      <GpUlbWasteReceiptDetailsContent />
+    <Suspense fallback={<div className="p-12 text-center animate-pulse">Loading verified synchronization hub...</div>}>
+      <WasteReceiptDetailsContent />
     </Suspense>
   );
 }

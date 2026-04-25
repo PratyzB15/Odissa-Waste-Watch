@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Calendar, Route, Database, Info, PlusCircle, Calculator, Trash2 } from "lucide-react";
+import { Calendar, Route, Database, Info, PlusCircle, Calculator, Trash2, Edit } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -71,7 +71,8 @@ function WasteDetailsContent() {
     const source = sourceMap[districtParam.toLowerCase()];
     if (!source) return [];
 
-    const months = ["July 2024"];
+    // Simulate multi-month cards
+    const months = ["July 2024", "June 2024"];
     
     return months.map(month => {
         const routes = (source.data.routes || []).filter((r: any) => 
@@ -94,7 +95,7 @@ function WasteDetailsContent() {
             const discrepancy = totalGpLoad - totalDriverLoad;
 
             return {
-                date: "01/07/2024",
+                date: month.includes("July") ? "01/07/2024" : "01/06/2024",
                 routeId: r.routeId,
                 totalGpLoad,
                 gpBreakdown,
@@ -126,8 +127,8 @@ function WasteDetailsContent() {
             <div className="flex items-center gap-3 text-primary">
               <Calculator className="h-10 w-10" />
               <div>
-                <CardTitle className="text-2xl font-black uppercase tracking-tight">Waste Reconciliation Details</CardTitle>
-                <CardDescription className="font-bold italic">Authoritative comparison of GP-declared generation vs Driver-submitted drop loads.</CardDescription>
+                <CardTitle className="text-2xl font-black uppercase tracking-tight">Waste Reconciliation Ledger</CardTitle>
+                <CardDescription className="font-bold italic">Authoritative comparison of GP-declared generation vs Driver-submitted loads.</CardDescription>
               </div>
             </div>
             <Button className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
@@ -156,9 +157,9 @@ function WasteDetailsContent() {
                         <TableRow>
                           <TableHead className="w-[120px] uppercase font-black border text-center">Collection Date</TableHead>
                           <TableHead className="w-[150px] uppercase font-black border">Route ID</TableHead>
-                          <TableHead className="w-[180px] uppercase font-black border text-right px-6 bg-blue-50/20">Total Load (GPs)</TableHead>
+                          <TableHead className="w-[200px] uppercase font-black border text-right px-6 bg-blue-50/20">Total waste from GPs (together)</TableHead>
                           <TableHead className="w-[180px] uppercase font-black border text-right px-6 bg-green-50/20">Driver Submitted</TableHead>
-                          <TableHead className="w-[120px] uppercase font-black border text-right px-6 bg-destructive/5 text-destructive">Discrepancy</TableHead>
+                          <TableHead className="w-[120px] uppercase font-black border text-right px-6 bg-destructive/5 text-destructive font-black">Discrepancy</TableHead>
                           <TableHead className="w-[100px] uppercase font-black border text-right">Plastic</TableHead>
                           <TableHead className="w-[100px] uppercase font-black border text-right">Paper</TableHead>
                           <TableHead className="w-[100px] uppercase font-black border text-right">Metal</TableHead>
@@ -166,7 +167,7 @@ function WasteDetailsContent() {
                           <TableHead className="w-[100px] uppercase font-black border text-right">Glass</TableHead>
                           <TableHead className="w-[100px] uppercase font-black border text-right">Sanitation</TableHead>
                           <TableHead className="w-[100px] uppercase font-black border text-right">Others</TableHead>
-                          <TableHead className="w-[100px] uppercase font-black border text-center">Actions</TableHead>
+                          <TableHead className="w-[120px] uppercase font-black border text-center">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -178,15 +179,20 @@ function WasteDetailsContent() {
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <button className="w-full h-16 flex items-center justify-end px-6 font-mono font-black text-blue-700 hover:bg-blue-100/50 transition-all underline decoration-dotted underline-offset-4">
-                                    {row.totalGpLoad.toFixed(1)} KG
+                                    {row.totalGpLoad.toFixed(2)} KG
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                                   <div className="bg-blue-700 text-white p-3 font-black uppercase text-[10px] tracking-widest flex items-center gap-2">
-                                    <Database className="h-3 w-3" /> GP-wise Breakdown
+                                    <Database className="h-3 w-3" /> GP-wise Generation Breakdown
                                   </div>
                                   <Table>
-                                    <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[9px] uppercase font-black">GP Node</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Amount (Kg)</TableHead></TableRow></TableHeader>
+                                    <TableHeader className="bg-muted/50">
+                                        <TableRow>
+                                            <TableHead className="text-[9px] uppercase font-black">GP Node</TableHead>
+                                            <TableHead className="text-[9px] uppercase font-black text-right">Amount (Kg)</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
                                     <TableBody>
                                       {row.gpBreakdown.map((g: any, i: number) => (
                                         <TableRow key={i} className="h-10 border-b border-dashed">
@@ -199,9 +205,9 @@ function WasteDetailsContent() {
                                 </PopoverContent>
                               </Popover>
                             </TableCell>
-                            <TableCell className="border-r text-right font-mono font-black text-green-700 px-6 bg-green-50/10">{row.totalDriverLoad.toFixed(1)} KG</TableCell>
-                            <TableCell className={`border-r text-right font-mono font-black px-6 bg-destructive/[0.02] ${row.discrepancy > 10 ? 'text-destructive' : 'text-orange-600'}`}>
-                              {row.discrepancy.toFixed(1)} KG
+                            <TableCell className="border-r text-right font-mono font-black text-green-700 px-6 bg-green-50/10">{row.totalDriverLoad.toFixed(2)} KG</TableCell>
+                            <TableCell className={`border-r text-right font-mono font-black px-6 bg-destructive/[0.02] ${row.discrepancy > 10 ? 'text-destructive animate-pulse' : 'text-orange-600'}`}>
+                              {row.discrepancy.toFixed(2)} KG
                             </TableCell>
                             <TableCell className="border-r text-right font-mono text-muted-foreground">{row.streams.plastic.toFixed(1)}</TableCell>
                             <TableCell className="border-r text-right font-mono text-muted-foreground">{row.streams.paper.toFixed(1)}</TableCell>
@@ -210,7 +216,12 @@ function WasteDetailsContent() {
                             <TableCell className="border-r text-right font-mono text-muted-foreground">{row.streams.glass.toFixed(1)}</TableCell>
                             <TableCell className="border-r text-right font-mono text-muted-foreground">{row.streams.sanitation.toFixed(1)}</TableCell>
                             <TableCell className="border-r text-right font-mono text-muted-foreground">{row.streams.others.toFixed(1)}</TableCell>
-                            <TableCell className="border text-center"><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4"/></Button></TableCell>
+                            <TableCell className="border text-center">
+                                <div className="flex justify-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary"><Edit className="h-3 w-3"/></Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3 w-3"/></Button>
+                                </div>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -228,9 +239,9 @@ function WasteDetailsContent() {
         <CardContent className="py-6 flex items-start gap-4">
             <Info className="h-6 w-6 text-primary mt-1 shrink-0" />
             <div className="space-y-1">
-                <p className="text-sm font-black uppercase tracking-tight">Authoritative Audit Integrity</p>
+                <p className="text-sm font-black uppercase tracking-tight">Audit Precision Guidelines</p>
                 <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-                    This ledger calculates high-fidelity reconciliation metrics from cross-portal submissions. Discrepancy values are automatically flagged for block review if they exceed 5% of the total route generation load.
+                    Every circuit listed above performs a real-time reconciliation. Discrepancy values are calculated by subtracting the driver's verified drop load from the cumulative GP generation logs. Variance exceeding 5% triggers an automatic audit flag for the regional Block and District representatives.
                 </p>
             </div>
         </CardContent>
