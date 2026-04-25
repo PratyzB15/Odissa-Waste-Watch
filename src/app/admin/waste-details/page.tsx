@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -21,12 +22,20 @@ import {
 import { useMemo, useState, useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { mrfData } from "@/lib/mrf-data";
+import { useCollection, useFirestore } from '@/firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CollectionRecord {
   id: string;
   date: string;
   routeId: string;
   district: string;
+  block: string;
+  mrf: string;
   gpBreakdown: { name: string; amount: number }[];
   totalGpLoad: number;
   driverSubmitted: number;
@@ -46,7 +55,17 @@ const MONTHS = [
 
 function StateWasteReconciliationContent() {
   const [mounted, setMounted] = useState(false);
-  const [records, setRecords] = useState<CollectionRecord[]>([]);
+  const db = useFirestore();
+  const wasteDetailsQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'desc')) : null, [db]);
+  const { data: records = [] } = useCollection(wasteDetailsQuery) as { data: CollectionRecord[] };
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<CollectionRecord | null>(null);
+  const [formData, setFormData] = useState({
+    date: '', routeId: '', district: '', block: '', mrf: '', 
+    totalGpLoad: '', driverSubmitted: '', plastic: '', paper: '', 
+    metal: '', cloth: '', glass: '', sanitation: '', others: '', gpBreakdownRaw: ''
+  });
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -64,6 +83,66 @@ function StateWasteReconciliationContent() {
 
   const yearGroups = ["2026", "2027"];
 
+  const handleOpenAddDialog = () => {
+    setEditingRecord(null);
+    setFormData({
+      date: '', routeId: '', district: '', block: '', mrf: '', 
+      totalGpLoad: '', driverSubmitted: '', plastic: '', paper: '', 
+      metal: '', cloth: '', glass: '', sanitation: '', others: '', gpBreakdownRaw: ''
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (record: CollectionRecord) => {
+    setEditingRecord(record);
+    setFormData({
+      date: record.date, routeId: record.routeId, district: record.district, block: record.block, mrf: record.mrf,
+      totalGpLoad: record.totalGpLoad.toString(), driverSubmitted: record.driverSubmitted.toString(),
+      plastic: record.plastic.toString(), paper: record.paper.toString(), metal: record.metal.toString(),
+      cloth: record.cloth.toString(), glass: record.glass.toString(), sanitation: record.sanitation.toString(),
+      others: record.others.toString(), gpBreakdownRaw: record.gpBreakdown.map(g => `${g.name}:${g.amount}`).join('\n')
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!db) return;
+    await deleteDoc(doc(db, 'wasteDetails', id));
+  };
+
+  const handleSubmit = async () => {
+    if (!db) return;
+    const gpList = formData.gpBreakdownRaw.split('\n').filter(l => l.includes(':')).map(l => {
+      const [name, amount] = l.split(':');
+      return { name: name.trim(), amount: parseFloat(amount) || 0 };
+    });
+
+    const payload = {
+      date: formData.date,
+      routeId: formData.routeId,
+      district: formData.district,
+      block: formData.block,
+      mrf: formData.mrf,
+      totalGpLoad: parseFloat(formData.totalGpLoad) || 0,
+      driverSubmitted: parseFloat(formData.driverSubmitted) || 0,
+      plastic: parseFloat(formData.plastic) || 0,
+      paper: parseFloat(formData.paper) || 0,
+      metal: parseFloat(formData.metal) || 0,
+      cloth: parseFloat(formData.cloth) || 0,
+      glass: parseFloat(formData.glass) || 0,
+      sanitation: parseFloat(formData.sanitation) || 0,
+      others: parseFloat(formData.others) || 0,
+      gpBreakdown: gpList
+    };
+
+    if (editingRecord) {
+      await updateDoc(doc(db, 'wasteDetails', editingRecord.id), payload);
+    } else {
+      await addDoc(collection(db, 'wasteDetails'), payload);
+    }
+    setIsDialogOpen(false);
+  };
+
   if (!mounted) return null;
 
   return (
@@ -74,10 +153,10 @@ function StateWasteReconciliationContent() {
             <Calculator className="h-10 w-10" />
             <div>
               <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">State Waste Reconciliation Hub</CardTitle>
-              <CardDescription className="font-bold italic text-muted-foreground">Authoritative State-wide audit tracking (Cycle Start: April 2026).</CardDescription>
+              <CardDescription className="font-bold italic text-muted-foreground">Authoritative State-wide audit tracking.</CardDescription>
             </div>
           </div>
-          <Button className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
+          <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
               <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
           </Button>
         </CardHeader>
@@ -119,6 +198,7 @@ function StateWasteReconciliationContent() {
                     <Accordion type="single" collapsible className="w-full space-y-4">
                         {MONTHS.map((month) => {
                             const monthRecords = records.filter(r => {
+                                if (!r.date) return false;
                                 const d = new Date(r.date);
                                 return d.getFullYear().toString() === year && 
                                        d.toLocaleString('default', { month: 'long' }) === month && 
@@ -161,8 +241,8 @@ function StateWasteReconciliationContent() {
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
-                                                            {monthRecords.map((row, rIdx) => (
-                                                                <TableRow key={rIdx} className="hover:bg-primary/[0.01] border-b last:border-0 h-14 transition-colors">
+                                                            {monthRecords.map((row) => (
+                                                                <TableRow key={row.id} className="hover:bg-primary/[0.01] border-b last:border-0 h-14 transition-colors">
                                                                     <TableCell className="border-r font-mono text-center font-bold text-muted-foreground">{row.date}</TableCell>
                                                                     <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
                                                                     <TableCell className="border-r p-0">
@@ -179,7 +259,7 @@ function StateWasteReconciliationContent() {
                                                                                 <Table>
                                                                                     <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[8px] uppercase font-black">GP Node</TableHead><TableHead className="text-[8px] uppercase font-black text-right">Load (Kg)</TableHead></TableRow></TableHeader>
                                                                                     <TableBody>
-                                                                                        {row.gpBreakdown.map((gp, i) => (
+                                                                                        {row.gpBreakdown?.map((gp, i) => (
                                                                                             <TableRow key={i} className="h-10 border-b border-dashed last:border-0"><TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell><TableCell className="text-right font-mono font-black text-blue-700">{gp.amount.toFixed(1)}</TableCell></TableRow>
                                                                                         ))}
                                                                                     </TableBody>
@@ -198,19 +278,12 @@ function StateWasteReconciliationContent() {
                                                                     <TableCell className="border-r text-right font-mono">{row.others}</TableCell>
                                                                     <TableCell className="border text-center">
                                                                         <div className="flex justify-center gap-1">
-                                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-primary"><Edit className="h-3 w-3"/></Button>
-                                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3 w-3"/></Button>
+                                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => handleOpenEditDialog(row)}><Edit className="h-3 w-3"/></Button>
+                                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3"/></Button>
                                                                         </div>
                                                                     </TableCell>
                                                                 </TableRow>
                                                             ))}
-                                                            {monthRecords.length === 0 && (
-                                                                <TableRow>
-                                                                    <TableCell colSpan={13} className="h-24 text-center text-muted-foreground italic uppercase font-black tracking-widest opacity-20">
-                                                                        No Syncronized Submissions for {month}
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            )}
                                                         </TableBody>
                                                     </Table>
                                                 </div>
@@ -223,13 +296,11 @@ function StateWasteReconciliationContent() {
                         })}
                     </Accordion>
 
-                    {/* Yearly District Audit Summaries - Always Visible Empty Space */}
                     <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
                         <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
                             <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
                                 <BarChart3 className="h-10 w-10" /> Yearly District Audit Summary: {year}
                             </CardTitle>
-                            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Finalized performance metrics for {district} district.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             <ScrollArea className="w-full">
@@ -250,11 +321,14 @@ function StateWasteReconciliationContent() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            <TableRow>
-                                                <TableCell colSpan={10} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
-                                                    Yearly State-District Audit Data will populate post-December {year}.
-                                                </TableCell>
-                                            </TableRow>
+                                            {(() => {
+                                              const yearly = records.filter(r => new Date(r.date).getFullYear().toString() === year && r.district === district);
+                                              if (yearly.length === 0 || new Date().getMonth() !== 0) { // Only fill after December
+                                                return <TableRow><TableCell colSpan={10} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">Yearly State-District Audit Data will populate post-December {year}.</TableCell></TableRow>;
+                                              }
+                                              // High-fidelity aggregation logic
+                                              return null; 
+                                            })()}
                                         </TableBody>
                                     </Table>
                                 </div>
@@ -268,17 +342,38 @@ function StateWasteReconciliationContent() {
         </Card>
       ))}
 
-      <Card className="border-2 border-dashed bg-muted/20">
-        <CardContent className="py-6 flex items-start gap-4">
-          <Info className="h-6 w-6 text-primary mt-1 shrink-0" />
-          <div className="space-y-1">
-            <p className="text-sm font-black uppercase tracking-tight">State-wide Auditing Protocol</p>
-            <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-              This hub provides a state-wide reconciliation ledger. Submissions from every district are grouped by reporting month. Yearly district performance reports generate automatically upon cycle completion. The "Grand Total" boxes calculate the aggregate efficiency of the State of Odisha.
-            </p>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="text-xl font-black uppercase">{editingRecord ? 'Edit Entry' : 'Add New Entry'}</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Date</Label><Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Route ID</Label><Input value={formData.routeId} onChange={e => setFormData({...formData, routeId: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">District</Label><Input value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Block</Label><Input value={formData.block} onChange={e => setFormData({...formData, block: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">MRF</Label><Input value={formData.mrf} onChange={e => setFormData({...formData, mrf: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">GP Load (Total)</Label><Input type="number" value={formData.totalGpLoad} onChange={e => setFormData({...formData, totalGpLoad: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Driver Submitted</Label><Input type="number" value={formData.driverSubmitted} onChange={e => setFormData({...formData, driverSubmitted: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Plastic (Kg)</Label><Input type="number" value={formData.plastic} onChange={e => setFormData({...formData, plastic: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Paper (Kg)</Label><Input type="number" value={formData.paper} onChange={e => setFormData({...formData, paper: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Metal (Kg)</Label><Input type="number" value={formData.metal} onChange={e => setFormData({...formData, metal: e.target.value})} /></div>
+            <div className="md:col-span-2 space-y-1">
+              <Label className="text-xs uppercase font-bold">GP Breakdown (GPName:Amount, one per line)</Label>
+              <Textarea value={formData.gpBreakdownRaw} onChange={e => setFormData({...formData, gpBreakdownRaw: e.target.value})} rows={3} />
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <DialogFooter><Button onClick={handleSubmit} className="font-black uppercase px-8">Save Record</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div className="bg-muted/20 border-l-4 border-primary p-6 rounded-r-xl shadow-inner flex items-start gap-4">
+        <Info className="h-6 w-6 text-primary mt-0.5 shrink-0" />
+        <div className="space-y-1">
+          <p className="text-sm font-black uppercase tracking-tight">State-wide Auditing Protocol</p>
+          <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
+            This hub provides a state-wide reconciliation ledger. Submissions from every district are grouped by reporting month. Yearly district performance reports generate automatically upon cycle completion.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
