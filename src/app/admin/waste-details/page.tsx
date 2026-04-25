@@ -138,7 +138,9 @@ function StateWasteReconciliationContent() {
                                                     <Calendar className="h-5 w-5 text-primary" />
                                                     <span className="font-black text-lg uppercase tracking-tighter text-foreground">{month}</span>
                                                 </div>
-                                                <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px]">{monthRecords.length} CIRCUITS LOGGED</Badge>
+                                                <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-3">
+                                                  {monthRecords.length} CIRCUITS LOGGED
+                                                </Badge>
                                             </div>
                                         </AccordionTrigger>
                                         <AccordionContent className="p-0">
@@ -273,7 +275,7 @@ function StateWasteReconciliationContent() {
           <div className="space-y-1">
             <p className="text-sm font-black uppercase tracking-tight">State-District Audit Protocol</p>
             <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-              This hub provides a state-wide reconciliation view. Submissions from every district are grouped by reporting month. The global state-wide summary at the top calculates cumulative performance across all 29 districts. Yearly audit summaries for each district are generated automatically upon cycle completion in December.
+              This hub provides a state-wide reconciliation view. Submissions from every district are grouped by reporting month. The global state-wide summary at the top calculates cumulative performance across all districts. Yearly audit summaries for each district are generated automatically upon cycle completion in December.
             </p>
           </div>
         </CardContent>

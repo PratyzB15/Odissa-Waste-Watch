@@ -57,7 +57,8 @@ function DistrictWasteReconciliationContent() {
   useEffect(() => { setMounted(true); }, []);
 
   const districtStats = useMemo(() => {
-    const totalAvg = mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase()).reduce((sum, m) => sum + m.dryWasteKg, 0);
+    const districtRecords = mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase());
+    const totalAvg = districtRecords.reduce((sum, m) => sum + m.dryWasteKg, 0);
     const totalVerified = records.reduce((sum, r) => sum + r.driverSubmitted, 0);
     const efficiency = totalAvg > 0 ? (totalVerified / totalAvg) * 100 : 0;
     return { totalAvg, totalVerified, efficiency };
@@ -178,7 +179,7 @@ function DistrictWasteReconciliationContent() {
                                                             </TableHeader>
                                                             <TableBody>
                                                                 {monthRecords.map((row, rIdx) => (
-                                                                    <TableRow key={rIdx} className="hover:bg-primary/[0.01] border-b last:border-0 h-14 transition-colors">
+                                                                    <TableRow key={rIdx} className="hover:bg-primary/[0.01] border-b h-14 transition-colors">
                                                                         <TableCell className="border-r font-mono text-center font-bold text-muted-foreground">{row.date}</TableCell>
                                                                         <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
                                                                         <TableCell className="border-r p-0">
@@ -205,62 +206,63 @@ function DistrictWasteReconciliationContent() {
                                                                                                   <TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell>
                                                                                                   <TableCell className="text-right font-mono font-black text-blue-700">{gp.amount.toFixed(1)}</TableCell>
                                                                                                 </TableRow>
-                                                                                        ))}
-                                                                                    </TableBody>
-                                                                                </Table>
-                                                                            </PopoverContent>
-                                                                        </Popover>
-                                                                    </TableCell>
-                                                                    <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02]">{row.driverSubmitted.toFixed(1)} KG</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono font-black text-destructive">{(row.totalGpLoad - row.driverSubmitted).toFixed(1)} KG</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.plastic}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.paper}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.metal}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.cloth}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.glass}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.sanitation}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.others}</TableCell>
-                                                                    <TableCell className="border text-center">
-                                                                        <div className="flex justify-center gap-1">
-                                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-primary"><Edit className="h-3 w-3"/></Button>
-                                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3 w-3"/></Button>
-                                                                        </div>
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                            {monthRecords.length === 0 && (
-                                                                <TableRow>
-                                                                    <TableCell colSpan={13} className="h-24 text-center text-muted-foreground italic uppercase font-black tracking-widest opacity-20">
-                                                                        No Syncronized Submissions for {month}
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            )}
-                                                        </TableBody>
-                                                    </Table>
-                                                </div>
-                                                <ScrollBar orientation="horizontal" />
-                                            </ScrollArea>
+                                                                                            ))}
+                                                                                        </TableBody>
+                                                                                    </Table>
+                                                                                </PopoverContent>
+                                                                            </Popover>
+                                                                        </TableCell>
+                                                                        <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02]">{row.driverSubmitted.toFixed(1)} KG</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono font-black text-destructive">{(row.totalGpLoad - row.driverSubmitted).toFixed(1)} KG</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.plastic}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.paper}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.metal}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.cloth}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.glass}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.sanitation}</TableCell>
+                                                                        <TableCell className="border-r text-right font-mono text-muted-foreground">{row.others}</TableCell>
+                                                                        <TableCell className="border text-center">
+                                                                            <div className="flex justify-center gap-1">
+                                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-primary"><Edit className="h-3 w-3"/></Button>
+                                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3 w-3"/></Button>
+                                                                            </div>
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                ))}
+                                                                {monthRecords.length === 0 && (
+                                                                    <TableRow>
+                                                                        <TableCell colSpan={13} className="h-24 text-center text-muted-foreground italic uppercase font-black tracking-widest opacity-20">
+                                                                            No Syncronized Submissions for {month}
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                )}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </div>
+                                                    <ScrollBar orientation="horizontal" />
+                                                </ScrollArea>
 
-                                            <div className="bg-muted/30 border-t p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
-                                                <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Block Load (Avg)</p>
-                                                    <p className="text-xl font-black">{blockAvgWaste.toLocaleString()} KG</p>
+                                                <div className="bg-muted/30 border-t p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
+                                                    <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
+                                                        <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Block Load (Avg)</p>
+                                                        <p className="text-xl font-black">{blockAvgWaste.toLocaleString()} KG</p>
+                                                    </div>
+                                                    <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
+                                                        <p className="text-[10px] font-black uppercase text-primary mb-1">Total Verified</p>
+                                                        <p className="text-xl font-black text-primary">{monthlyTotalVerified.toFixed(1)} KG</p>
+                                                    </div>
+                                                    <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
+                                                        <p className="text-[10px] font-black uppercase text-destructive mb-1">Discrepancy</p>
+                                                        <p className="text-xl font-black text-destructive">{monthlyDiscrepancy.toFixed(1)} KG</p>
+                                                    </div>
+                                                    <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-4 shadow-inner">
+                                                        <p className="text-[10px] font-black uppercase text-primary mb-1">Efficiency Score</p>
+                                                        <p className="text-xl font-black text-primary">{monthlyEfficiency.toFixed(1)}%</p>
+                                                    </div>
                                                 </div>
-                                                <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                    <p className="text-[10px] font-black uppercase text-primary mb-1">Total Verified</p>
-                                                    <p className="text-xl font-black text-primary">{monthlyTotalVerified.toFixed(1)} KG</p>
-                                                </div>
-                                                <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                    <p className="text-[10px] font-black uppercase text-destructive mb-1">Discrepancy</p>
-                                                    <p className="text-xl font-black text-destructive">{monthlyDiscrepancy.toFixed(1)} KG</p>
-                                                </div>
-                                                <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-4 shadow-inner">
-                                                    <p className="text-[10px] font-black uppercase text-primary mb-1">Efficiency Score</p>
-                                                    <p className="text-xl font-black text-primary">{monthlyEfficiency.toFixed(1)}%</p>
-                                                </div>
-                                            </div>
-                                        </AccordionContent>
-                                    </Card>
+                                            </AccordionContent>
+                                        </Card>
+                                    </AccordionItem>
                                 );
                             })}
                         </Accordion>
