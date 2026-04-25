@@ -213,13 +213,13 @@ function DistrictWasteReconciliationContent() {
                                                                     </TableCell>
                                                                     <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02]">{row.driverSubmitted.toFixed(1)} KG</TableCell>
                                                                     <TableCell className="border-r text-right font-mono font-black text-destructive">{(row.totalGpLoad - row.driverSubmitted).toFixed(1)} KG</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono">{row.paper}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono">{row.metal}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
-                                                                    <TableCell className="border-r text-right font-mono">{row.others}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.plastic}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.paper}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.metal}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.cloth}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.glass}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.sanitation}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono text-muted-foreground">{row.others}</TableCell>
                                                                     <TableCell className="border text-center">
                                                                         <div className="flex justify-center gap-1">
                                                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-primary"><Edit className="h-3 w-3"/></Button>
