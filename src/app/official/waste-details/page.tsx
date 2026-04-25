@@ -234,18 +234,17 @@ function DistrictWasteReconciliationContent() {
                                                 <ScrollBar orientation="horizontal" />
                                             </ScrollArea>
 
-                                            {/* Monthly Performance Row */}
                                             <div className="bg-muted/30 border-t p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
                                                 <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
                                                     <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Block Load (Avg)</p>
                                                     <p className="text-xl font-black">{blockAvgWaste.toLocaleString()} KG</p>
                                                 </div>
                                                 <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                    <p className="text-[10px] font-black uppercase text-primary mb-1">Block Verified</p>
+                                                    <p className="text-[10px] font-black uppercase text-primary mb-1">Total Verified</p>
                                                     <p className="text-xl font-black text-primary">{monthlyTotalVerified.toFixed(1)} KG</p>
                                                 </div>
                                                 <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                    <p className="text-[10px] font-black uppercase text-destructive mb-1">Block Discrepancy</p>
+                                                    <p className="text-[10px] font-black uppercase text-destructive mb-1">Discrepancy</p>
                                                     <p className="text-xl font-black text-destructive">{monthlyDiscrepancy.toFixed(1)} KG</p>
                                                 </div>
                                                 <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-4 shadow-inner">
@@ -255,51 +254,51 @@ function DistrictWasteReconciliationContent() {
                                             </div>
                                         </AccordionContent>
                                     </Card>
-                                </AccordionItem>
-                            );
-                        })}
-                    </Accordion>
+                                );
+                            })}
+                        </Accordion>
 
-                    <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden opacity-80">
-                        <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
-                            <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
-                                <BarChart3 className="h-10 w-10" /> Yearly Block Audit Summary: {year}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <ScrollArea className="w-full">
-                                <div className="min-w-[1600px]">
-                                    <Table className="text-muted-foreground">
-                                        <TableHeader className="bg-muted/50">
-                                            <TableRow>
-                                                <TableHead className="w-[180px] uppercase font-black border text-center">Collection Freq (Year)</TableHead>
-                                                <TableHead className="w-[180px] text-right uppercase font-black border">Total Verified (Kg)</TableHead>
-                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Paper</TableHead>
-                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Plastic</TableHead>
-                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Metal</TableHead>
-                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Glass</TableHead>
-                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Sanitation</TableHead>
-                                                <TableHead className="w-[100px] text-right uppercase font-black border">Others</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            <TableRow>
-                                                <TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
-                                                    Yearly Aggregate Audit will fill post-December {year}.
-                                                </TableCell>
-                                            </TableRow>
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                                <ScrollBar orientation="horizontal" />
-                            </ScrollArea>
-                        </CardContent>
-                    </Card>
-                </div>
-            ))}
-          </CardContent>
-        </Card>
-      ))}
+                        <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden opacity-80">
+                            <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
+                                <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
+                                    <BarChart3 className="h-10 w-10" /> Yearly Block Audit Summary: {year}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <ScrollArea className="w-full">
+                                    <div className="min-w-[1600px]">
+                                        <Table className="text-muted-foreground">
+                                            <TableHeader className="bg-muted/50">
+                                                <TableRow>
+                                                    <TableHead className="w-[180px] uppercase font-black border text-center">Collection Freq (Year)</TableHead>
+                                                    <TableHead className="w-[180px] text-right uppercase font-black border">Total Verified (Kg)</TableHead>
+                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Paper</TableHead>
+                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Plastic</TableHead>
+                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Metal</TableHead>
+                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Glass</TableHead>
+                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Sanitation</TableHead>
+                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Others</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                <TableRow>
+                                                    <TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
+                                                        Yearly Aggregate Audit will fill post-December {year}.
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                    <ScrollBar orientation="horizontal" />
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
+                    </div>
+                ))}
+              </CardContent>
+            </Card>
+        );
+      })}
 
       <Card className="border-2 border-dashed bg-muted/20">
         <CardContent className="py-6 flex items-start gap-4">
