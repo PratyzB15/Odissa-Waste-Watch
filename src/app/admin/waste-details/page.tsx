@@ -82,7 +82,7 @@ function StateWasteReconciliationContent() {
             </div>
           </div>
           <Button className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
-              <PlusCircle className="mr-2 h-5 w-5" /> Add Manual Registry
+              <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
           </Button>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">

@@ -9,16 +9,16 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { 
   Calendar, 
   Calculator, 
-  PlusCircle, 
-  Trash2, 
-  Edit, 
   MapPin,
   TrendingUp,
   BarChart3,
   Building,
   Info,
   Database,
-  ArrowRight
+  ArrowRight,
+  PlusCircle,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
@@ -30,6 +30,7 @@ interface CollectionRecord {
   id: string;
   date: string;
   routeId: string;
+  mrf: string;
   block: string;
   gpBreakdown: { name: string; amount: number }[];
   totalGpLoad: number;
