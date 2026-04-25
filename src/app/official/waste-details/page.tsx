@@ -14,8 +14,6 @@ import {
   BarChart3,
   Building,
   Info,
-  Database,
-  ArrowRight,
   PlusCircle,
   Edit,
   Trash2
@@ -130,7 +128,7 @@ function DistrictWasteReconciliationContent() {
                             <div className="h-px flex-1 bg-primary/10"></div>
                         </div>
 
-                        <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="April">
+                        <Accordion type="single" collapsible className="w-full space-y-4">
                             {MONTHS.map((month) => {
                                 const monthRecords = records.filter(r => {
                                     const d = new Date(r.date);
@@ -195,10 +193,18 @@ function DistrictWasteReconciliationContent() {
                                                                                         <MapPin className="h-3 w-3" /> GP Contribution Breakdown
                                                                                     </div>
                                                                                     <Table>
-                                                                                        <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[8px] uppercase font-black">GP Node</TableHead><TableHead className="text-[8px] uppercase font-black text-right">Load (Kg)</TableHead></TableRow></TableHeader>
+                                                                                        <TableHeader className="bg-muted/50">
+                                                                                          <TableRow>
+                                                                                            <TableHead className="text-[8px] uppercase font-black">GP Node</TableHead>
+                                                                                            <TableHead className="text-[8px] uppercase font-black text-right">Load (Kg)</TableHead>
+                                                                                          </TableRow>
+                                                                                        </TableHeader>
                                                                                         <TableBody>
                                                                                             {row.gpBreakdown.map((gp, i) => (
-                                                                                                <TableRow key={i} className="h-10 border-b border-dashed last:border-0"><TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell><TableCell className="text-right font-mono font-black text-blue-700">{gp.amount.toFixed(1)}</TableCell></TableRow>
+                                                                                                <TableRow key={i} className="h-10 border-b border-dashed last:border-0">
+                                                                                                  <TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell>
+                                                                                                  <TableCell className="text-right font-mono font-black text-blue-700">{gp.amount.toFixed(1)}</TableCell>
+                                                                                                </TableRow>
                                                                                         ))}
                                                                                     </TableBody>
                                                                                 </Table>
