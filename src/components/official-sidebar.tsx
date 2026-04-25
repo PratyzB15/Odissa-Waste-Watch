@@ -42,6 +42,7 @@ export function OfficialSidebar({ isMobile = false }: { isMobile?: boolean }) {
     { href: '/official/block-dashboard', icon: LayoutDashboard, label: 'Block Dashboard', role: 'block' },
     { href: '/official/block-waste-details', icon: Calculator, label: 'Waste Details', role: 'block' },
     { href: '/official/dashboard', icon: Home, label: 'Overview Dashboard', role: 'district' },
+    { href: '/official/waste-details', icon: Calculator, label: 'Waste Details', role: 'district' },
     { href: '/official/steering-committee', icon: Users, label: 'Steering Committee Status' },
     { href: '/official/gp-information', icon: TableProperties, label: 'Information about GPs' },
     { href: '/official', icon: FileCheck, label: 'Approval Dashboard' },
