@@ -7,16 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Calendar, Route, Database, Info, PlusCircle, Calculator, Trash2, Edit, Anchor, BarChart3 } from "lucide-react";
+import { Calendar, Route, Database, Info, PlusCircle, Calculator, Trash2, Edit, Anchor, BarChart3, MapPin } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
-function WasteDetailsContent() {
+function DriverWasteDetailsContent() {
   const searchParams = useSearchParams();
-  const role = searchParams.get('role');
-  const gpParam = searchParams.get('gp') || '';
-  const ulbParam = searchParams.get('ulb') || '';
+  const driverName = searchParams.get('name') || 'Personnel';
+  const phone = searchParams.get('contact') || 'N/A';
   
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -28,34 +27,41 @@ function WasteDetailsContent() {
         year: "2026",
         months: {
           "April 2026": [
-            { date: '2026-04-10', routeId: 'JJ-01', mrf: ulbParam, total: 160.5, plasticGm: 5200, paper: 42, metal: 16, glass: 22, sanitation: 12, others: 16 },
-            { date: '2026-04-24', routeId: 'JJ-01', mrf: ulbParam, total: 155.0, plasticGm: 4800, paper: 40, metal: 15, glass: 20, sanitation: 10, others: 20 }
-          ],
-          "May 2026": [
-            { date: '2026-05-08', routeId: 'JJ-01', mrf: ulbParam, total: 165.2, plasticGm: 5500, paper: 45, metal: 18, glass: 24, sanitation: 14, others: 18 }
+            { 
+              date: '2026-04-12', 
+              routeId: 'JJAJPCMBN', 
+              mrf: 'Kodandapur', 
+              gpWeights: { 'Panasa': '45', 'Chainpur': '32', 'Malandapur': '83.5' },
+              total: 160.5, plastic: 52, paper: 42, metal: 16, glass: 22, sanitation: 12, others: 16.5 
+            },
+            { 
+              date: '2026-04-26', 
+              routeId: 'JJAJPCMBN', 
+              mrf: 'Kodandapur', 
+              gpWeights: { 'Panasa': '40', 'Chainpur': '30', 'Malandapur': '85' },
+              total: 155.0, plastic: 50, paper: 40, metal: 15, glass: 20, sanitation: 10, others: 20 
+            }
           ],
           "December 2026": [
-            { date: '2026-12-15', routeId: 'JJ-01', mrf: ulbParam, total: 170.0, plasticGm: 6000, paper: 50, metal: 20, glass: 25, sanitation: 15, others: 15 }
-          ]
-        }
-      },
-      {
-        year: "2027",
-        months: {
-          "January 2027": [
-            { date: '2027-01-12', routeId: 'JJ-01', mrf: ulbParam, total: 158.5, plasticGm: 5100, paper: 41, metal: 17, glass: 21, sanitation: 11, others: 19 }
+            { 
+              date: '2026-12-10', 
+              routeId: 'JJAJPCMBN', 
+              mrf: 'Kodandapur', 
+              gpWeights: { 'Panasa': '50', 'Chainpur': '35', 'Malandapur': '80' },
+              total: 165.0, plastic: 55, paper: 45, metal: 18, glass: 22, sanitation: 15, others: 10 
+            }
           ]
         }
       }
     ];
-  }, [ulbParam]);
+  }, []);
 
   const calculateYearlyTotals = (months: any) => {
     const allRecords = Object.values(months).flat() as any[];
     return allRecords.reduce((acc, curr) => ({
       count: acc.count + 1,
       total: acc.total + curr.total,
-      plastic: acc.plastic + (curr.plasticGm / 1000),
+      plastic: acc.plastic + curr.plastic,
       paper: acc.paper + curr.paper,
       metal: acc.metal + curr.metal,
       glass: acc.glass + curr.glass,
@@ -74,12 +80,12 @@ function WasteDetailsContent() {
             <div className="flex items-center gap-3 text-primary">
               <Calculator className="h-10 w-10" />
               <div>
-                <CardTitle className="text-2xl font-black uppercase tracking-tight">Waste Audit Ledger</CardTitle>
-                <CardDescription className="font-bold italic">Historical submission tracking for {role === 'gp' ? `GP: ${gpParam}` : `ULB: ${ulbParam}`}.</CardDescription>
+                <CardTitle className="text-2xl font-black uppercase tracking-tight">Driver Waste Ledger</CardTitle>
+                <CardDescription className="font-bold italic">Official collection history for {driverName} ({phone}).</CardDescription>
               </div>
             </div>
             <Button className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
-              <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
+              <PlusCircle className="mr-2 h-5 w-5" /> New Receipt Entry
             </Button>
           </div>
         </CardHeader>
@@ -89,7 +95,7 @@ function WasteDetailsContent() {
         <div key={yIdx} className="space-y-6">
           <div className="flex items-center gap-4">
             <div className="h-px flex-1 bg-primary/20"></div>
-            <h2 className="text-4xl font-black text-primary opacity-20 tracking-tighter">{yearBlock.year} CYCLE</h2>
+            <h2 className="text-4xl font-black text-primary opacity-20 tracking-tighter">{yearBlock.year} FISCAL</h2>
             <div className="h-px flex-1 bg-primary/20"></div>
           </div>
 
@@ -103,25 +109,26 @@ function WasteDetailsContent() {
                         <Calendar className="h-5 w-5 text-primary" />
                         <span className="font-black text-xl uppercase tracking-tighter text-foreground">{month}</span>
                       </div>
-                      <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[8px]">{records.length} RECEIPTS</Badge>
+                      <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[8px]">{records.length} CIRCUITS COMPLETED</Badge>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="p-0">
                     <ScrollArea className="w-full">
-                      <div className="min-w-[1200px]">
+                      <div className="min-w-[1500px]">
                         <Table className="border-collapse border text-[10px]">
                           <TableHeader className="bg-muted/80">
                             <TableRow>
-                              <TableHead className="w-[120px] uppercase font-black border text-center">Collection Date</TableHead>
-                              <TableHead className="w-[150px] uppercase font-black border">Route ID</TableHead>
-                              <TableHead className="w-[150px] uppercase font-black border">Tagged MRF</TableHead>
+                              <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
+                              <TableHead className="w-[120px] uppercase font-black border">Route ID</TableHead>
+                              <TableHead className="w-[180px] uppercase font-black border">Tagged MRF</TableHead>
+                              <TableHead className="w-[250px] uppercase font-black border text-right px-6 bg-blue-50/20">GP-wise Breakdown (Click)</TableHead>
                               <TableHead className="w-[120px] text-right uppercase font-black border bg-primary/5 text-primary">Total (Kg)</TableHead>
-                              <TableHead className="w-[100px] text-right uppercase font-black border">Plastic (gm)</TableHead>
-                              <TableHead className="w-[100px] text-right uppercase font-black border">Paper</TableHead>
-                              <TableHead className="w-[100px] text-right uppercase font-black border">Metal</TableHead>
-                              <TableHead className="w-[100px] text-right uppercase font-black border">Glass</TableHead>
-                              <TableHead className="w-[100px] text-right uppercase font-black border">Sanitation</TableHead>
-                              <TableHead className="w-[100px] text-right uppercase font-black border">Others</TableHead>
+                              <TableHead className="w-[90px] text-right uppercase font-black border">Plastic</TableHead>
+                              <TableHead className="w-[90px] text-right uppercase font-black border">Paper</TableHead>
+                              <TableHead className="w-[90px] text-right uppercase font-black border">Metal</TableHead>
+                              <TableHead className="w-[90px] text-right uppercase font-black border">Glass</TableHead>
+                              <TableHead className="w-[90px] text-right uppercase font-black border">Sanitation</TableHead>
+                              <TableHead className="w-[90px] text-right uppercase font-black border">Others</TableHead>
                               <TableHead className="w-[100px] uppercase font-black border text-center">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -130,9 +137,31 @@ function WasteDetailsContent() {
                               <TableRow key={rIdx} className="hover:bg-primary/[0.01] border-b last:border-0 h-14 transition-colors">
                                 <TableCell className="border-r font-mono text-center font-bold text-muted-foreground">{row.date}</TableCell>
                                 <TableCell className="border-r font-black text-primary uppercase">{row.routeId}</TableCell>
-                                <TableCell className="border-r font-bold text-[9px] uppercase">{row.mrf}</TableCell>
+                                <TableCell className="border-r font-bold uppercase">{row.mrf}</TableCell>
+                                <TableCell className="border-r p-0">
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <button className="w-full h-14 flex items-center justify-end px-6 font-bold text-blue-700 hover:bg-blue-50 transition-all underline decoration-dotted underline-offset-4">
+                                        View GP Weights
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-72 p-0 border-2 shadow-2xl overflow-hidden">
+                                      <div className="bg-blue-700 text-white p-3 font-black uppercase text-[9px] tracking-widest flex items-center gap-2">
+                                        <MapPin className="h-3 w-3" /> Individual GP Weights
+                                      </div>
+                                      <Table>
+                                        <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[8px] uppercase font-black">GP Node</TableHead><TableHead className="text-[8px] uppercase font-black text-right">Kg</TableHead></TableRow></TableHeader>
+                                        <TableBody>
+                                          {Object.entries(row.gpWeights).map(([gp, wt]: any, i) => (
+                                            <TableRow key={i} className="h-10 border-b border-dashed last:border-0"><TableCell className="text-[9px] font-bold uppercase">{gp}</TableCell><TableCell className="text-right font-mono font-black text-blue-700">{wt}</TableCell></TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                    </PopoverContent>
+                                  </Popover>
+                                </TableCell>
                                 <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02]">{row.total.toFixed(1)} KG</TableCell>
-                                <TableCell className="border-r text-right font-mono text-muted-foreground">{row.plasticGm}</TableCell>
+                                <TableCell className="border-r text-right font-mono text-muted-foreground">{row.plastic}</TableCell>
                                 <TableCell className="border-r text-right font-mono text-muted-foreground">{row.paper}</TableCell>
                                 <TableCell className="border-r text-right font-mono text-muted-foreground">{row.metal}</TableCell>
                                 <TableCell className="border-r text-right font-mono text-muted-foreground">{row.glass}</TableCell>
@@ -163,8 +192,8 @@ function WasteDetailsContent() {
               <CardHeader className="bg-white/10 border-b border-white/20 pb-4">
                 <div className="flex justify-between items-center">
                   <div>
-                    <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight">Yearly Audit Report: {yearBlock.year}</CardTitle>
-                    <CardDescription className="text-primary-foreground/70 font-bold uppercase text-[10px] tracking-widest">Cumulative performance summary for the full fiscal cycle.</CardDescription>
+                    <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight">Yearly Professional Audit: {yearBlock.year}</CardTitle>
+                    <CardDescription className="text-primary-foreground/70 font-bold uppercase text-[10px] tracking-widest">Aggregate logistical data for the reporting year.</CardDescription>
                   </div>
                   <BarChart3 className="h-12 w-12 opacity-30" />
                 </div>
@@ -175,70 +204,41 @@ function WasteDetailsContent() {
                   return (
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10">
                       <div className="space-y-1">
-                        <p className="text-[10px] font-black uppercase opacity-60">Collections Logged</p>
+                        <p className="text-[10px] font-black uppercase opacity-60">Circuits Finalized</p>
                         <p className="text-3xl font-black font-mono">{totals.count}</p>
                       </div>
                       <div className="space-y-1 border-l border-white/20 pl-6">
-                        <p className="text-[10px] font-black uppercase opacity-60">Total Weight (Kg)</p>
+                        <p className="text-[10px] font-black uppercase opacity-60">Cumulative Load (Kg)</p>
                         <p className="text-3xl font-black font-mono">{totals.total.toLocaleString()} KG</p>
                       </div>
                       <div className="space-y-1 border-l border-white/20 pl-6">
-                        <p className="text-[10px] font-black uppercase opacity-60">Total Plastic (Kg)</p>
+                        <p className="text-[10px] font-black uppercase opacity-60">Total Plastic</p>
                         <p className="text-3xl font-black font-mono">{totals.plastic.toFixed(1)} KG</p>
                       </div>
                       <div className="space-y-1 border-l border-white/20 pl-6">
-                        <p className="text-[10px] font-black uppercase opacity-60">Total Paper (Kg)</p>
+                        <p className="text-[10px] font-black uppercase opacity-60">Total Paper</p>
                         <p className="text-3xl font-black font-mono">{totals.paper.toFixed(1)} KG</p>
-                      </div>
-                      {/* Secondary Tier */}
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-black uppercase opacity-60">Total Metal</p>
-                        <p className="text-xl font-black font-mono">{totals.metal.toFixed(1)} KG</p>
-                      </div>
-                      <div className="space-y-1 border-l border-white/20 pl-6">
-                        <p className="text-[10px] font-black uppercase opacity-60">Total Glass</p>
-                        <p className="text-xl font-black font-mono">{totals.glass.toFixed(1)} KG</p>
-                      </div>
-                      <div className="space-y-1 border-l border-white/20 pl-6">
-                        <p className="text-[10px] font-black uppercase opacity-60">Total Sanitation</p>
-                        <p className="text-xl font-black font-mono">{totals.sanitation.toFixed(1)} KG</p>
-                      </div>
-                      <div className="space-y-1 border-l border-white/20 pl-6">
-                        <p className="text-[10px] font-black uppercase opacity-60">Total Others</p>
-                        <p className="text-xl font-black font-mono">{totals.others.toFixed(1)} KG</p>
                       </div>
                     </div>
                   );
                 })()}
-                <div className="mt-10 pt-6 border-t border-white/10 flex justify-between items-center">
-                  <p className="text-[10px] font-bold italic opacity-60">Digital Verification Hash: {yearBlock.year}-MBJ-SWM</p>
-                  <Badge variant="secondary" className="bg-white text-primary font-black uppercase px-4 py-1">FISCAL FINALIZED</Badge>
+                <div className="mt-10 pt-6 border-t border-white/10 flex justify-between items-center text-[10px] font-bold italic opacity-60">
+                   Verified Professional Collection History - Government of Odisha SWM Portal
+                  <Badge variant="secondary" className="bg-white text-primary font-black uppercase px-4 py-1">CERTIFIED CYCLE</Badge>
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
       ))}
-
-      <Card className="border-2 border-dashed bg-muted/20">
-        <CardContent className="py-6 flex items-start gap-4">
-          <Info className="h-6 w-6 text-primary mt-1 shrink-0" />
-          <div className="space-y-1">
-            <p className="text-sm font-black uppercase tracking-tight">Audit Precision Guidelines</p>
-            <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-              This ledger starts tracking from April 2026. Data is segregated month-wise into individual cards. The "Yearly Audit Report" is an automated aggregation tool that activates once the December cycle is logged, providing a consolidated view of annual material recovery.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
 
-export default function WasteDetailsPage() {
+export default function DriverWasteDetailsPage() {
   return (
-    <Suspense fallback={<div className="p-12 text-center">Loading audit ledger...</div>}>
-      <WasteDetailsContent />
+    <Suspense fallback={<div className="p-12 text-center">Loading collection history...</div>}>
+      <DriverWasteDetailsContent />
     </Suspense>
   );
 }
