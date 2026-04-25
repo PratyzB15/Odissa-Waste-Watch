@@ -16,7 +16,8 @@ import {
   TrendingUp,
   BarChart3,
   Building,
-  Info
+  Info,
+  Database
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
@@ -52,10 +53,17 @@ function DistrictWasteReconciliationContent() {
   const districtName = searchParams.get('district') || 'District Node';
   
   const [mounted, setMounted] = useState(false);
-  // Zero-state initialization - No mock data
   const [records, setRecords] = useState<CollectionRecord[]>([]);
 
   useEffect(() => { setMounted(true); }, []);
+
+  // District-wide aggregation stats
+  const districtStats = useMemo(() => {
+    const totalAvg = mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase()).reduce((sum, m) => sum + m.dryWasteKg, 0);
+    const totalVerified = records.reduce((sum, r) => sum + r.driverSubmitted, 0);
+    const efficiency = totalAvg > 0 ? (totalVerified / totalAvg) * 100 : 0;
+    return { totalAvg, totalVerified, efficiency };
+  }, [districtName, records]);
 
   // Filter Blocks belonging to this district
   const districtBlocks = useMemo(() => {
@@ -82,6 +90,20 @@ function DistrictWasteReconciliationContent() {
               <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
           </Button>
         </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
+            <div className="bg-background border-2 border-dashed rounded-xl p-6 shadow-sm">
+                <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">District Load Baseline (Avg)</p>
+                <p className="text-3xl font-black text-foreground">{districtStats.totalAvg.toLocaleString()} KG</p>
+            </div>
+            <div className="bg-background border-2 border-dashed rounded-xl p-6 shadow-sm">
+                <p className="text-[10px] font-black uppercase text-primary mb-1">Total District Verified</p>
+                <p className="text-3xl font-black text-primary">{districtStats.totalVerified.toLocaleString()} KG</p>
+            </div>
+            <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-6 shadow-inner">
+                <p className="text-[10px] font-black uppercase text-primary mb-1">Operational Efficiency</p>
+                <p className="text-3xl font-black text-primary">{districtStats.efficiency.toFixed(1)}%</p>
+            </div>
+        </CardContent>
       </Card>
 
       {districtBlocks.map((block) => {
@@ -180,111 +202,110 @@ function DistrictWasteReconciliationContent() {
                                                                                         <TableBody>
                                                                                             {row.gpBreakdown.map((gp, i) => (
                                                                                                 <TableRow key={i} className="h-10 border-b border-dashed last:border-0"><TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell><TableCell className="text-right font-mono font-black text-blue-700">{gp.amount.toFixed(1)}</TableCell></TableRow>
-                                                                                            ))}
-                                                                                        </TableBody>
-                                                                                    </Table>
-                                                                                </PopoverContent>
-                                                                            </Popover>
-                                                                        </TableCell>
-                                                                        <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02]">{row.driverSubmitted.toFixed(1)} KG</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono font-black text-destructive">{(row.totalGpLoad - row.driverSubmitted).toFixed(1)} KG</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.paper}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.metal}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.others}</TableCell>
-                                                                        <TableCell className="border text-center">
-                                                                            <div className="flex justify-center gap-1">
-                                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-primary"><Edit className="h-3 w-3"/></Button>
-                                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3 w-3"/></Button>
-                                                                            </div>
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                ))}
-                                                                {monthRecords.length === 0 && (
-                                                                    <TableRow>
-                                                                        <TableCell colSpan={13} className="h-24 text-center text-muted-foreground italic uppercase font-black tracking-widest opacity-20">
-                                                                            Awaiting Verified Submissions for {month}
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                )}
-                                                            </TableBody>
-                                                        </Table>
-                                                    </div>
-                                                    <ScrollBar orientation="horizontal" />
-                                                </ScrollArea>
-
-                                                {/* Monthly Performance Row */}
-                                                <div className="bg-muted/30 border-t p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
-                                                    <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                        <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Waste Collected (Avg)</p>
-                                                        <p className="text-xl font-black">{blockAvgWaste.toLocaleString()} KG</p>
-                                                    </div>
-                                                    <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                        <p className="text-[10px] font-black uppercase text-primary mb-1">Total Verified</p>
-                                                        <p className="text-xl font-black text-primary">{monthlyTotalVerified.toFixed(1)} KG</p>
-                                                    </div>
-                                                    <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                        <p className="text-[10px] font-black uppercase text-destructive mb-1">Discrepancy</p>
-                                                        <p className="text-xl font-black text-destructive">{monthlyDiscrepancy.toFixed(1)} KG</p>
-                                                    </div>
-                                                    <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-4 shadow-inner">
-                                                        <p className="text-[10px] font-black uppercase text-primary mb-1">Efficiency Score</p>
-                                                        <p className="text-xl font-black text-primary">{monthlyEfficiency.toFixed(1)}%</p>
-                                                    </div>
+                                                                                        ))}
+                                                                                    </TableBody>
+                                                                                </Table>
+                                                                            </PopoverContent>
+                                                                        </Popover>
+                                                                    </TableCell>
+                                                                    <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02]">{row.driverSubmitted.toFixed(1)} KG</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono font-black text-destructive">{(row.totalGpLoad - row.driverSubmitted).toFixed(1)} KG</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono">{row.paper}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono">{row.metal}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
+                                                                    <TableCell className="border-r text-right font-mono">{row.others}</TableCell>
+                                                                    <TableCell className="border text-center">
+                                                                        <div className="flex justify-center gap-1">
+                                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-primary"><Edit className="h-3 w-3"/></Button>
+                                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3 w-3"/></Button>
+                                                                        </div>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                            {monthRecords.length === 0 && (
+                                                                <TableRow>
+                                                                    <TableCell colSpan={13} className="h-24 text-center text-muted-foreground italic uppercase font-black tracking-widest opacity-20">
+                                                                        No Active Submissions for {month}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            )}
+                                                        </TableBody>
+                                                    </Table>
                                                 </div>
-                                            </AccordionContent>
-                                        </Card>
-                                    </AccordionItem>
-                                );
-                            })}
-                        </Accordion>
+                                                <ScrollBar orientation="horizontal" />
+                                            </ScrollArea>
 
-                        {/* Yearly Block Audit Placeholder */}
-                        <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden opacity-80">
-                            <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
-                                <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
-                                    <BarChart3 className="h-10 w-10" /> Yearly Block Audit Summary: {year}
-                                </CardTitle>
-                                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Aggregate performance metric for {block} block.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <ScrollArea className="w-full">
-                                    <div className="min-w-[1600px]">
-                                        <Table className="text-muted-foreground">
-                                            <TableHeader className="bg-muted/50">
-                                                <TableRow>
-                                                    <TableHead className="w-[180px] uppercase font-black border text-center">Collection Freq (Year)</TableHead>
-                                                    <TableHead className="w-[180px] text-right uppercase font-black border">Total Verified (Kg)</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Paper</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Plastic</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Metal</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Glass</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Sanitation</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Others</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                <TableRow>
-                                                    <TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
-                                                        Yearly Aggregate Audit Data will generate post-December {year}.
-                                                    </TableCell>
-                                                </TableRow>
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                    <ScrollBar orientation="horizontal" />
-                                </ScrollArea>
-                            </CardContent>
-                        </Card>
-                    </div>
-                ))}
-              </CardContent>
-            </Card>
-        );
-      })}
+                                            {/* Monthly Performance Row */}
+                                            <div className="bg-muted/30 border-t p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
+                                                <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
+                                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Waste Collected (Avg)</p>
+                                                    <p className="text-xl font-black">{blockAvgWaste.toLocaleString()} KG</p>
+                                                </div>
+                                                <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
+                                                    <p className="text-[10px] font-black uppercase text-primary mb-1">Total Verified</p>
+                                                    <p className="text-xl font-black text-primary">{monthlyTotalVerified.toFixed(1)} KG</p>
+                                                </div>
+                                                <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
+                                                    <p className="text-[10px] font-black uppercase text-destructive mb-1">Discrepancy</p>
+                                                    <p className="text-xl font-black text-destructive">{monthlyDiscrepancy.toFixed(1)} KG</p>
+                                                </div>
+                                                <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-4 shadow-inner">
+                                                    <p className="text-[10px] font-black uppercase text-primary mb-1">Efficiency Score</p>
+                                                    <p className="text-xl font-black text-primary">{monthlyEfficiency.toFixed(1)}%</p>
+                                                </div>
+                                            </div>
+                                        </AccordionContent>
+                                    </Card>
+                                </AccordionItem>
+                            );
+                        })}
+                    </Accordion>
+
+                    {/* Yearly Block Audit Placeholder */}
+                    <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden opacity-80">
+                        <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
+                            <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
+                                <BarChart3 className="h-10 w-10" /> Yearly Block Audit Summary: {year}
+                            </CardTitle>
+                            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Aggregate performance metric for {block} block.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <ScrollArea className="w-full">
+                                <div className="min-w-[1600px]">
+                                    <Table className="text-muted-foreground">
+                                        <TableHeader className="bg-muted/50">
+                                            <TableRow>
+                                                <TableHead className="w-[180px] uppercase font-black border text-center">Collection Freq (Year)</TableHead>
+                                                <TableHead className="w-[180px] text-right uppercase font-black border">Total Verified (Kg)</TableHead>
+                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Paper</TableHead>
+                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Plastic</TableHead>
+                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Metal</TableHead>
+                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Glass</TableHead>
+                                                <TableHead className="w-[100px] text-right uppercase font-black border">Total Sanitation</TableHead>
+                                                <TableHead className="w-[100px] text-right uppercase font-black border">Others</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            <TableRow>
+                                                <TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">
+                                                    Yearly Aggregate Audit Data will generate post-December {year}.
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                                <ScrollBar orientation="horizontal" />
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
 
       <Card className="border-2 border-dashed bg-muted/20">
         <CardContent className="py-6 flex items-start gap-4">

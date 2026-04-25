@@ -12,6 +12,7 @@ import {
   Video,
   Warehouse,
   ClipboardList,
+  Calculator,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -23,6 +24,7 @@ import { SheetHeader, SheetTitle } from './ui/sheet';
 
 const navItems = [
   { href: '/admin', icon: Home, label: 'Dashboard' },
+  { href: '/admin/waste-details', icon: Calculator, label: 'Waste Details' },
   { href: '/admin/schedule-meeting', icon: Video, label: 'Steering Committee Meeting' },
   { href: '/admin/gaps-tagged-mrf', icon: Warehouse, label: 'Information about MRFs and its Associated GPs' },
   { href: '/admin/organization-structure', icon: Network, label: 'Organization Structure' },
