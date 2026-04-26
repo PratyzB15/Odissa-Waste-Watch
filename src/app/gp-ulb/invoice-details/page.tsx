@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -86,6 +85,7 @@ function WasteReceiptGenerationContent() {
         mrf: formData.taggedMrf,
         routeId: formData.routeId,
         driverSubmitted: parseFloat(formData.totalKg) || 0,
+        totalGpLoad: parseFloat(formData.totalKg) || 0, // GP Portal submission defines the nodal load
         plastic: parseFloat(formData.plasticGm) || 0,
         paper: parseFloat(formData.paper) || 0,
         metal: parseFloat(formData.metal) || 0,

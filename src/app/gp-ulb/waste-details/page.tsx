@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -105,6 +104,7 @@ function GpWasteDetailsContent() {
       district: districtParam,
       block: blockParam,
       driverSubmitted: parseFloat(formData.totalKg) || 0,
+      totalGpLoad: parseFloat(formData.totalKg) || 0,
       plastic: parseFloat(formData.plasticGm) || 0,
       paper: parseFloat(formData.paper) || 0,
       metal: parseFloat(formData.metal) || 0,
@@ -271,7 +271,38 @@ function GpWasteDetailsContent() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    <TableRow><TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">Yearly Audit Data will populate post-December {year}.</TableCell></TableRow>
+                                    {(() => {
+                                      const yearly = records.filter(r => new Date(r.date).getFullYear().toString() === year);
+                                      const isYearDone = yearly.length > 0 && yearly.some(r => new Date(r.date).getMonth() === 11);
+                                      
+                                      if (!isYearDone) {
+                                        return <TableRow><TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">Yearly Audit Data will populate post-December {year}.</TableCell></TableRow>;
+                                      }
+
+                                      const totals = yearly.reduce((acc, curr) => ({
+                                        freq: acc.freq + 1,
+                                        verified: acc.verified + curr.driverSubmitted,
+                                        paper: acc.paper + curr.paper,
+                                        plastic: acc.plastic + curr.plastic,
+                                        metal: acc.metal + curr.metal,
+                                        glass: acc.glass + curr.glass,
+                                        sani: acc.sani + (curr.sanitation || 0),
+                                        others: acc.others + curr.others
+                                      }), { freq: 0, verified: 0, paper: 0, plastic: 0, metal: 0, glass: 0, sani: 0, others: 0 });
+
+                                      return (
+                                        <TableRow className="bg-primary/5 font-black text-primary h-14">
+                                            <TableCell className="border text-center">{totals.freq} Sync'd Circuits</TableCell>
+                                            <TableCell className="border text-right">{totals.verified.toFixed(1)} KG</TableCell>
+                                            <TableCell className="border text-right">{totals.paper.toFixed(1)}</TableCell>
+                                            <TableCell className="border text-right">{totals.plastic.toFixed(1)}</TableCell>
+                                            <TableCell className="border text-right">{totals.metal.toFixed(1)}</TableCell>
+                                            <TableCell className="border text-right">{totals.glass.toFixed(1)}</TableCell>
+                                            <TableCell className="border text-right">{totals.sani.toFixed(1)}</TableCell>
+                                            <TableCell className="border text-right">{totals.others.toFixed(1)}</TableCell>
+                                        </TableRow>
+                                      );
+                                    })()}
                                 </TableBody>
                             </Table>
                         </div>
