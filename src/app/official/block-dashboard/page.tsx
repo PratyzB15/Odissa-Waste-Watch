@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
@@ -83,16 +82,11 @@ import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
 const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#7c3aed', '#64748b'];
 
-/**
- * High-Precision Temporal Arrival Engine for Block Oversight
- * Corrected to handle non-standard spacing and specific arrival scenarios
- */
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    // String Normalization
     const s = schedule.toLowerCase()
         .replace(/thurs\s*day/g, 'thursday')
         .replace(/tues\s*day/g, 'tuesday')
@@ -119,7 +113,6 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         return null;
     };
 
-    // 1. Handle "Nth [Weekday]" logic
     const nthMatch = s.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) || 
                      s.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+of\s+(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
     
@@ -133,34 +126,26 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
             dayName = nthMatch[2];
         }
         const dayIdx = weekdays.indexOf(dayName);
-        
-        // Find target in current month
         let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
-        
-        // If target is in the past, look in the next month
         if (!target || target < today) {
-            let nextMonth = today.getMonth() + 1;
-            let nextYear = today.getFullYear();
-            if (nextMonth > 11) { nextMonth = 0; nextYear++; }
-            target = getNthWeekday(nextYear, nextMonth, dayIdx, n);
+            let nextM = today.getMonth() + 1;
+            let nextY = today.getFullYear();
+            if (nextM > 11) { nextM = 0; nextY++; }
+            target = getNthWeekday(nextY, nextM, dayIdx, n);
         }
         if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // 2. Handle Fixed Dates (1st, 15th, etc)
     const dayMatches = s.match(/(\d+)(?:st|nd|rd|th)?/g);
     if (dayMatches && !s.includes('week')) {
         const days = dayMatches.map(m => parseInt(m)).filter(d => !isNaN(d)).sort((a, b) => a - b);
         const nextDay = days.find(d => d >= today.getDate());
-        
         if (nextDay === today.getDate()) return 0;
         if (nextDay) return nextDay - today.getDate();
-        
         const lastDayThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
         return (lastDayThisMonth - today.getDate()) + days[0];
     }
 
-    // 3. Handle Simple Weekdays
     let minDays = 999;
     weekdays.forEach((day, i) => {
         if (s.includes(day)) {
@@ -209,9 +194,9 @@ function BlockDashboardContent() {
             'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData,
             'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData,
             'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData,
-            'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
+            'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
             'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'khordha': khordhaDistrictData,
-            'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData,
+            'koraput': koraputDistrictData, 'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
             'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
             'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
         };

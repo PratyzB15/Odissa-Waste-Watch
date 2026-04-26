@@ -1,4 +1,3 @@
-
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -94,8 +93,19 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444
 
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
+    
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const s = schedule.toLowerCase().replace(/\s+/g, ' ');
+    
+    const s = schedule.toLowerCase()
+        .replace(/thurs\s*day/g, 'thursday')
+        .replace(/tues\s*day/g, 'tuesday')
+        .replace(/wednes\s*day/g, 'wednesday')
+        .replace(/mon\s*day/g, 'monday')
+        .replace(/fri\s*day/g, 'friday')
+        .replace(/satur\s*day/g, 'saturday')
+        .replace(/sun\s*day/g, 'sunday')
+        .replace(/\s+/g, ' ');
+
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
 
@@ -112,10 +122,19 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         return null;
     };
 
-    const nthMatch = s.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i);
+    const nthMatch = s.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) || 
+                     s.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+of\s+(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
+    
     if (nthMatch) {
-        const n = ordinals[nthMatch[1]];
-        const dayIdx = weekdays.indexOf(nthMatch[2]);
+        let n, dayName;
+        if (weekdays.includes(nthMatch[1])) {
+            dayName = nthMatch[1];
+            n = ordinals[nthMatch[2]];
+        } else {
+            n = ordinals[nthMatch[1]];
+            dayName = nthMatch[2];
+        }
+        const dayIdx = weekdays.indexOf(dayName);
         let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
         if (!target || target < today) {
             let nextM = today.getMonth() + 1;
@@ -124,6 +143,16 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
             target = getNthWeekday(nextY, nextM, dayIdx, n);
         }
         if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    const dayMatches = s.match(/(\d+)(?:st|nd|rd|th)?/g);
+    if (dayMatches && !s.includes('week')) {
+        const days = dayMatches.map(m => parseInt(m)).filter(d => !isNaN(d)).sort((a, b) => a - b);
+        const nextDay = days.find(d => d >= today.getDate());
+        if (nextDay === today.getDate()) return 0;
+        if (nextDay) return nextDay - today.getDate();
+        const lastDayThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        return (lastDayThisMonth - today.getDate()) + days[0];
     }
 
     let minDays = 999;
@@ -160,6 +189,7 @@ function DistrictDashboardContent() {
   const [mounted, setMounted] = useState(false);
   const [selectedRoster, setSelectedRoster] = useState<string | null>(null);
   const [rosterSearch, setRosterSearch] = useState("");
+  const [gpPerformToggle, setGpPerformToggle] = useState<'top' | 'low'>('top');
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -225,17 +255,17 @@ function DistrictDashboardContent() {
             endGp: routeInfo?.finalGp || routeInfo?.destination || s.mrf,
             vehicleDetails: `${s.vehicleType || 'TATA ACE'} | ${s.vehicleNo || '-'}`
         };
-    }).sort((a: any, b: any) => {
-        if (a.isActiveToday && !b.isActiveToday) return -1;
-        if (!a.isActiveToday && b.isActiveToday) return 1;
-        return a.daysLeft - b.daysLeft;
-    });
+    }).sort((a: any, b: any) => a.daysLeft - b.daysLeft);
+
+    const sortedGps = [...gpsList].sort((a, b) => b.waste - a.waste);
 
     return {
         blocks: blocksList,
         ulbs: ulbsList,
         mrfs: districtMRFs,
         gps: gpsList,
+        top5Gps: sortedGps.slice(0, 5),
+        low5Gps: sortedGps.filter(g => g.waste > 0).slice(-5).reverse(),
         totalWaste,
         efficiency: "94.2",
         activeCircuits,
@@ -321,7 +351,7 @@ function DistrictDashboardContent() {
                   <CardContent className="px-3 pb-3"><div className="text-xl font-black underline">{districtData.gps.length} Nodes</div></CardContent>
                 </Card>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+            <PopoverContent className="w-64 p-0 border-2 shadow-2xl">
                 <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">GP Nodal Directory</h4>
                 <ScrollArea className="h-80"><Table><TableHeader className="bg-muted/50 sticky top-0"><TableRow><TableHead className="uppercase text-[9px] font-black border-r">GP Name</TableHead><TableHead className="uppercase text-[9px] font-black">Block</TableHead></TableRow></TableHeader>
                     <TableBody>{districtData.gps.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase border-r">{g.name}</TableCell><TableCell className="text-[10px] uppercase text-muted-foreground">{g.block}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>
@@ -392,7 +422,10 @@ function DistrictDashboardContent() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 py-3"><CardTitle className="text-sm font-black uppercase">Waste Collected by Block (Kg)</CardTitle></CardHeader><CardContent className="h-[350px] pt-8"><ResponsiveContainer width="100%" height="100%"><BarChart data={districtData.blocks.map(b => ({ name: b, waste: districtData.gps.filter(g => g.block === b).reduce((s, g) => s + g.waste, 0) }))} margin={{ bottom: 40 }}><CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} /><XAxis dataKey="name" fontSize={10} fontWeight="bold" /><YAxis fontSize={10} /><Tooltip /><Bar dataKey="waste" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} /></BarChart></ResponsiveContainer></CardContent></Card>
-        <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 py-3 flex flex-row items-center justify-between"><CardTitle className="text-sm font-black uppercase">Nodal Performance Hub</CardTitle></CardHeader><CardContent className="h-[350px] pt-8"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={[...districtData.gps].sort((a,b) => b.waste - a.waste).slice(0, 5)} margin={{ left: 20, right: 30 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} /><XAxis type="number" fontSize={10} hide /><YAxis dataKey="name" type="category" fontSize={9} width={100} fontWeight="black" /><Tooltip /><Bar dataKey="waste" fill="#15803d" radius={[0, 4, 4, 0]} barSize={35} /></BarChart></ResponsiveContainer></CardContent></Card>
+        <Card className="border-2 shadow-sm">
+            <CardHeader className="border-b bg-muted/10 py-3 flex flex-row items-center justify-between"><CardTitle className="text-sm font-black uppercase">Nodal Performance Hub</CardTitle><Tabs value={gpPerformToggle} onValueChange={(v: any) => setGpPerformToggle(v)}><TabsList className="h-8"><TabsTrigger value="top" className="text-[10px] font-black uppercase">Top 5</TabsTrigger><TabsTrigger value="low" className="text-[10px] font-black uppercase">Lowest 5</TabsTrigger></TabsList></Tabs></CardHeader>
+            <CardContent className="h-[350px] pt-8"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={gpPerformToggle === 'top' ? districtData.top5Gps : districtData.low5Gps} margin={{ left: 20, right: 30 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} /><XAxis type="number" fontSize={10} hide /><YAxis dataKey="name" type="category" fontSize={9} width={100} fontWeight="black" /><Tooltip /><Bar dataKey="waste" fill={gpPerformToggle === 'top' ? "#15803d" : "#ea580c"} radius={[0, 4, 4, 0]} barSize={35} /></BarChart></ResponsiveContainer></CardContent>
+        </Card>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
