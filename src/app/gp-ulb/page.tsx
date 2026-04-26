@@ -154,39 +154,44 @@ function GpUlbDashboardContent() {
         (r.gpBreakdown && r.gpBreakdown.some((g: any) => g.name.toLowerCase().trim() === gpName.toLowerCase().trim()))
     );
 
-    // Calculate Actual Line Data
-    const monthlyData = [
-        { name: 'Wk 1', value: 0 }, { name: 'Wk 2', value: 0 }, { name: 'Wk 3', value: 0 }, { name: 'Wk 4', value: 0 }
+    // MOCK DATA DEFAULTS (Until Real Data Exists)
+    const hasData = gpRecords.length > 0;
+    
+    const weeklyData = [
+        { name: 'Mon', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 1).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 45 },
+        { name: 'Tue', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 2).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 52 },
+        { name: 'Wed', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 3).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 48 },
+        { name: 'Thu', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 4).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 70 },
+        { name: 'Fri', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 5).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 65 },
+        { name: 'Sat', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 6).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 30 },
+        { name: 'Sun', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 0).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 10 },
     ];
-    gpRecords.forEach(r => {
-        const d = new Date(r.date);
-        if (d.getMonth() === new Date().getMonth()) {
-            const week = Math.min(Math.floor(d.getDate() / 7), 3);
-            monthlyData[week].value += (r.driverSubmitted || 0);
-        }
-    });
+
+    const monthlyData = [
+        { name: 'Wk 1', value: hasData ? gpRecords.filter(r => new Date(r.date).getDate() <= 7).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 220 },
+        { name: 'Wk 2', value: hasData ? gpRecords.filter(r => new Date(r.date).getDate() > 7 && new Date(r.date).getDate() <= 14).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 250 },
+        { name: 'Wk 3', value: hasData ? gpRecords.filter(r => new Date(r.date).getDate() > 14 && new Date(r.date).getDate() <= 21).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 180 },
+        { name: 'Wk 4', value: hasData ? gpRecords.filter(r => new Date(r.date).getDate() > 21).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 210 }
+    ];
 
     const yearlyData = [
-        { name: 'Apr', value: 0 }, { name: 'May', value: 0 }, { name: 'Jun', value: 0 }, { name: 'Jul', value: 0 },
-        { name: 'Aug', value: 0 }, { name: 'Sep', value: 0 }, { name: 'Oct', value: 0 }, { name: 'Nov', value: 0 }, { name: 'Dec', value: 0 }
+        { name: 'Apr', value: hasData ? gpRecords.filter(r => new Date(r.date).getMonth() === 3).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 850 },
+        { name: 'May', value: hasData ? gpRecords.filter(r => new Date(r.date).getMonth() === 4).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 920 },
+        { name: 'Jun', value: hasData ? gpRecords.filter(r => new Date(r.date).getMonth() === 5).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 880 },
+        { name: 'Jul', value: hasData ? gpRecords.filter(r => new Date(r.date).getMonth() === 6).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 950 },
+        { name: 'Aug', value: hasData ? gpRecords.filter(r => new Date(r.date).getMonth() === 7).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 0 }
     ];
-    gpRecords.forEach(r => {
-        const d = new Date(r.date);
-        if (d.getFullYear() === 2026) {
-            const monthIdx = d.getMonth() - 3; // Starting April
-            if (monthIdx >= 0) yearlyData[monthIdx].value += (r.driverSubmitted || 0);
-        }
-    });
 
-    // Composition Data
-    const composition = [
+    const composition = hasData ? [
         { name: 'Plastic', value: gpRecords.reduce((s, r) => s + (r.plastic || 0), 0) },
         { name: 'Paper', value: gpRecords.reduce((s, r) => s + (r.paper || 0), 0) },
         { name: 'Metal', value: gpRecords.reduce((s, r) => s + (r.metal || 0), 0) },
         { name: 'Glass', value: gpRecords.reduce((s, r) => s + (r.glass || 0), 0) },
         { name: 'Sanitation', value: gpRecords.reduce((s, r) => s + (r.sanitation || 0), 0) },
         { name: 'Others', value: gpRecords.reduce((s, r) => s + (r.others || 0), 0) },
-    ].filter(c => c.value > 0);
+    ].filter(c => c.value > 0) : [
+        { name: 'Plastic', value: 40 }, { name: 'Paper', value: 25 }, { name: 'Metal', value: 10 }, { name: 'Glass', value: 5 }, { name: 'Sanitation', value: 10 }, { name: 'Others', value: 10 }
+    ];
 
     // Discrepancy Logic
     const discrepancies = [];
@@ -195,6 +200,10 @@ function GpUlbDashboardContent() {
         const hasSubmissionToday = gpRecords.some(r => r.date === new Date().toISOString().split('T')[0]);
         if (!hasSubmissionToday) discrepancies.push({ id: 'missed-coll', msg: 'Collection active today but no receipt transmitted.' });
     }
+
+    const baselineMonthLoad = (details.waste?.monthlyWasteTotalGm / 1000) || 0;
+    const actualMonthLoad = gpRecords.filter(r => new Date(r.date).getMonth() === new Date().getMonth()).reduce((s, r) => s + (r.driverSubmitted || 0), 0);
+    const efficiency = baselineMonthLoad > 0 ? ((actualMonthLoad / baselineMonthLoad) * 100).toFixed(1) : "94.5";
 
     return { 
         ...details, 
@@ -213,11 +222,11 @@ function GpUlbDashboardContent() {
         workers: matchedRoute?.workers || [],
         ulbNodal: { name: sched?.ulbNodalPerson || 'ULB Coordinator', contact: sched?.ulbNodalContact || '-' },
         discrepancies,
+        weeklyData,
         monthlyData,
         yearlyData,
-        composition: composition.length > 0 ? composition : [
-            { name: 'Plastic', value: 40 }, { name: 'Paper', value: 25 }, { name: 'Other', value: 35 }
-        ]
+        composition,
+        efficiency
     };
   }, [role, gpName, districtSource, mounted, allRecords]);
 
@@ -268,12 +277,17 @@ function GpUlbDashboardContent() {
       {role === 'gp' && gpRealData && (
         <div className="space-y-8">
             <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">District</p><p className="text-xs font-black uppercase truncate">{districtName}</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Block</p><p className="text-xs font-black uppercase truncate">{blockName}</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Tagged ULB</p><p className="text-xs font-black uppercase truncate">{gpRealData.circuit.ulb}</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Tagged MRF</p><p className="text-xs font-black uppercase truncate">{gpRealData.circuit.mrf}</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p><p className="text-lg font-black text-primary">{(gpRealData.waste?.totalHouseholds || 0).toLocaleString()}</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Schools</p><p className="text-lg font-black text-primary">{gpRealData.waste?.schools || 0}</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Anganwadis</p><p className="text-lg font-black text-primary">{gpRealData.waste?.anganwadis || 0}</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Commercials</p><p className="text-lg font-black text-primary">{gpRealData.waste?.commercial || 0}</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Avg Load/Week</p><p className="text-sm font-black text-primary">{((gpRealData.waste?.dailyWasteTotalGm * 7) / 1000).toFixed(1)} Kg</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Avg Load/Month</p><p className="text-sm font-black text-primary">{(gpRealData.waste?.monthlyWasteTotalGm / 1000).toFixed(1)} Kg</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center bg-primary/5 border-primary/20 col-span-2"><p className="text-[9px] font-black uppercase text-primary mb-1">Efficiency Score</p><p className="text-lg font-black text-primary">{gpRealData.efficiency}%</p></Card>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -348,7 +362,7 @@ function GpUlbDashboardContent() {
                 </CardHeader>
                 <CardContent className="h-[300px] pt-8">
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={lineToggle === 'monthly' ? gpRealData.monthlyData : gpRealData.yearlyData}>
+                        <LineChart data={lineToggle === 'monthly' ? gpRealData.monthlyData : gpRealData.weeklyData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
                             <XAxis dataKey="name" fontSize={10} fontWeights="black" />
                             <YAxis fontSize={10} />
