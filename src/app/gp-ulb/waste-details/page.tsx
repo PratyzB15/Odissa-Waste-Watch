@@ -15,7 +15,8 @@ import {
   PlusCircle,
   Edit,
   Trash2,
-  Info
+  Info,
+  Building
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
@@ -63,6 +64,8 @@ const MONTHS = [
   "January", "February", "March", "April", "May", "June", 
   "July", "August", "September", "October", "November", "December"
 ];
+
+const FISCAL_YEARS = ["2026", "2027"];
 
 function GpUlbWasteDetailsContent() {
   const searchParams = useSearchParams();
@@ -125,7 +128,6 @@ function GpUlbWasteDetailsContent() {
         const totalKg = details.waste ? (details.waste.totalWasteKg || (details.waste.monthlyWasteTotalGm / 1000)) : 0;
         return totalKg;
     } else {
-        // ULB Baseline = Sum of all associated GP targets
         const mappedGps = source.data.gpMappings.filter((m: any) => 
             m.taggedUlb.toLowerCase().trim().includes(ulbParam.toLowerCase().trim()) ||
             ulbParam.toLowerCase().trim().includes(m.taggedUlb.toLowerCase().trim())
@@ -198,8 +200,6 @@ function GpUlbWasteDetailsContent() {
 
   if (!mounted) return null;
 
-  const fiscalYears = ["2026", "2027"];
-
   return (
     <div className="space-y-12">
       <Card className="border-2 border-primary/20 bg-primary/[0.01] shadow-md">
@@ -207,48 +207,53 @@ function GpUlbWasteDetailsContent() {
           <div className="flex items-center gap-3 text-primary">
             <Calculator className="h-10 w-10" />
             <div>
-              <CardTitle className="text-2xl font-black uppercase tracking-tight">Waste Audit Ledger: {role === 'gp' ? gpParam : ulbParam}</CardTitle>
-              <CardDescription className="font-bold italic text-muted-foreground">Verification Node: {districtParam} / {blockParam}</CardDescription>
+              <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">Waste Reconciliation Ledger</CardTitle>
+              <CardDescription className="font-bold italic text-muted-foreground">Authoritative audit hub for {role === 'gp' ? gpParam : ulbParam}.</CardDescription>
             </div>
           </div>
           <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
-              <PlusCircle className="mr-2 h-5 w-5" /> New Entry
+              <PlusCircle className="mr-2 h-5 w-5" /> New Receipt Entry
           </Button>
         </CardHeader>
       </Card>
 
-      {fiscalYears.map((year) => (
+      {FISCAL_YEARS.map((year) => (
         <div key={year} className="space-y-8">
             <div className="flex items-center gap-4">
-                <h2 className="text-2xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} FISCAL CYCLE</h2>
+                <h2 className="text-3xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} FISCAL CYCLE</h2>
                 <div className="h-px flex-1 bg-primary/20"></div>
             </div>
 
-            <Accordion type="single" collapsible className="w-full space-y-6">
-                {MONTHS.map((month) => {
+            <Accordion type="single" collapsible className="w-full space-y-8">
+                {MONTHS.map((month, mIdx) => {
                     const monthRecords = records.filter(r => {
                         if (!r.date) return false;
                         const d = new Date(r.date);
                         return d.getFullYear().toString() === year && d.toLocaleString('default', { month: 'long' }) === month;
                     });
 
+                    // Start from April for 2026 as per context
+                    if (year === '2026' && mIdx < 3) return null;
+
                     const monthVerified = monthRecords.reduce((sum, r) => sum + r.driverSubmitted, 0);
+                    const discrepancy = baselineAvg - monthVerified;
+                    const efficiency = baselineAvg > 0 ? (monthVerified / baselineAvg) * 100 : 0;
 
                     return (
                         <AccordionItem value={month} key={month} className="border-none">
-                            <Card className="overflow-hidden border-2 shadow-lg">
-                                <AccordionTrigger className="p-6 hover:no-underline bg-muted/10 data-[state=open]:bg-primary/5 transition-all border-b border-dashed">
+                            <Card className="overflow-hidden border-2 shadow-xl">
+                                <AccordionTrigger className="p-6 hover:no-underline bg-muted/10 data-[state=open]:bg-primary/5 transition-all border-b border-dashed group">
                                     <div className="flex justify-between w-full pr-8 items-center">
                                         <div className="flex items-center gap-4">
-                                            <Calendar className="h-5 w-5 text-primary" />
-                                            <span className="font-black text-lg uppercase tracking-tighter text-foreground">{month}</span>
+                                            <Calendar className="h-6 w-6 text-primary" />
+                                            <span className="font-black text-xl uppercase tracking-tighter text-foreground">{month}</span>
                                         </div>
-                                        <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-3">
+                                        <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-4 py-1">
                                             {monthRecords.length} RECEIPTS SYNCED
                                         </Badge>
                                     </div>
                                 </AccordionTrigger>
-                                <AccordionContent className="p-0">
+                                <AccordionContent className="p-0 bg-background">
                                     <ScrollArea className="w-full">
                                         <div className="min-w-[1600px]">
                                             <Table className="border-collapse border text-[10px]">
@@ -266,15 +271,16 @@ function GpUlbWasteDetailsContent() {
                                                         <TableHead className="w-[90px] text-right uppercase font-black border">Cloth</TableHead>
                                                         <TableHead className="w-[90px] text-right uppercase font-black border">Glass</TableHead>
                                                         <TableHead className="w-[90px] text-right uppercase font-black border">Sanitation</TableHead>
-                                                        <TableHead className="w-[120px] uppercase font-black border text-center">Actions</TableHead>
+                                                        <TableHead className="w-[90px] text-right uppercase font-black border">Others</TableHead>
+                                                        <TableHead className="w-[100px] uppercase font-black border text-center">Actions</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
                                                     {monthRecords.map((row) => (
                                                         <TableRow key={row.id} className="hover:bg-primary/[0.01] border-b last:border-0 h-16 transition-colors">
                                                             <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
-                                                            <TableCell className="border-r text-center uppercase font-bold">{row.district}</TableCell>
-                                                            <TableCell className="border-r text-center uppercase font-bold">{row.block}</TableCell>
+                                                            <TableCell className="border-r text-center uppercase font-bold text-muted-foreground">{row.district}</TableCell>
+                                                            <TableCell className="border-r text-center uppercase font-bold text-muted-foreground">{row.block}</TableCell>
                                                             <TableCell className="border-r font-bold uppercase">{row.mrf}</TableCell>
                                                             <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
                                                             <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02] text-sm">{row.driverSubmitted.toFixed(1)} KG</TableCell>
@@ -284,6 +290,7 @@ function GpUlbWasteDetailsContent() {
                                                             <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
+                                                            <TableCell className="border-r text-right font-mono">{row.others || 0}</TableCell>
                                                             <TableCell className="border text-center">
                                                                 <div className="flex justify-center gap-1">
                                                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => handleOpenEditDialog(row)}><Edit className="h-3 w-3"/></Button>
@@ -298,22 +305,23 @@ function GpUlbWasteDetailsContent() {
                                         <ScrollBar orientation="horizontal" />
                                     </ScrollArea>
 
+                                    {/* High Fidelity Summary Blocks matching the reference image */}
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6 bg-muted/5 border-t">
-                                        <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
-                                            <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Nodal Avg Load (Month)</p>
-                                            <p className="text-xl font-black">{baselineAvg.toLocaleString()} KG</p>
+                                        <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm transition-transform hover:scale-[1.02]">
+                                            <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">ULB Load on Avg (Month)</p>
+                                            <p className="text-2xl font-black">{baselineAvg.toLocaleString()} KG</p>
                                         </div>
-                                        <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
-                                            <p className="text-[10px] font-black uppercase text-primary mb-1">Total Verified</p>
-                                            <p className="text-xl font-black text-primary">{monthVerified.toLocaleString()} KG</p>
+                                        <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm transition-transform hover:scale-[1.02]">
+                                            <p className="text-[10px] font-black uppercase text-primary mb-1">Total ULB Verified</p>
+                                            <p className="text-2xl font-black text-primary">{monthVerified.toLocaleString()} KG</p>
                                         </div>
-                                        <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
-                                            <p className="text-[10px] font-black uppercase text-destructive mb-1">Nodal Discrepancy</p>
-                                            <p className="text-xl font-black text-destructive">{(baselineAvg - monthVerified).toLocaleString()} KG</p>
+                                        <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm transition-transform hover:scale-[1.02]">
+                                            <p className="text-[10px] font-black uppercase text-destructive mb-1">ULB Discrepancy</p>
+                                            <p className="text-2xl font-black text-destructive">{discrepancy.toLocaleString()} KG</p>
                                         </div>
-                                        <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-5 shadow-inner">
-                                            <p className="text-[10px] font-black uppercase text-primary mb-1">Efficiency Score</p>
-                                            <p className="text-xl font-black text-primary">{(baselineAvg > 0 ? (monthVerified / baselineAvg) * 100 : 0).toFixed(1)}%</p>
+                                        <div className="bg-primary text-primary-foreground rounded-xl p-5 shadow-lg transition-transform hover:scale-[1.02]">
+                                            <p className="text-[10px] font-black uppercase opacity-60 mb-1">ULB Efficiency Score</p>
+                                            <p className="text-3xl font-black">{efficiency.toFixed(1)}%</p>
                                         </div>
                                     </div>
                                 </AccordionContent>
@@ -323,22 +331,24 @@ function GpUlbWasteDetailsContent() {
                 })}
             </Accordion>
 
+            {/* Yearly Audit Summary Table - Triggers at end of year loop */}
             <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
-                <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
-                    <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
-                        <BarChart3 className="h-10 w-10" /> Yearly Audit Summary: {year}
+                <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-8">
+                    <CardTitle className="text-4xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-4">
+                        <BarChart3 className="h-12 w-12" /> Yearly Professional Audit: {year}
                     </CardTitle>
+                    <CardDescription className="text-xs font-black uppercase opacity-60">Consolidated logistical performance and stream-wise recovery metrics.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                     <ScrollArea className="w-full">
                         <div className="min-w-[1600px]">
-                            <Table className="text-muted-foreground">
+                            <Table>
                                 <TableHeader className="bg-muted/50">
                                     <TableRow>
                                         <TableHead className="w-[150px] uppercase font-black border text-center">Route ID</TableHead>
-                                        <TableHead className="w-[180px] uppercase font-black border">Associated MRF</TableHead>
-                                        <TableHead className="w-[150px] uppercase font-black border text-center">Freq (Year)</TableHead>
-                                        <TableHead className="w-[180px] text-right uppercase font-black border">Total Collected (Kg)</TableHead>
+                                        <TableHead className="w-[200px] uppercase font-black border">Associated MRF</TableHead>
+                                        <TableHead className="w-[150px] uppercase font-black border text-center">Coll. Freq (Year)</TableHead>
+                                        <TableHead className="w-[180px] text-right uppercase font-black border bg-primary/5">Total Collected (Kg)</TableHead>
                                         <TableHead className="w-[120px] text-right uppercase font-black border">Total Paper</TableHead>
                                         <TableHead className="w-[120px] text-right uppercase font-black border">Total Plastic</TableHead>
                                         <TableHead className="w-[120px] text-right uppercase font-black border">Total Metal</TableHead>
@@ -352,8 +362,8 @@ function GpUlbWasteDetailsContent() {
                                       const yearly = records.filter(r => new Date(r.date).getFullYear().toString() === year);
                                       const isYearDone = yearly.length > 0 && yearly.some(r => new Date(r.date).getMonth() === 11);
                                       
-                                      if (!isYearDone) {
-                                        return <TableRow><TableCell colSpan={10} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">Yearly Audit Data will populate post-December {year}.</TableCell></TableRow>;
+                                      if (!isYearDone && year === '2026') {
+                                        return <TableRow><TableCell colSpan={10} className="h-48 text-center italic font-black uppercase tracking-[0.3em] opacity-10 text-2xl">Yearly Audit Data Pending Cycle Completion</TableCell></TableRow>;
                                       }
 
                                       const routesMap = new Map();
@@ -369,16 +379,16 @@ function GpUlbWasteDetailsContent() {
                                               metal: prev.metal + r.metal,
                                               glass: prev.glass + r.glass,
                                               sani: prev.sani + r.sanitation,
-                                              other: prev.other + r.others
+                                              other: prev.other + (r.others || 0)
                                           });
                                       });
 
                                       return Array.from(routesMap.entries()).map(([id, stats]) => (
-                                        <TableRow key={id} className="bg-primary/5 font-black text-primary h-14">
-                                            <TableCell className="border text-center">{id}</TableCell>
-                                            <TableCell className="border uppercase">{stats.mrf}</TableCell>
-                                            <TableCell className="border text-center">{stats.count} Receipts</TableCell>
-                                            <TableCell className="border text-right">{stats.received.toFixed(1)} KG</TableCell>
+                                        <TableRow key={id} className="bg-primary/5 font-black text-primary h-16 hover:bg-primary/10 transition-colors">
+                                            <TableCell className="border text-center font-mono">{id}</TableCell>
+                                            <TableCell className="border uppercase flex items-center gap-2 pt-5"><Building className="h-4 w-4 opacity-40"/>{stats.mrf}</TableCell>
+                                            <TableCell className="border text-center">{stats.count} Submissions</TableCell>
+                                            <TableCell className="border text-right text-lg">{stats.received.toFixed(1)} KG</TableCell>
                                             <TableCell className="border text-right">{stats.paper.toFixed(1)}</TableCell>
                                             <TableCell className="border text-right">{stats.plastic.toFixed(1)}</TableCell>
                                             <TableCell className="border text-right">{stats.metal.toFixed(1)}</TableCell>
@@ -399,36 +409,22 @@ function GpUlbWasteDetailsContent() {
       ))}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle className="text-xl font-black uppercase">{editingRecord ? 'Edit Entry' : 'Add New Entry'}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Date</Label><Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Route ID</Label><Input value={formData.routeId} onChange={e => setFormData({...formData, routeId: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Tagged MRF</Label><Input value={formData.mrf} onChange={e => setFormData({...formData, mrf: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">District</Label><Input value={formData.district} disabled className="bg-muted/20" /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Block</Label><Input value={formData.block} disabled className="bg-muted/20" /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Total (Kg)</Label><Input type="number" value={formData.totalKg} onChange={e => setFormData({...formData, totalKg: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Plastic (gm)</Label><Input type="number" value={formData.plasticGm} onChange={e => setFormData({...formData, plasticGm: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Paper (Kg)</Label><Input type="number" value={formData.paper} onChange={e => setFormData({...formData, paper: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Metal (Kg)</Label><Input type="number" value={formData.metal} onChange={e => setFormData({...formData, metal: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Cloth (Kg)</Label><Input type="number" value={formData.cloth} onChange={e => setFormData({...formData, cloth: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Glass (Kg)</Label><Input type="number" value={formData.glass} onChange={e => setFormData({...formData, glass: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Sanitation (Kg)</Label><Input type="number" value={formData.sanitation} onChange={e => setFormData({...formData, sanitation: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Others (Kg)</Label><Input type="number" value={formData.others} onChange={e => setFormData({...formData, others: e.target.value})} /></div>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-4 shadow-2xl">
+          <DialogHeader className="border-b pb-4"><DialogTitle className="text-2xl font-black uppercase text-primary">Nodal Receipt Entry</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-6 py-8">
+            <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black">Date</Label><Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
+            <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black">Route ID</Label><Input value={formData.routeId} onChange={e => setFormData({...formData, routeId: e.target.value})} className="font-mono" /></div>
+            <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black">Tagged MRF</Label><Input value={formData.mrf} onChange={e => setFormData({...formData, mrf: e.target.value})} /></div>
+            <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black">Total (Kg)</Label><Input type="number" value={formData.totalKg} onChange={e => setFormData({...formData, totalKg: e.target.value})} className="font-mono" /></div>
+            <div className="grid grid-cols-3 gap-4 col-span-2 border-t pt-4">
+              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black">Plastic (gm)</Label><Input type="number" value={formData.plasticGm} onChange={e => setFormData({...formData, plasticGm: e.target.value})} /></div>
+              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black">Paper</Label><Input type="number" value={formData.paper} onChange={e => setFormData({...formData, paper: e.target.value})} /></div>
+              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black">Metal</Label><Input type="number" value={formData.metal} onChange={e => setFormData({...formData, metal: e.target.value})} /></div>
+            </div>
           </div>
-          <DialogFooter><Button onClick={handleSubmit} className="font-black uppercase px-8">Save Record</Button></DialogFooter>
+          <DialogFooter className="bg-muted/30 p-6 rounded-xl -mx-6 -mb-6"><Button onClick={handleSubmit} className="font-black uppercase px-12 h-12 text-lg shadow-xl">Synchronize Record</Button></DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <div className="bg-muted/20 border-l-4 border-primary p-6 rounded-r-xl shadow-inner flex items-start gap-4">
-        <Info className="h-6 w-6 text-primary mt-0.5 shrink-0" />
-        <div className="space-y-1">
-          <p className="text-sm font-black uppercase tracking-tight">Audit Governance</p>
-          <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-            Data is strictly synchronized with the Master State Ledger. Discrepancies are calculated based on official nodal generation baselines for {role === 'gp' ? gpParam : ulbParam}.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }
