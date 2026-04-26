@@ -5,8 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Building, Home, FileStack, Info, TableProperties } from "lucide-react";
+import { Building, Search, TableProperties, Info } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, query } from "firebase/firestore";
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -40,12 +43,13 @@ import { nuapadaDistrictData } from "@/lib/disNuapada";
 import { puriDistrictData } from "@/lib/disPuri";
 import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
-export default function StateInformationAboutGpsPage() {
+export default function InformationAboutMrfsAndGpsPage() {
   const [mounted, setMounted] = useState(false);
+  const [search, setSearch] = useState("");
+  const db = useFirestore();
+  const { data: firestoreGps = [] } = useCollection(db ? query(collection(db, 'gpInformation')) : null);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   const masterDistrictStructure = useMemo(() => {
     if (!mounted) return [];
@@ -67,17 +71,23 @@ export default function StateInformationAboutGpsPage() {
           w.gpName.toLowerCase().trim() === gp.gpName.toLowerCase().trim()
         );
 
+        // Check if there is an override in Firestore for this specific GP
+        const override = firestoreGps.find((f: any) => 
+            f.gpName.toLowerCase().trim() === gp.gpName.toLowerCase().trim() &&
+            f.district.toLowerCase().trim() === source.district.toLowerCase().trim()
+        );
+
         return {
           id: idx,
-          mrfName: gp.taggedMrf,
-          ulbName: gp.taggedUlb,
-          gpName: gp.gpName,
-          households: wasteInfo?.totalHouseholds || 0,
-          schools: wasteInfo?.schools || 0,
-          anganwadis: wasteInfo?.anganwadis || 0,
-          commercial: wasteInfo?.commercial || 0,
-          dailyWaste: wasteInfo ? (wasteInfo.dailyWasteTotalGm || (wasteInfo.totalWasteKg ? wasteInfo.totalWasteKg * 1000 / 30 : 0)) : 0,
-          monthlyWaste: wasteInfo ? (wasteInfo.monthlyWasteTotalGm || (wasteInfo.totalWasteKg ? wasteInfo.totalWasteKg * 1000 : 0)) : 0
+          mrfName: override?.mrfName || gp.taggedMrf,
+          ulbName: override?.ulbName || gp.taggedUlb,
+          gpName: override?.gpName || gp.gpName,
+          households: override?.households || wasteInfo?.totalHouseholds || 0,
+          schools: override?.schools || wasteInfo?.schools || 0,
+          anganwadis: override?.anganwadis || wasteInfo?.anganwadis || 0,
+          commercial: override?.commercial || wasteInfo?.commercial || 0,
+          dailyWaste: override?.dailyWaste || (wasteInfo ? (wasteInfo.dailyWasteTotalGm || (wasteInfo.totalWasteKg ? wasteInfo.totalWasteKg * 1000 / 30 : 0)) : 0),
+          monthlyWaste: override?.monthlyWaste || (wasteInfo ? (wasteInfo.monthlyWasteTotalGm || (wasteInfo.totalWasteKg ? wasteInfo.totalWasteKg * 1000 : 0)) : 0)
         };
       });
 
@@ -87,7 +97,32 @@ export default function StateInformationAboutGpsPage() {
         gps: gpsList
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [mounted]);
+  }, [mounted, firestoreGps]);
+
+  const filteredStructure = useMemo(() => {
+    if (!search) return masterDistrictStructure;
+    return masterDistrictStructure.filter(d => 
+        d.name.toLowerCase().includes(search.toLowerCase()) ||
+        d.gps.some(g => g.gpName.toLowerCase().includes(search.toLowerCase()))
+    );
+  }, [search, masterDistrictStructure]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearch(val);
+    
+    // Auto-scroll logic
+    if (val.length > 2) {
+        const match = masterDistrictStructure.find(d => 
+            d.name.toLowerCase().includes(val.toLowerCase()) ||
+            d.gps.some(g => g.gpName.toLowerCase().includes(val.toLowerCase()))
+        );
+        if (match) {
+            const el = document.getElementById(`dist-${match.name}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+  };
 
   if (!mounted) return <div className="p-12 text-center text-muted-foreground animate-pulse">Syncing state-wide GP registry...</div>;
 
@@ -95,19 +130,30 @@ export default function StateInformationAboutGpsPage() {
     <div className="space-y-6">
       <Card className="border-2 border-primary/20 bg-primary/[0.01]">
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <TableProperties className="h-8 w-8 text-primary" />
-            <div>
-              <CardTitle className="text-2xl font-bold font-headline uppercase tracking-tight">Information about GPs (State Ledger)</CardTitle>
-              <CardDescription className="text-lg font-bold">Authoritative state-wide directory of quantification and demographic survey data.</CardDescription>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="flex items-center gap-3">
+                <TableProperties className="h-8 w-8 text-primary" />
+                <div>
+                <CardTitle className="text-2xl font-bold font-headline uppercase tracking-tight">Information about MRFs and Associated GPs</CardTitle>
+                <CardDescription className="text-lg font-bold">Authoritative state-wide directory of quantification and demographic survey data.</CardDescription>
+                </div>
+            </div>
+            <div className="relative w-full max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Search District or GP..." 
+                    className="pl-9 h-11 border-2 border-primary/20 focus:border-primary transition-all"
+                    value={search}
+                    onChange={handleSearchChange}
+                />
             </div>
           </div>
         </CardHeader>
       </Card>
 
       <Accordion type="single" collapsible className="w-full space-y-4">
-        {masterDistrictStructure.map((district) => (
-          <AccordionItem value={district.name} key={district.name} className="border-none">
+        {filteredStructure.map((district) => (
+          <AccordionItem value={district.name} key={district.name} id={`dist-${district.name}`} className="border-none">
             <Card className="overflow-hidden border-2 shadow-md">
               <AccordionTrigger className="p-6 hover:no-underline bg-muted/10 data-[state=open]:bg-primary/5 transition-all">
                 <div className="flex justify-between w-full pr-4">
@@ -176,7 +222,7 @@ export default function StateInformationAboutGpsPage() {
             <div className="space-y-1">
                 <p className="text-sm font-black uppercase tracking-tight">Institutional Audit Guidelines</p>
                 <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-                    This directory resolves high-fidelity demographic and quantification metrics from official state survey reports. All GP nodes are stagnant and anchored to their respective administrative blocks across the 30 districts. Material stream profiles are monitored separately through the "Waste Collection Details" portal.
+                    This directory resolves high-fidelity demographic and quantification metrics from official state survey reports. Any professional updates made at the block or district level are synchronized here in real-time.
                 </p>
             </div>
         </CardContent>

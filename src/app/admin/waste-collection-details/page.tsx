@@ -5,20 +5,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { 
     Phone, 
     User, 
     Truck, 
-    Anchor, 
     ClipboardList, 
     Info, 
-    Building, 
     LayoutGrid,
-    Users
+    Search
 } from "lucide-react";
 import { useMemo, useState, useEffect, Suspense } from "react";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, query } from "firebase/firestore";
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -54,6 +53,10 @@ import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
 function AdminWasteCollectionDetailsContent() {
   const [mounted, setMounted] = useState(false);
+  const [search, setSearch] = useState("");
+  const db = useFirestore();
+  const { data: firestoreSchedules = [] } = useCollection(db ? query(collection(db, 'collectionSchedules')) : null);
+
   useEffect(() => { setMounted(true); }, []);
 
   const masterCollectionStructure = useMemo(() => {
@@ -72,32 +75,59 @@ function AdminWasteCollectionDetailsContent() {
 
     return districtSources.map(source => {
       const schedules = source.data.collectionSchedules || [];
+      const overrides = firestoreSchedules.filter((f: any) => f.district.toLowerCase() === source.district.toLowerCase());
       
-      const formatted = schedules.map((item: any, idx: number) => ({
-        id: idx,
-        block: item.block,
-        ulb: item.ulb,
-        mrf: item.mrf,
-        vehicleInfo: `${item.vehicleType} | ${item.vehicleNo || '-'} | ${item.vehicleCapacity || '-'} Kg`,
-        driverName: item.driverName || '-',
-        driverContact: item.driverContact || '-',
-        collectionSchedule: item.collectionSchedule,
-        loadKg: item.wasteGeneratedKg || 0,
-        gpNodalPerson: (item.gpNodalPerson || "").split(',')[0].trim(),
-        gpNodalContact: (item.gpNodalContact || "").split(',')[0].trim(),
-        ulbNodalPerson: (item.ulbNodalPerson || "").split(',')[0].trim(),
-        ulbNodalContact: (item.ulbNodalContact || "").split(',')[0].trim()
-      }));
+      const formatted = schedules.map((item: any, idx: number) => {
+        const override = overrides.find((o: any) => o.gpName.toLowerCase() === item.gpName.toLowerCase());
+        return {
+            id: idx,
+            block: override?.block || item.block,
+            ulb: override?.ulb || item.ulb,
+            mrf: override?.mrf || item.mrf,
+            vehicleInfo: override?.vehicleInfo || `${item.vehicleType} | ${item.vehicleNo || '-'} | ${item.vehicleCapacity || '-'} Kg`,
+            driverName: override?.driverName || item.driverName || '-',
+            driverContact: override?.driverContact || item.driverContact || '-',
+            collectionSchedule: override?.collectionSchedule || item.collectionSchedule,
+            loadKg: override?.loadKg || item.wasteGeneratedKg || 0,
+            gpNodalPerson: override?.gpNodalPerson || (item.gpNodalPerson || "").split(',')[0].trim(),
+            gpNodalContact: override?.gpNodalContact || (item.gpNodalContact || "").split(',')[0].trim(),
+            ulbNodalPerson: override?.ulbNodalPerson || (item.ulbNodalPerson || "").split(',')[0].trim(),
+            ulbNodalContact: override?.ulbNodalContact || (item.ulbNodalContact || "").split(',')[0].trim()
+        };
+      });
 
       return {
         name: source.district,
-        totalCircuits: schedules.length,
+        totalCircuits: formatted.length,
         rows: formatted
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [mounted]);
+  }, [mounted, firestoreSchedules]);
 
-  const renderContactCell = (name: string, contact: string, label: string) => (
+  const filteredStructure = useMemo(() => {
+    if (!search) return masterCollectionStructure;
+    return masterCollectionStructure.filter(d => 
+        d.name.toLowerCase().includes(search.toLowerCase()) ||
+        d.rows.some(r => r.gpName?.toLowerCase().includes(search.toLowerCase()) || r.driverName?.toLowerCase().includes(search.toLowerCase()))
+    );
+  }, [search, masterCollectionStructure]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearch(val);
+    if (val.length > 2) {
+        const match = masterCollectionStructure.find(d => 
+            d.name.toLowerCase().includes(val.toLowerCase()) ||
+            d.rows.some(r => r.gpName?.toLowerCase().includes(val.toLowerCase()))
+        );
+        if (match) {
+            const el = document.getElementById(`coll-${match.name}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+  };
+
+  const renderContactCell = (name: string, contact: string) => (
     <div className="space-y-0.5">
         <p className="flex items-center gap-1 font-bold uppercase tracking-tighter text-[9px]">
             <User className="h-2.5 w-2.5 opacity-60" /> {name || 'N/A'}
@@ -113,20 +143,29 @@ function AdminWasteCollectionDetailsContent() {
   return (
     <div className="space-y-6">
       <Card className="border-2 border-primary/20 bg-primary/[0.01] shadow-md">
-        <CardHeader className="bg-primary/5 border-b">
+        <CardHeader className="bg-primary/5 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="flex items-center gap-3">
             <ClipboardList className="h-8 w-8 text-primary" />
             <div>
-              <CardTitle className="text-2xl font-black uppercase tracking-tight">Waste Collection Master Registry (State)</CardTitle>
+              <CardTitle className="text-2xl font-black uppercase tracking-tight">Waste Collection Master Registry</CardTitle>
               <CardDescription className="font-medium">Consolidated multi-district chronological audit of logistical collection circuits.</CardDescription>
             </div>
           </div>
+          <div className="relative w-full max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Search District, GP or Driver..." 
+                    className="pl-9 h-11 border-2 border-primary/20 focus:border-primary transition-all"
+                    value={search}
+                    onChange={handleSearchChange}
+                />
+            </div>
         </CardHeader>
       </Card>
 
       <Accordion type="single" collapsible className="w-full space-y-4">
-        {masterCollectionStructure.map((district) => (
-          <AccordionItem value={district.name} key={district.name} className="border-none">
+        {filteredStructure.map((district) => (
+          <AccordionItem value={district.name} key={district.name} id={`coll-${district.name}`} className="border-none">
             <Card className="overflow-hidden border-2 shadow-sm">
               <AccordionTrigger className="p-6 hover:no-underline bg-muted/10 data-[state=open]:bg-primary/5 transition-all">
                 <div className="flex justify-between w-full pr-4">
@@ -172,10 +211,10 @@ function AdminWasteCollectionDetailsContent() {
                             <TableCell className="border text-[10px] font-black text-blue-700 uppercase">{item.collectionSchedule}</TableCell>
                             <TableCell className="border text-right font-mono font-black text-primary text-xs">{(item.loadKg || 0).toLocaleString()}</TableCell>
                             <TableCell className="border bg-blue-50/10 p-2">
-                                {renderContactCell(item.gpNodalPerson, item.gpNodalContact, "PEO")}
+                                {renderContactCell(item.gpNodalPerson, item.gpNodalContact)}
                             </TableCell>
                             <TableCell className="border bg-orange-50/5 p-2">
-                                {renderContactCell(item.ulbNodalPerson, item.ulbNodalContact, "Operator")}
+                                {renderContactCell(item.ulbNodalPerson, item.ulbNodalContact)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -202,7 +241,7 @@ function AdminWasteCollectionDetailsContent() {
         <div className="space-y-1">
           <p className="text-sm font-black uppercase tracking-tight">State Monitoring Protocol</p>
           <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-            Every collection circuit listed is synchronized with district reporting nodes. Blank entries represent districts currently finalizing their logistical rosters. Tonnage metrics are updated in real-time as local MRFs synchronize their verified intake receipts.
+            Every collection circuit listed is synchronized with district reporting nodes. Edits performed at the block or district level propagate here automatically to maintain state-wide audit integrity.
           </p>
         </div>
       </div>
@@ -210,7 +249,7 @@ function AdminWasteCollectionDetailsContent() {
   );
 }
 
-export default function StateWasteCollectionDetailsPage() {
+export default function AdminWasteCollectionDetailsPage() {
     return (
         <Suspense fallback={<div className="p-12 text-center text-muted-foreground animate-pulse">Loading state-wide registry...</div>}>
             <AdminWasteCollectionDetailsContent />

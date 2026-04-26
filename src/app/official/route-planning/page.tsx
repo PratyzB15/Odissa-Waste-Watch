@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -6,6 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, doc, setDoc, query } from "firebase/firestore";
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -32,7 +33,12 @@ import { khordhaDistrictData } from "@/lib/disKhordha";
 import { koraputDistrictData } from "@/lib/disKoraput";
 import { mayurbhanjDistrictData } from "@/lib/disMayurbhanj";
 import { malkangiriDistrictData } from "@/lib/disMalkangiri";
+import { rayagadaDistrictData } from "@/lib/disRayagada";
+import { nabarangpurDistrictData } from "@/lib/disNabarangpur";
+import { nayagarhDistrictData } from "@/lib/disNayagarh";
+import { nuapadaDistrictData } from "@/lib/disNuapada";
 import { puriDistrictData } from "@/lib/disPuri";
+import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
 import { Navigation, Anchor, PlusCircle, Edit, Trash2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -65,6 +71,9 @@ function DistrictRoutePlanningContent() {
   const role = searchParams.get('role');
   const isAuthorized = role === 'block' || role === 'district';
 
+  const db = useFirestore();
+  const { data: firestoreRoutes = [] } = useCollection(db ? query(collection(db, 'routePlans')) : null);
+
   const [mounted, setMounted] = useState(false);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -87,21 +96,29 @@ function DistrictRoutePlanningContent() {
       'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
       'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'khordha': khordhaDistrictData,
       'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData,
-      'puri': puriDistrictData
+      'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
+      'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
     };
     
     const source = districtsMap[districtName.toLowerCase()];
     if (!source) return;
 
     let initialRoutes = [...(source.data.routes || [])];
-    const enriched = initialRoutes.filter((r: any) => !blockParam || (r.block || "").toLowerCase().includes(blockParam.toLowerCase())).map((r: any) => ({
-        ...r,
-        ulbName: r.ulbName || r.destination || 'District ULB',
-        block: r.block || 'District Block',
-        scheduleDisplay: r.scheduledOn || r.collectionSchedule || 'Scheduled'
-    }));
+    const enriched = initialRoutes.filter((r: any) => !blockParam || (r.block || "").toLowerCase().includes(blockParam.toLowerCase())).map((r: any) => {
+        const override = firestoreRoutes.find((f: any) => f.routeId === r.routeId && f.district === districtName);
+        return {
+            ...r,
+            ulbName: override?.ulbName || r.ulbName || r.destination || 'District ULB',
+            block: override?.block || r.block || 'District Block',
+            startingGp: override?.startingGp || r.startingGp,
+            finalGp: override?.finalGp || r.finalGp,
+            destination: override?.destination || r.destination,
+            totalDistance: override?.totalDistance || r.totalDistance,
+            scheduleDisplay: override?.scheduleDisplay || r.scheduledOn || r.collectionSchedule || 'Scheduled'
+        };
+    });
     setRoutes(enriched);
-  }, [districtName, blockParam]);
+  }, [districtName, blockParam, firestoreRoutes]);
 
   const handleOpenAddDialog = () => {
     setEditingRoute(null);
@@ -125,29 +142,23 @@ function DistrictRoutePlanningContent() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string | number) => {
-    setRoutes(prev => prev.filter(r => r.id !== id));
-    toast({ title: "Route Removed", description: "Logistical circuit deleted." });
-  };
+  const handleSubmit = async () => {
+    if (!db) return;
+    const compositeId = `${districtName}-${formData.routeId}`.toLowerCase().replace(/\s+/g, '-');
 
-  const handleSubmit = () => {
-    const newRoute: Route = {
+    await setDoc(doc(db, 'routePlans', compositeId), {
         ...formData,
-        id: editingRoute ? editingRoute.id : Date.now(),
+        district: districtName,
         intermediateGps: formData.intermediateGps.split(',').map(s => s.trim()).filter(Boolean),
-        totalDistance: parseFloat(formData.totalDistance) || 0
-    };
-    if (editingRoute) {
-        setRoutes(prev => prev.map(r => r.id === editingRoute.id ? newRoute : r));
-        toast({ title: "Update Successful", description: "Route plan synchronized." });
-    } else {
-        setRoutes(prev => [...prev, newRoute]);
-        toast({ title: "New Route Added", description: "Added to district registry." });
-    }
+        totalDistance: parseFloat(formData.totalDistance) || 0,
+        updatedAt: new Date().toISOString()
+    }, { merge: true });
+
+    toast({ title: "Sync Successful", description: "Route plan synchronized across all portals." });
     setIsDialogOpen(false);
   };
 
-  if (!mounted || !districtName) return <div className="p-12 text-center animate-pulse">Syncing route directory...</div>;
+  if (!mounted || !districtName) return null;
 
   return (
     <div className="space-y-6">
@@ -193,7 +204,7 @@ function DistrictRoutePlanningContent() {
                         <TableCell className="border text-center">
                             <div className="flex justify-center gap-2">
                                 <Button size="icon" variant="outline" className="h-8 w-8 text-primary" onClick={() => handleOpenEditDialog(route)}><Edit className="h-4 w-4" /></Button>
-                                <Button size="icon" variant="outline" className="h-8 w-8 text-destructive" onClick={() => handleDelete(route.id)}><Trash2 className="h-4 w-4" /></Button>
+                                <Button size="icon" variant="outline" className="h-8 w-8 text-destructive" disabled><Trash2 className="h-4 w-4" /></Button>
                             </div>
                         </TableCell>
                       )}
@@ -206,10 +217,24 @@ function DistrictRoutePlanningContent() {
           </ScrollArea>
         </CardContent>
       </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle className="text-xl font-black uppercase text-primary">Edit Route Plan</DialogTitle></DialogHeader>
+            <div className="grid grid-cols-2 gap-6 py-6">
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Starting GP</Label><Input value={formData.startingGp} onChange={e => setFormData({...formData, startingGp: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Final GP</Label><Input value={formData.finalGp} onChange={e => setFormData({...formData, finalGp: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Destination (MRF)</Label><Input value={formData.destination} onChange={e => setFormData({...formData, destination: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Distance (Km)</Label><Input type="number" value={formData.totalDistance} onChange={e => setFormData({...formData, totalDistance: e.target.value})} /></div>
+                <div className="space-y-2 col-span-2"><Label className="text-[10px] font-black uppercase">Schedule</Label><Input value={formData.scheduleDisplay} onChange={e => setFormData({...formData, scheduleDisplay: e.target.value})} /></div>
+            </div>
+            <DialogFooter><Button onClick={handleSubmit} className="font-black uppercase px-8">Sync Route</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 export default function DistrictRoutePlanningPage() {
-  return (<Suspense fallback={<div className="p-12 text-center">Loading route intelligence...</div>}><DistrictRoutePlanningContent /></Suspense>);
+  return (<Suspense fallback={<div>Loading...</div>}><DistrictRoutePlanningContent /></Suspense>);
 }
