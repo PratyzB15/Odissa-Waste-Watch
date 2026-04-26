@@ -82,8 +82,16 @@ import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
 const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#7c3aed', '#64748b'];
 
+/**
+ * High-Precision Temporal Arrival Engine
+ * Correctly resolves:
+ * - Simple Weekdays (Monday)
+ * - Fixed Dates (1st, 15th)
+ * - Nth Weekdays (1st Thursday, Friday of 2nd week, 3rd wednesday)
+ */
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
+    
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const s = schedule.toLowerCase().replace(/\s+/g, ' ');
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -102,20 +110,45 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         return null;
     };
 
-    const nthMatch = s.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i);
+    // 1. Handle "Nth [Weekday]" or "[Weekday] of Nth week"
+    const nthMatch = s.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) || 
+                     s.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+of\s+(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
+    
     if (nthMatch) {
-        const n = ordinals[nthMatch[1]];
-        const dayIdx = weekdays.indexOf(nthMatch[2]);
+        let n, dayName;
+        if (weekdays.includes(nthMatch[1])) { // "[Weekday] of Nth"
+            dayName = nthMatch[1];
+            n = ordinals[nthMatch[2]];
+        } else { // "Nth [Weekday]"
+            n = ordinals[nthMatch[1]];
+            dayName = nthMatch[2];
+        }
+        const dayIdx = weekdays.indexOf(dayName);
+        
         let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
+        // If the target in current month is already past
         if (!target || target < today) {
-            let nextM = today.getMonth() + 1;
-            let nextY = today.getFullYear();
-            if (nextM > 11) { nextM = 0; nextY++; }
-            target = getNthWeekday(nextY, nextM, dayIdx, n);
+            let nextMonth = today.getMonth() + 1;
+            let nextYear = today.getFullYear();
+            if (nextMonth > 11) { nextMonth = 0; nextYear++; }
+            target = getNthWeekday(nextYear, nextMonth, dayIdx, n);
         }
         if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     }
 
+    // 2. Handle Fixed Dates (e.g., "1st & 15th")
+    const dayMatches = s.match(/(\d+)/g);
+    if (dayMatches && !s.includes('week')) {
+        const days = dayMatches.map(Number).sort((a, b) => a - b);
+        const nextDay = days.find(d => d >= today.getDate());
+        if (nextDay === today.getDate()) return 0;
+        if (nextDay) return nextDay - today.getDate();
+        
+        const lastDayThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        return (lastDayThisMonth - today.getDate()) + days[0];
+    }
+
+    // 3. Handle Simple Weekdays
     let minDays = 999;
     weekdays.forEach((day, i) => {
         if (s.includes(day)) {
@@ -202,11 +235,7 @@ function BlockDashboardContent() {
                 startGp: route.startingGp,
                 endGp: route.finalGp || route.destination
             };
-        }).sort((a: any, b: any) => {
-            if (a.isActiveToday && !b.isActiveToday) return -1;
-            if (!a.isActiveToday && b.isActiveToday) return 1;
-            return a.daysLeft - b.daysLeft;
-        });
+        }).sort((a: any, b: any) => a.daysLeft - b.daysLeft); // Ascending order sort
 
         const sortedGps = [...flatGpsList].sort((a, b) => b.collected - a.collected);
         
@@ -345,8 +374,8 @@ function BlockDashboardContent() {
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
-                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 py-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><ListFilter className="h-4 w-4 text-primary" /> Nodal Activity Status</CardTitle></CardHeader><CardContent className="h-[350px] pt-8"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={data.activeSummary} margin={{ left: 20, right: 30 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} /><XAxis type="number" fontSize={10} /><YAxis dataKey="name" type="category" fontSize={10} fontWeights="black" width={80} /><Tooltip content={<CustomActiveTooltip />} /><Bar dataKey="value" name="Nodes" radius={[0, 4, 4, 0]} barSize={50} /></BarChart></ResponsiveContainer></CardContent></Card>
-                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 pb-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><PieIcon className="h-5 w-5 text-primary" /> Waste Stream Composition (%)</CardTitle></CardHeader><CardContent className="h-[350px] pt-6"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data.compositionData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">{data.compositionData.map((entry, index) => <Cell key={index} fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} />)}</Pie><Tooltip /><RechartsLegend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 'bold'}} /></PieChart></ResponsiveContainer></CardContent></Card>
+                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 py-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><ListFilter className="h-4 w-4 text-primary" /> Nodal Activity Status</CardTitle></CardHeader><CardContent className="h-[350px] pt-8"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={data.activeSummary} margin={{ left: 20, right: 30 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} /><XAxis type="number" fontSize={10} /><YAxis dataKey="name" type="category" fontSize={10} fontWeights="black" width={80} /><Tooltip content={<CustomActiveTooltip />} /><Bar dataKey="value" name="Nodes" radius={[0, 4, 4, 0]} barSize={50} /></BarChart></ResponsiveContainer></CardContent>
+                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 pb-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><PieIcon className="h-5 w-5 text-primary" /> Waste Stream Composition (%)</CardTitle></CardHeader><CardContent className="h-[350px] pt-6"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data.compositionData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">{data.compositionData.map((entry, index) => <Cell key={index} fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} />)}</Pie><Tooltip /><RechartsLegend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 'bold'}} /></PieChart></ResponsiveContainer></CardContent>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
