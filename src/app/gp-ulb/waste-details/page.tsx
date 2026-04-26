@@ -232,15 +232,14 @@ function GpUlbWasteDetailsContent() {
                         return d.getFullYear().toString() === year && d.toLocaleString('default', { month: 'long' }) === month;
                     });
 
-                    // Start from April for 2026 as per context
                     if (year === '2026' && mIdx < 3) return null;
 
-                    const monthVerified = monthRecords.reduce((sum, r) => sum + r.driverSubmitted, 0);
+                    const monthVerified = monthRecords.reduce((sum, r) => sum + (r.driverSubmitted || 0), 0);
                     const discrepancy = baselineAvg - monthVerified;
                     const efficiency = baselineAvg > 0 ? (monthVerified / baselineAvg) * 100 : 0;
 
                     return (
-                        <AccordionItem value={month} key={month} className="border-none">
+                        <AccordionItem value={`${year}-${month}`} key={`${year}-${month}`} className="border-none">
                             <Card className="overflow-hidden border-2 shadow-xl">
                                 <AccordionTrigger className="p-6 hover:no-underline bg-muted/10 data-[state=open]:bg-primary/5 transition-all border-b border-dashed group">
                                     <div className="flex justify-between w-full pr-8 items-center">
@@ -260,18 +259,17 @@ function GpUlbWasteDetailsContent() {
                                                 <TableHeader className="bg-muted/80">
                                                     <TableRow>
                                                         <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
-                                                        <TableHead className="w-[120px] uppercase font-black border text-center">District</TableHead>
-                                                        <TableHead className="w-[120px] uppercase font-black border text-center">Block</TableHead>
-                                                        <TableHead className="w-[180px] uppercase font-black border">Tagged MRF</TableHead>
                                                         <TableHead className="w-[120px] uppercase font-black border text-center">Route ID</TableHead>
-                                                        <TableHead className="w-[150px] text-right uppercase font-black border bg-primary/5 text-primary">Total (Kg)</TableHead>
-                                                        <TableHead className="w-[90px] text-right uppercase font-black border">Plastic (gm)</TableHead>
+                                                        <TableHead className="w-[180px] uppercase font-black border">Facility (MRF)</TableHead>
+                                                        <TableHead className="w-[200px] uppercase font-black border text-right px-6 bg-blue-50/20">Total Waste from GPs (Click)</TableHead>
+                                                        <TableHead className="w-[150px] text-right uppercase font-black border bg-primary/5 text-primary">Driver Submitted (Kg)</TableHead>
+                                                        <TableHead className="w-[120px] text-right uppercase font-black border bg-destructive/5 text-destructive">Discrepancy</TableHead>
+                                                        <TableHead className="w-[90px] text-right uppercase font-black border">Plastic</TableHead>
                                                         <TableHead className="w-[90px] text-right uppercase font-black border">Paper</TableHead>
                                                         <TableHead className="w-[90px] text-right uppercase font-black border">Metal</TableHead>
                                                         <TableHead className="w-[90px] text-right uppercase font-black border">Cloth</TableHead>
                                                         <TableHead className="w-[90px] text-right uppercase font-black border">Glass</TableHead>
                                                         <TableHead className="w-[90px] text-right uppercase font-black border">Sanitation</TableHead>
-                                                        <TableHead className="w-[90px] text-right uppercase font-black border">Others</TableHead>
                                                         <TableHead className="w-[100px] uppercase font-black border text-center">Actions</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
@@ -279,18 +277,37 @@ function GpUlbWasteDetailsContent() {
                                                     {monthRecords.map((row) => (
                                                         <TableRow key={row.id} className="hover:bg-primary/[0.01] border-b last:border-0 h-16 transition-colors">
                                                             <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
-                                                            <TableCell className="border-r text-center uppercase font-bold text-muted-foreground">{row.district}</TableCell>
-                                                            <TableCell className="border-r text-center uppercase font-bold text-muted-foreground">{row.block}</TableCell>
-                                                            <TableCell className="border-r font-bold uppercase">{row.mrf}</TableCell>
                                                             <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
-                                                            <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02] text-sm">{row.driverSubmitted.toFixed(1)} KG</TableCell>
+                                                            <TableCell className="border-r font-bold uppercase">{row.mrf}</TableCell>
+                                                            <TableCell className="border-r p-0">
+                                                                <Popover>
+                                                                    <PopoverTrigger asChild>
+                                                                        <button className="w-full h-16 flex items-center justify-end px-6 font-bold text-blue-700 hover:bg-blue-50 transition-all underline decoration-dotted underline-offset-4">
+                                                                            {row.totalGpLoad?.toFixed(1)} KG
+                                                                        </button>
+                                                                    </PopoverTrigger>
+                                                                    <PopoverContent className="w-72 p-0 border-2 shadow-2xl overflow-hidden" align="end">
+                                                                        <div className="bg-blue-700 text-white p-3 font-black uppercase text-[9px] tracking-widest flex items-center gap-2">
+                                                                            <MapPin className="h-3 w-3" /> GP Contribution Breakdown
+                                                                        </div>
+                                                                        <Table>
+                                                                            <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[8px] uppercase font-black">GP Node</TableHead><TableHead className="text-[8px] uppercase font-black text-right">Load (Kg)</TableHead></TableRow></TableHeader>
+                                                                            <TableBody>
+                                                                                {row.gpBreakdown?.map((gp: any, i: number) => (
+                                                                                    <TableRow key={i} className="h-10 border-b border-dashed last:border-0"><TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell><TableCell className="text-right font-mono font-black text-blue-700">{gp.amount?.toFixed(1)}</TableCell></TableRow>                                                                                                ))}
+                                                                            </TableBody>
+                                                                        </Table>
+                                                                    </PopoverContent>
+                                                                </Popover>
+                                                            </TableCell>
+                                                            <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02] text-sm">{row.driverSubmitted?.toFixed(1)} KG</TableCell>
+                                                            <TableCell className="border-r text-right font-mono font-black text-destructive">{(row.totalGpLoad - row.driverSubmitted).toFixed(1)} KG</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.paper}</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.metal}</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
-                                                            <TableCell className="border-r text-right font-mono">{row.others || 0}</TableCell>
                                                             <TableCell className="border text-center">
                                                                 <div className="flex justify-center gap-1">
                                                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => handleOpenEditDialog(row)}><Edit className="h-3 w-3"/></Button>
@@ -305,7 +322,7 @@ function GpUlbWasteDetailsContent() {
                                         <ScrollBar orientation="horizontal" />
                                     </ScrollArea>
 
-                                    {/* High Fidelity Summary Blocks matching the reference image */}
+                                    {/* High Fidelity Summary Blocks */}
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6 bg-muted/5 border-t">
                                         <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm transition-transform hover:scale-[1.02]">
                                             <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">ULB Load on Avg (Month)</p>
@@ -337,7 +354,6 @@ function GpUlbWasteDetailsContent() {
                     <CardTitle className="text-4xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-4">
                         <BarChart3 className="h-12 w-12" /> Yearly Professional Audit: {year}
                     </CardTitle>
-                    <CardDescription className="text-xs font-black uppercase opacity-60">Consolidated logistical performance and stream-wise recovery metrics.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                     <ScrollArea className="w-full">
@@ -373,12 +389,12 @@ function GpUlbWasteDetailsContent() {
                                           routesMap.set(id, {
                                               ...prev,
                                               count: prev.count + 1,
-                                              received: prev.received + r.driverSubmitted,
-                                              paper: prev.paper + r.paper,
-                                              plastic: prev.plastic + r.plastic,
-                                              metal: prev.metal + r.metal,
-                                              glass: prev.glass + r.glass,
-                                              sani: prev.sani + r.sanitation,
+                                              received: prev.received + (r.driverSubmitted || 0),
+                                              paper: prev.paper + (r.paper || 0),
+                                              plastic: prev.plastic + (r.plastic || 0),
+                                              metal: prev.metal + (r.metal || 0),
+                                              glass: prev.glass + (r.glass || 0),
+                                              sani: prev.sani + (r.sanitation || 0),
                                               other: prev.other + (r.others || 0)
                                           });
                                       });
