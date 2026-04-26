@@ -22,8 +22,12 @@ function OfficialDashboardContent() {
 
   const reportsQuery = useMemo(() => {
     if (!db) return null;
-    if (role === 'block') return query(collection(db, 'monthlyReports'), where('block', '==', block), where('status', '==', 'Pending Block Approval'));
-    if (role === 'district') return query(collection(db, 'monthlyReports'), where('district', '==', district), where('status', '==', 'Approved'));
+    if (role === 'block') {
+        return query(collection(db, 'monthlyReports'), where('block', '==', block), where('status', '==', 'Pending Block Approval'));
+    }
+    if (role === 'district') {
+        return query(collection(db, 'monthlyReports'), where('district', '==', district), where('status', '==', 'Approved'));
+    }
     return null;
   }, [db, role, block, district]);
 
@@ -45,7 +49,7 @@ function OfficialDashboardContent() {
             <CardHeader className="bg-primary/5 border-b">
                 <CardTitle className="flex items-center gap-3 text-3xl font-black uppercase tracking-tight text-primary">
                     <ShieldCheck className="h-10 w-10" />
-                    {role === 'block' ? `Block Approval Hub: ${block}` : `District Oversight: ${district}`}
+                    {role === 'block' ? `Block Approval Hub: ${block}` : `District Approved Reports: ${district}`}
                 </CardTitle>
                 <CardDescription className="text-lg font-bold">Verified queue of reports synced from constituent ULB facilities.</CardDescription>
             </CardHeader>
