@@ -188,7 +188,10 @@ function WasteReceiptGenerationContent() {
       mrf: routeData.mrf,
       block: routeData.block,
       district: routeData.district,
-      totalGpLoad: totalCollected, // This simulates the GP load for the trip
+      submittedByRole: 'driver',
+      driverName: name,
+      driverContact: phone,
+      totalGpLoad: totalCollected,
       driverSubmitted: totalCollected, 
       plastic: parseFloat(formData.plastic) || 0,
       paper: parseFloat(formData.paper) || 0,
@@ -196,14 +199,13 @@ function WasteReceiptGenerationContent() {
       glass: parseFloat(formData.glass) || 0,
       sanitation: parseFloat(formData.sanitation) || 0,
       others: parseFloat(formData.others) || 0,
-      gpBreakdown: gpList
+      gpBreakdown: gpList,
+      submittedAt: new Date().toISOString()
     };
 
     try {
       await addDoc(collection(db, 'wasteDetails'), payload);
       toast({ title: "Receipt Generated", description: "Logistical circuit marked as COMPLETED and synced with ULB Hub." });
-      setFormData({ dateOfCollection: new Date().toISOString().split('T')[0], plastic: '', paper: '', metal: '', glass: '', sanitation: '', others: '' });
-      setGpWeights({});
       router.push(`/civilian?${searchParams.toString()}`);
     } catch (err) {
       toast({ title: "Submission Failed", description: "Error syncing with master ledger.", variant: "destructive" });
@@ -217,7 +219,6 @@ function WasteReceiptGenerationContent() {
 
   return (
     <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-8">
-      {/* Left Pane: AI Extraction Assistant */}
       <div className="lg:col-span-4 space-y-6">
         <Card className="border-2 border-primary/20 shadow-lg bg-primary/[0.02]">
             <CardHeader className="pb-4">
@@ -243,32 +244,10 @@ function WasteReceiptGenerationContent() {
                         <p className="text-[9px] text-muted-foreground mt-1">PNG, JPG up to 10MB</p>
                     </div>
                 </div>
-                <div className="p-4 bg-background border rounded-xl space-y-2">
-                    <p className="text-[9px] font-black uppercase text-muted-foreground flex items-center gap-1">
-                        <FileSearch className="h-3 w-3" /> Extraction Status
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <div className={`h-1.5 w-1.5 rounded-full ${isExtracting ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
-                        <span className="text-[10px] font-bold">{isExtracting ? 'Processing optical character recognition...' : 'Ready for upload'}</span>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-        
-        <Card className="border-2 border-dashed bg-muted/20">
-            <CardContent className="py-6 flex items-start gap-4">
-                <Info className="h-5 w-5 text-primary mt-1 shrink-0" />
-                <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-tight">System Guidance</p>
-                    <p className="text-[9px] text-muted-foreground font-medium italic leading-relaxed">
-                        Ensure the photo is clear and all fields (Weights, GP names, Dates) are legible. The AI will cross-reference extracted names with your assigned route: {routeData.routeName}.
-                    </p>
-                </div>
             </CardContent>
         </Card>
       </div>
 
-      {/* Right Pane: Main Form */}
       <div className="lg:col-span-8">
         <Card className="border-2 shadow-xl border-primary/20 overflow-hidden">
             <CardHeader className="bg-primary/5 border-b pb-6">
@@ -280,7 +259,6 @@ function WasteReceiptGenerationContent() {
             
             <ScrollArea className="h-[75vh]">
                 <CardContent className="p-8 space-y-10">
-                    {/* Section 1: Metadata */}
                     <div className="space-y-4">
                         <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
                             <Route className="h-3 w-3 text-primary" /> Logistical Circuit Context
@@ -305,13 +283,8 @@ function WasteReceiptGenerationContent() {
                                 <Input id="dateOfCollection" type="date" value={formData.dateOfCollection} onChange={handleInputChange} className="font-bold" />
                             </div>
                         </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Tagged MRF</Label>
-                            <Input value={routeData.mrf.toUpperCase()} disabled className="font-black text-primary border-primary/20" />
-                        </div>
                     </div>
 
-                    {/* Section 2: GP-wise Weights (Requested Box) */}
                     <div className="space-y-4">
                         <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
                             <MapPin className="h-3 w-3 text-primary" /> GP-wise Collection Breakdown (Kg)
@@ -328,7 +301,7 @@ function WasteReceiptGenerationContent() {
                                         placeholder="0.0" 
                                         value={gpWeights[gp] || ''} 
                                         onChange={(e) => handleGpWeightChange(gp, e.target.value)}
-                                        className="w-32 h-9 font-mono font-black text-right border-primary/10 focus:border-primary transition-all"
+                                        className="w-32 h-9 font-mono font-black text-right"
                                     />
                                 </div>
                             ))}
@@ -340,42 +313,23 @@ function WasteReceiptGenerationContent() {
                         </div>
                     </div>
 
-                    {/* Section 3: Material Streams */}
                     <div className="space-y-4">
                         <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
                             <ListPlus className="h-3 w-3 text-primary" /> Material Stream Distribution (Kg)
                         </h3>
                         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="plastic" className="text-[9px] font-black uppercase opacity-60">Plastic</Label>
-                                <Input id="plastic" type="number" placeholder="0.0" value={formData.plastic} onChange={handleInputChange} className="font-mono font-bold" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="paper" className="text-[9px] font-black uppercase opacity-60">Paper</Label>
-                                <Input id="paper" type="number" placeholder="0.0" value={formData.paper} onChange={handleInputChange} className="font-mono font-bold" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="metal" className="text-[9px] font-black uppercase opacity-60">Metal</Label>
-                                <Input id="metal" type="number" placeholder="0.0" value={formData.metal} onChange={handleInputChange} className="font-mono font-bold" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="glass" className="text-[9px] font-black uppercase opacity-60">Glass</Label>
-                                <Input id="glass" type="number" placeholder="0.0" value={formData.glass} onChange={handleInputChange} className="font-mono font-bold" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="sanitation" className="text-[9px] font-black uppercase opacity-60">Sanitation</Label>
-                                <Input id="sanitation" type="number" placeholder="0.0" value={formData.sanitation} onChange={handleInputChange} className="font-mono font-bold" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="others" className="text-[9px] font-black uppercase opacity-60">Others</Label>
-                                <Input id="others" type="number" placeholder="0.0" value={formData.others} onChange={handleInputChange} className="font-mono font-bold" />
-                            </div>
+                            {['plastic', 'paper', 'metal', 'glass', 'sanitation', 'others'].map(item => (
+                                <div key={item} className="space-y-1.5">
+                                    <Label htmlFor={item} className="text-[9px] font-black uppercase opacity-60">{item}</Label>
+                                    <Input id={item} type="number" placeholder="0.0" value={formData[item as keyof typeof formData]} onChange={handleInputChange} className="font-mono font-bold" />
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </CardContent>
             </ScrollArea>
             <CardFooter className="bg-primary/5 border-t p-6">
-                <Button onClick={handleSubmit} disabled={totalCollected === 0 || isExtracting || isSubmitting} className="w-full h-14 text-lg font-black uppercase tracking-[0.1em] shadow-xl hover:scale-[1.01] transition-all">
+                <Button onClick={handleSubmit} disabled={totalCollected === 0 || isExtracting || isSubmitting} className="w-full h-14 text-lg font-black uppercase tracking-widest shadow-xl">
                     {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2 h-6 w-6" />}
                     Finalize & Submit Verified Receipt
                 </Button>

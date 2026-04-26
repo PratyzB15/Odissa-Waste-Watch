@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { UploadCloud, Loader2, Save, Sparkles, FileSearch, Info, FileText, Route } from 'lucide-react';
+import { UploadCloud, Loader2, Save, Sparkles, FileSearch, Info, FileText } from 'lucide-react';
 import React, { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { extractWasteReceiptData } from '@/ai/flows/invoice-data-extraction';
@@ -85,6 +85,8 @@ function WasteReceiptGenerationContent() {
         block: formData.block,
         mrf: formData.taggedMrf,
         routeId: formData.routeId,
+        submittedByRole: 'gp',
+        gpName: searchParams.get('gp') || 'Nodal GP',
         driverSubmitted: parseFloat(formData.totalKg) || 0,
         totalGpLoad: parseFloat(formData.totalKg) || 0,
         plastic: parseFloat(formData.plasticGm) || 0,
@@ -93,7 +95,8 @@ function WasteReceiptGenerationContent() {
         glass: parseFloat(formData.glass) || 0,
         sanitation: parseFloat(formData.sanitation) || 0,
         others: parseFloat(formData.others) || 0,
-        gpBreakdown: [{ name: searchParams.get('gp') || 'Nodal GP', amount: parseFloat(formData.totalKg) || 0 }]
+        gpBreakdown: [{ name: searchParams.get('gp') || 'Nodal GP', amount: parseFloat(formData.totalKg) || 0 }],
+        submittedAt: new Date().toISOString()
       });
       toast({ title: "Receipt Generated", description: "Data synced with master ledger." });
       router.push(`/gp-ulb?${searchParams.toString()}`);
@@ -108,7 +111,6 @@ function WasteReceiptGenerationContent() {
 
   return (
     <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-8">
-      {/* Left Pane: AI Upload */}
       <div className="lg:col-span-4 space-y-6">
         <Card className="border-2 border-primary/20 shadow-lg bg-primary/[0.02]">
             <CardHeader><CardTitle className="text-sm font-black uppercase flex items-center gap-2 text-primary"><Sparkles className="h-4 w-4" /> AI Receipt Assistant</CardTitle></CardHeader>
@@ -120,15 +122,10 @@ function WasteReceiptGenerationContent() {
                     </div>
                     <p className="text-xs font-black uppercase text-primary">{isExtracting ? 'Extracting...' : 'Upload Receipt Photo'}</p>
                 </div>
-                <div className="p-4 bg-background border rounded-xl space-y-2">
-                    <p className="text-[9px] font-black uppercase text-muted-foreground flex items-center gap-1"><FileSearch className="h-3 w-3" /> Extraction Status</p>
-                    <div className="flex items-center gap-2"><div className={`h-1.5 w-1.5 rounded-full ${isExtracting ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} /><span className="text-[10px] font-bold">{isExtracting ? 'Processing OCR...' : 'Ready'}</span></div>
-                </div>
             </CardContent>
         </Card>
       </div>
 
-      {/* Right Pane: Form */}
       <div className="lg:col-span-8">
         <Card className="border-2 shadow-xl border-primary/20">
             <CardHeader className="bg-primary/5 border-b pb-6"><CardTitle className="text-xl font-black uppercase flex items-center gap-2"><FileText className="h-6 w-6" /> Waste Receipt Generation</CardTitle></CardHeader>
@@ -139,12 +136,6 @@ function WasteReceiptGenerationContent() {
                 <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Tagged MRF</Label><Input value={formData.taggedMrf} onChange={e => setFormData({...formData, taggedMrf: e.target.value})} className="font-bold" /></div>
                 <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Route ID</Label><Input value={formData.routeId} onChange={e => setFormData({...formData, routeId: e.target.value})} className="font-mono font-bold" /></div>
                 <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Total (Kg)</Label><Input type="number" value={formData.totalKg} onChange={e => setFormData({...formData, totalKg: e.target.value})} className="font-mono font-bold" /></div>
-                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Plastic (gm)</Label><Input type="number" value={formData.plasticGm} onChange={e => setFormData({...formData, plasticGm: e.target.value})} className="font-mono font-bold" /></div>
-                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Paper</Label><Input type="number" value={formData.paper} onChange={e => setFormData({...formData, paper: e.target.value})} className="font-mono font-bold" /></div>
-                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Metal</Label><Input type="number" value={formData.metal} onChange={e => setFormData({...formData, metal: e.target.value})} className="font-mono font-bold" /></div>
-                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Glass</Label><Input type="number" value={formData.glass} onChange={e => setFormData({...formData, glass: e.target.value})} className="font-mono font-bold" /></div>
-                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Sanitation</Label><Input type="number" value={formData.sanitation} onChange={e => setFormData({...formData, sanitation: e.target.value})} className="font-mono font-bold" /></div>
-                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Others</Label><Input type="number" value={formData.others} onChange={e => setFormData({...formData, others: e.target.value})} className="font-mono font-bold" /></div>
             </CardContent>
             <CardFooter className="bg-primary/5 border-t p-6">
                 <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full h-12 font-black uppercase tracking-widest shadow-lg">

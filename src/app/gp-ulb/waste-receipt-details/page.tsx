@@ -11,8 +11,6 @@ import {
   LayoutGrid, 
   ClipboardList,
   MapPin,
-  FileText,
-  Route as RouteIcon
 } from 'lucide-react';
 import React, { useMemo, Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -30,20 +28,22 @@ const FISCAL_YEARS = ["2026", "2027"];
 
 function WasteReceiptSubmissionContent() {
   const searchParams = useSearchParams();
-  const ulbParam = searchParams.get('ulb') || 'Facility Node';
+  const ulbParam = searchParams.get('ulb') || '';
   const [mounted, setMounted] = useState(false);
   const db = useFirestore();
 
   useEffect(() => { setMounted(true); }, []);
 
-  const wasteQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), where('mrf', '==', ulbParam), orderBy('date', 'desc')) : null, [db, ulbParam]);
+  const wasteQuery = useMemo(() => {
+    if (!db || !ulbParam) return null;
+    return query(collection(db, 'wasteDetails'), where('mrf', '==', ulbParam), orderBy('date', 'desc'));
+  }, [db, ulbParam]);
+  
   const { data: records = [] } = useCollection(wasteQuery);
-
-  if (!mounted) return null;
 
   const calculateTotals = (items: any[]) => {
     return items.reduce((acc, curr) => ({
-      total: acc.total + (curr.driverSubmitted || curr.totalGpLoad || 0),
+      total: acc.total + (curr.driverSubmitted || 0),
       plastic: acc.plastic + (curr.plastic || 0),
       paper: acc.paper + (curr.paper || 0),
       metal: acc.metal + (curr.metal || 0),
@@ -54,6 +54,8 @@ function WasteReceiptSubmissionContent() {
     }), { total: 0, plastic: 0, paper: 0, metal: 0, cloth: 0, glass: 0, sanitation: 0, others: 0 });
   };
 
+  if (!mounted) return null;
+
   return (
     <div className="space-y-12">
       <Card className="border-2 border-primary/20 bg-primary/[0.01] shadow-md">
@@ -62,7 +64,7 @@ function WasteReceiptSubmissionContent() {
             <ClipboardList className="h-8 w-8 text-primary" />
             <div>
               <CardTitle className="text-2xl font-headline font-black uppercase tracking-tight text-primary">Waste Receipt Submission Hub</CardTitle>
-              <CardDescription className="font-bold italic">Authoritative chronological repository for verified submissions.</CardDescription>
+              <CardDescription className="font-bold italic">Authoritative repository for verified circuit submissions.</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -77,20 +79,16 @@ function WasteReceiptSubmissionContent() {
           
           <Accordion type="single" collapsible className="w-full space-y-6">
             {MONTHS.map((month, mIdx) => {
-              // Segregate records for this month and year
               const monthItems = records.filter(r => {
                 if (!r.date) return false;
                 const d = new Date(r.date);
                 return d.getFullYear().toString() === year && d.toLocaleString('default', { month: 'long' }) === month;
               });
 
-              // Apply April start rule for 2026
               if (year === '2026' && mIdx < 3) return null;
 
-              // Distinguish Driver vs GP submissions
-              // Driver submissions typically have a breakdown of multiple GPs or are marked accordingly
-              const driverReceipts = monthItems.filter((r: any) => r.gpBreakdown?.length > 1 || (!r.district && !r.block));
-              const gpReceipts = monthItems.filter((r: any) => r.gpBreakdown?.length === 1 && r.district);
+              const driverReceipts = monthItems.filter((r: any) => r.submittedByRole === 'driver');
+              const gpReceipts = monthItems.filter((r: any) => r.submittedByRole === 'gp');
               
               const driverTotals = calculateTotals(driverReceipts);
               const gpTotals = calculateTotals(gpReceipts);
@@ -111,7 +109,6 @@ function WasteReceiptSubmissionContent() {
                       </AccordionTrigger>
                       <AccordionContent className="p-6 space-y-12 bg-background">
                          
-                         {/* SUBMISSIONS FROM DRIVER PORTAL */}
                          <Card className="border-2 shadow-sm overflow-hidden">
                             <CardHeader className="bg-primary/5 border-b py-3 flex flex-row items-center justify-between">
                                <div className="flex items-center gap-2">
@@ -141,13 +138,13 @@ function WasteReceiptSubmissionContent() {
                                         </TableHeader>
                                         <TableBody>
                                            {driverReceipts.map((row: any, i: number) => (
-                                             <TableRow key={i} className="h-14 border-b border-dashed last:border-0 hover:bg-muted/30 transition-colors">
+                                             <TableRow key={i} className="h-14 border-b border-dashed last:border-0 hover:bg-muted/30">
                                                 <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
                                                 <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
                                                 <TableCell className="border-r p-0">
                                                    <Popover>
                                                       <PopoverTrigger asChild>
-                                                         <button className="w-full h-14 flex items-center justify-end px-6 font-bold text-blue-700 hover:bg-blue-50 underline decoration-dotted underline-offset-4">
+                                                         <button className="w-full h-14 flex items-center justify-end px-6 font-bold text-blue-700 hover:bg-blue-50 underline decoration-dotted underline-offset-4 uppercase">
                                                             VIEW BREAKDOWN
                                                          </button>
                                                       </PopoverTrigger>
@@ -178,12 +175,8 @@ function WasteReceiptSubmissionContent() {
                                                 <TableCell className="text-center font-black text-muted-foreground opacity-30 italic">SYNC'D</TableCell>
                                              </TableRow>
                                            ))}
-                                           {driverReceipts.length === 0 && (
-                                              <TableRow><TableCell colSpan={11} className="h-20 text-center italic text-muted-foreground opacity-40 uppercase font-bold">No Driver Submissions for {month}</TableCell></TableRow>
-                                           )}
                                         </TableBody>
-                                        {driverReceipts.length > 0 && (
-                                          <TableFooter className="bg-primary/5 font-black uppercase text-[9px]">
+                                        <TableFooter className="bg-primary/5 font-black uppercase text-[9px]">
                                              <TableRow>
                                                 <TableCell colSpan={3} className="text-right border-r">Monthly Total (Driver):</TableCell>
                                                 <TableCell className="text-right border-r text-primary text-xs">{driverTotals.total.toFixed(1)}</TableCell>
@@ -196,7 +189,6 @@ function WasteReceiptSubmissionContent() {
                                                 <TableCell></TableCell>
                                              </TableRow>
                                           </TableFooter>
-                                        )}
                                      </Table>
                                   </div>
                                   <ScrollBar orientation="horizontal" />
@@ -204,7 +196,6 @@ function WasteReceiptSubmissionContent() {
                             </CardContent>
                          </Card>
 
-                         {/* SUBMISSIONS FROM GP PORTAL */}
                          <Card className="border-2 shadow-sm overflow-hidden">
                             <CardHeader className="bg-blue-50 border-b py-3 flex flex-row items-center justify-between">
                                <div className="flex items-center gap-2">
@@ -214,7 +205,7 @@ function WasteReceiptSubmissionContent() {
                                <Badge className="bg-blue-700 font-black text-[9px] uppercase">{gpReceipts.length} SYNC'D</Badge>
                             </CardHeader>
                             <CardContent className="p-0">
-                               <ScrollArea className="w-full rounded-b-xl">
+                               <ScrollArea className="w-full">
                                   <div className="min-w-[1600px]">
                                      <Table className="text-[10px]">
                                         <TableHeader className="bg-muted/50">
@@ -236,7 +227,7 @@ function WasteReceiptSubmissionContent() {
                                         </TableHeader>
                                         <TableBody>
                                            {gpReceipts.map((row: any, i: number) => (
-                                             <TableRow key={i} className="h-14 border-b border-dashed last:border-0 hover:bg-muted/30 transition-colors">
+                                             <TableRow key={i} className="h-14 border-b border-dashed last:border-0 hover:bg-muted/30">
                                                 <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
                                                 <TableCell className="border-r text-center uppercase font-bold text-muted-foreground">{row.district}</TableCell>
                                                 <TableCell className="border-r text-center uppercase font-bold text-muted-foreground">{row.block}</TableCell>
@@ -252,12 +243,8 @@ function WasteReceiptSubmissionContent() {
                                                 <TableCell className="text-center font-black text-muted-foreground opacity-30 italic">VERIFIED</TableCell>
                                              </TableRow>
                                            ))}
-                                           {gpReceipts.length === 0 && (
-                                              <TableRow><TableCell colSpan={13} className="h-20 text-center italic text-muted-foreground opacity-40 uppercase font-bold">No GP Submissions for {month}</TableCell></TableRow>
-                                           )}
                                         </TableBody>
-                                        {gpReceipts.length > 0 && (
-                                          <TableFooter className="bg-blue-50 font-black uppercase text-[9px] text-blue-800">
+                                        <TableFooter className="bg-blue-50 font-black uppercase text-[9px] text-blue-800">
                                              <TableRow>
                                                 <TableCell colSpan={5} className="text-right border-r">Monthly Total (GP):</TableCell>
                                                 <TableCell className="text-right border-r text-xs">{gpTotals.total.toFixed(1)}</TableCell>
@@ -270,7 +257,6 @@ function WasteReceiptSubmissionContent() {
                                                 <TableCell></TableCell>
                                              </TableRow>
                                           </TableFooter>
-                                        )}
                                      </Table>
                                   </div>
                                   <ScrollBar orientation="horizontal" />
@@ -286,23 +272,13 @@ function WasteReceiptSubmissionContent() {
           </Accordion>
         </div>
       ))}
-
-      <div className="bg-muted/20 border-l-4 border-primary p-6 rounded-r-xl shadow-inner flex items-start gap-4">
-        <FileText className="h-6 w-6 text-primary mt-0.5 shrink-0" />
-        <div className="space-y-1">
-          <p className="text-sm font-black uppercase tracking-tight">System Integrity Audit</p>
-          <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-            Submissions are automatically segregated by collection date into monthly temporal cards. Discrepancies between Driver and GP submissions are flagged for block-level reconciliation.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }
 
 export default function WasteReceiptSubmissionPage() {
   return (
-    <Suspense fallback={<div className="p-12 text-center text-muted-foreground animate-pulse">Loading verified submission hub...</div>}>
+    <Suspense fallback={<div className="p-12 text-center animate-pulse">Loading verified submission hub...</div>}>
       <WasteReceiptSubmissionContent />
     </Suspense>
   );
