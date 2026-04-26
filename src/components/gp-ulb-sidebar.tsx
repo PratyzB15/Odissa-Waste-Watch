@@ -3,7 +3,6 @@
 
 import {
   Home,
-  Trash2,
   FileText,
   User,
   Users,
@@ -34,7 +33,7 @@ const navItems = [
   { id: 'ulb-roster', href: '/gp-ulb/personnel-details', icon: Navigation, label: 'Route & Worker Roster', role: 'ulb' },
   { id: 'ulb-collection', href: '/gp-ulb/waste-collection-details', icon: ClipboardList, label: 'Waste Collection Details', role: 'ulb' },
   { id: 'ulb-requests', href: '/gp-ulb/personnel-requests', icon: MailWarning, label: 'Personnel Request & Complaints', role: 'ulb' },
-  { href: '/gp-ulb/waste-receipt-details', icon: FileText, label: 'Waste Receipt Details' },
+  { href: '/gp-ulb/invoice-details', icon: FileText, label: 'Waste Receipt Generation' },
   { href: '/gp-ulb/monthly-reporting', icon: FileText, label: 'Monthly Reporting' },
   { href: '/gp-ulb/personal-details', icon: User, label: 'Personal Details' },
 ];
