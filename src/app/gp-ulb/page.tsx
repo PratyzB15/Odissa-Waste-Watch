@@ -1,3 +1,4 @@
+
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -17,7 +18,9 @@ import {
   Building,
   Warehouse,
   ListFilter,
-  UserCircle
+  UserCircle,
+  ShieldCheck,
+  Contact2
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, useEffect } from "react";
@@ -148,13 +151,11 @@ function GpUlbDashboardContent() {
     const schedStr = sched?.collectionSchedule || matchedRoute?.scheduledOn || 'Scheduled';
     const days = calculateDaysUntilNext(schedStr, new Date());
 
-    // Filter Firestore records for this GP
     const gpRecords = allRecords.filter((r: any) => 
         (r.gpName && r.gpName.toLowerCase().trim() === gpName.toLowerCase().trim()) ||
         (r.gpBreakdown && r.gpBreakdown.some((g: any) => g.name.toLowerCase().trim() === gpName.toLowerCase().trim()))
     );
 
-    // MOCK DATA DEFAULTS (Until Real Data Exists)
     const hasData = gpRecords.length > 0;
     
     const weeklyData = [
@@ -193,7 +194,6 @@ function GpUlbDashboardContent() {
         { name: 'Plastic', value: 40 }, { name: 'Paper', value: 25 }, { name: 'Metal', value: 10 }, { name: 'Glass', value: 5 }, { name: 'Sanitation', value: 10 }, { name: 'Others', value: 10 }
     ];
 
-    // Discrepancy Logic
     const discrepancies = [];
     if (!matchedRoute) discrepancies.push({ id: 'route-null', msg: 'Logistical route not assigned by Block Cell.' });
     if (days === 0) {
@@ -263,19 +263,51 @@ function GpUlbDashboardContent() {
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">District</p><p className="text-sm font-black uppercase text-primary">{districtName}</p></Card>
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Block</p><p className="text-sm font-black uppercase text-primary">{ulbRealData.blocks}</p></Card>
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Tagged MRF</p><p className="text-sm font-black uppercase text-primary truncate">{ulbRealData.primary?.mrfId}</p></Card>
-                <Popover><PopoverTrigger asChild><Card className="border-2 shadow-sm p-4 cursor-pointer hover:bg-primary/5 transition-all group"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">GPs Tagged</p><p className="text-xl font-black text-primary underline">{ulbRealData.gpsCount} Nodes</p></Card></PopoverTrigger><PopoverContent className="w-64 p-0 border-2 shadow-2xl overflow-hidden"><h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center">GP Directory</h4><ScrollArea className="h-64"><div className="p-2 space-y-1">{ulbRealData.gpsList.map((g, i) => (<div key={i} className="p-2 text-[10px] font-bold uppercase border-b border-dashed">{g.name}</div>))}</div></ScrollArea></PopoverContent></Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Card className="border-2 shadow-sm p-4 cursor-pointer hover:bg-primary/5 transition-all group">
+                      <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">GPs Tagged</p>
+                      <p className="text-xl font-black text-primary underline">{ulbRealData.gpsCount} Nodes</p>
+                    </Card>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-0 border-2 shadow-2xl overflow-hidden">
+                    <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center">GP Directory</h4>
+                    <ScrollArea className="h-64">
+                      <div className="p-2 space-y-1">{ulbRealData.gpsList.map((g, i) => (<div key={i} className="p-2 text-[10px] font-bold uppercase border-b border-dashed">{g.name}</div>))}</div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p><p className="text-2xl font-black text-primary">{ulbRealData.totalHouseholds.toLocaleString()}</p></Card>
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Total Verified</p><p className="text-2xl font-black text-primary">{ulbRealData.totalWaste.toLocaleString()} Kg</p></Card>
                 <Card className="border-2 shadow-sm p-4 bg-primary/5 border-primary/20"><p className="text-[9px] font-black uppercase text-primary mb-1">Efficiency Score</p><p className="text-2xl font-black text-primary">94.8%</p></Card>
             </div>
-            <Card className="border-2 border-primary/30 bg-primary/[0.01]"><CardHeader className="bg-primary/5 border-b pb-3 flex row items-center gap-2"><Truck className="h-5 w-5 text-primary" /><CardTitle className="text-base font-black uppercase text-primary">Active Logistical Circuits</CardTitle></CardHeader><CardContent className="p-0"><ScrollArea className="h-[250px]"><div className="grid divide-y">{ulbRealData.activeCircuits.map((log, i) => (<div key={i} className={`p-4 flex items-center justify-between border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}><div className="flex-1 space-y-0.5"><p className="font-black text-[10px] uppercase text-primary">{log.routeId}</p><p className="text-[9px] font-bold uppercase">{log.mrf}</p></div><div className="flex-1 text-center border-x border-dashed px-4"><div className={`text-sm font-black ${log.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>{log.countdown}</div><p className="text-[8px] font-black text-blue-700 uppercase">{log.collectionSchedule}</p></div><div className="flex-1 text-right space-y-0.5"><p className="text-[10px] font-black uppercase">{log.driverName}</p><p className="text-[8px] font-bold uppercase text-muted-foreground">{log.vehicleType}</p></div></div>))}</div></ScrollArea></CardContent></Card>
+            <Card className="border-2 border-primary/30 bg-primary/[0.01]">
+              <CardHeader className="bg-primary/5 border-b pb-3 flex row items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base font-black uppercase text-primary">Active Logistical Circuits</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[250px]">
+                  <div className="grid divide-y">
+                    {ulbRealData.activeCircuits.map((log, i) => (
+                      <div key={i} className={`p-4 flex items-center justify-between border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
+                        <div className="flex-1 space-y-0.5"><p className="font-black text-[10px] uppercase text-primary">{log.routeId}</p><p className="text-[9px] font-bold uppercase">{log.mrf}</p></div>
+                        <div className="flex-1 text-center border-x border-dashed px-4"><div className={`text-sm font-black ${log.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>{log.countdown}</div><p className="text-[8px] font-black text-blue-700 uppercase">{log.collectionSchedule}</p></div>
+                        <div className="flex-1 text-right space-y-0.5"><p className="text-[10px] font-black uppercase">{log.driverName}</p><p className="text-[8px] font-bold uppercase text-muted-foreground">{log.vehicleType}</p></div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
         </div>
       )}
       
       {role === 'gp' && gpRealData && (
         <div className="space-y-8">
+            {/* 11-Box Demographic Hub */}
             <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">District</p><p className="text-xs font-black uppercase truncate">{districtName}</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Block</p><p className="text-xs font-black uppercase truncate">{blockName}</p></Card>
@@ -423,46 +455,133 @@ function GpUlbDashboardContent() {
                 </Card>
             </div>
 
-            <Card className="border-2 shadow-lg">
-                <CardHeader className="bg-primary/5 border-b pb-3 flex row items-center gap-2">
-                    <Layers className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-base font-black uppercase text-primary">Professional Node Registry</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader className="bg-muted/50">
-                            <TableRow>
-                                <TableHead className="uppercase font-black text-[10px]">Category</TableHead>
-                                <TableHead className="uppercase font-black text-[10px]">Verified Name</TableHead>
-                                <TableHead className="uppercase font-black text-[10px]">Verified Contact</TableHead>
-                                <TableHead className="uppercase font-black text-[10px]">Designation</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            <TableRow className="hover:bg-muted/20 cursor-pointer">
-                                <TableCell className="font-black text-[10px] uppercase text-primary">ULB Nodal</TableCell>
-                                <TableCell className="font-bold text-xs uppercase">{gpRealData.ulbNodal.name}</TableCell>
-                                <TableCell className="font-mono text-xs font-black text-primary"><Phone className="h-3 w-3 inline mr-2" />{gpRealData.ulbNodal.contact}</TableCell>
-                                <TableCell className="text-[10px] font-bold uppercase text-muted-foreground">Facility Coordinator</TableCell>
-                            </TableRow>
-                            <TableRow className="hover:bg-muted/20 cursor-pointer">
-                                <TableCell className="font-black text-[10px] uppercase text-primary">Driver</TableCell>
-                                <TableCell className="font-bold text-xs uppercase">{gpRealData.circuit.driver}</TableCell>
-                                <TableCell className="font-mono text-xs font-black text-primary"><Phone className="h-3 w-3 inline mr-2" />{gpRealData.circuit.phone}</TableCell>
-                                <TableCell className="text-[10px] font-bold uppercase text-muted-foreground">Circuit Personnel</TableCell>
-                            </TableRow>
-                            {gpRealData.workers.map((worker: any, i: number) => (
-                                <TableRow key={i} className="hover:bg-muted/20 cursor-pointer">
-                                    <TableCell className="font-black text-[10px] uppercase text-primary">Sanitation</TableCell>
-                                    <TableCell className="font-bold text-xs uppercase">{worker.name}</TableCell>
-                                    <TableCell className="font-mono text-xs font-black text-primary"><Phone className="h-3 w-3 inline mr-2" />{worker.contact}</TableCell>
-                                    <TableCell className="text-[10px] font-bold uppercase text-muted-foreground">Field Professional</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+            {/* Redesigned Professional Node Registry (3 Boxes) */}
+            <div className="space-y-4">
+                <h3 className="font-black text-xl uppercase tracking-tight flex items-center gap-2">
+                    <Layers className="h-6 w-6 text-primary" /> Professional Node Registry
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Box 1: ULB Nodal Officials */}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all group p-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="p-3 rounded-full bg-blue-50 text-blue-700">
+                                        <ShieldCheck className="h-6 w-6" />
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">ULB Nodal</p>
+                                        <p className="text-2xl font-black text-primary">1 Official</p>
+                                    </div>
+                                </div>
+                                <p className="text-[9px] mt-4 font-bold text-muted-foreground uppercase group-hover:text-primary transition-colors">Click to view contact &rarr;</p>
+                            </Card>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                            <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[10px] flex items-center gap-2">
+                                <ShieldCheck className="h-3 w-3" /> ULB Nodal Directory
+                            </div>
+                            <Table>
+                                <TableHeader className="bg-muted">
+                                    <TableRow>
+                                        <TableHead className="text-[9px] font-black uppercase">Official Name</TableHead>
+                                        <TableHead className="text-[9px] font-black uppercase text-right">Phone No.</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    <TableRow className="border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase">{gpRealData.ulbNodal.name}</TableCell>
+                                        <TableCell className="text-right font-mono text-[10px] font-black text-primary">{gpRealData.ulbNodal.contact}</TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </PopoverContent>
+                    </Popover>
+
+                    {/* Box 2: Logistical Drivers */}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all group p-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="p-3 rounded-full bg-orange-50 text-orange-700">
+                                        <Truck className="h-6 w-6" />
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Fleet Driver</p>
+                                        <p className="text-2xl font-black text-primary">1 Verified</p>
+                                    </div>
+                                </div>
+                                <p className="text-[9px] mt-4 font-bold text-muted-foreground uppercase group-hover:text-primary transition-colors">Click to view contact &rarr;</p>
+                            </Card>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                            <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[10px] flex items-center gap-2">
+                                <Truck className="h-3 w-3" /> Circuit Driver Directory
+                            </div>
+                            <Table>
+                                <TableHeader className="bg-muted">
+                                    <TableRow>
+                                        <TableHead className="text-[9px] font-black uppercase">Driver Name</TableHead>
+                                        <TableHead className="text-[9px] font-black uppercase text-right">Phone No.</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    <TableRow className="border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase">{gpRealData.circuit.driver}</TableCell>
+                                        <TableCell className="text-right font-mono text-[10px] font-black text-primary">{gpRealData.circuit.phone}</TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </PopoverContent>
+                    </Popover>
+
+                    {/* Box 3: Sanitation Professionals */}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all group p-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="p-3 rounded-full bg-green-50 text-green-700">
+                                        <Users className="h-6 w-6" />
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Sanitation</p>
+                                        <p className="text-2xl font-black text-primary">{gpRealData.workers.length} Workers</p>
+                                    </div>
+                                </div>
+                                <p className="text-[9px] mt-4 font-bold text-muted-foreground uppercase group-hover:text-primary transition-colors">Click to view roster &rarr;</p>
+                            </Card>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-96 p-0 border-2 shadow-2xl overflow-hidden">
+                            <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[10px] flex items-center gap-2">
+                                <Users className="h-3 w-3" /> Sanitation Professional Roster
+                            </div>
+                            <ScrollArea className="h-[250px]">
+                                <Table>
+                                    <TableHeader className="bg-muted">
+                                        <TableRow>
+                                            <TableHead className="text-[9px] font-black uppercase">Worker Name</TableHead>
+                                            <TableHead className="text-[9px] font-black uppercase text-right">Phone No.</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {gpRealData.workers.map((worker: any, i: number) => (
+                                            <TableRow key={i} className="border-b border-dashed">
+                                                <TableCell className="text-[10px] font-bold uppercase">{worker.name}</TableCell>
+                                                <TableCell className="text-right font-mono text-[10px] font-black text-primary">{worker.contact}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {gpRealData.workers.length === 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={2} className="text-center italic py-4 opacity-40 text-xs">No workers assigned to circuit.</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                        </PopoverContent>
+                    </Popover>
+                </div>
+            </div>
         </div>
       )}
     </div>
@@ -470,5 +589,5 @@ function GpUlbDashboardContent() {
 }
 
 export default function GpUlbDashboard() {
-    return (<Suspense fallback={<div>Loading...</div>}><GpUlbDashboardContent /></Suspense>);
+    return (<Suspense fallback={<div className="p-12 text-center">Loading portal...</div>}><GpUlbDashboardContent /></Suspense>);
 }
