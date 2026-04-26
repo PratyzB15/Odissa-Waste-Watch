@@ -17,7 +17,8 @@ import {
   Trash2,
   PlusCircle,
   Save,
-  Loader2
+  Loader2,
+  Warehouse
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
@@ -198,7 +199,7 @@ function GpUlbWasteDetailsContent() {
       cloth: parseFloat(formData.cloth) || 0,
       glass: parseFloat(formData.glass) || 0,
       sanitation: parseFloat(formData.sanitation) || 0,
-      submittedByRole: 'driver', // Ensure consistent hierarchical sync
+      submittedByRole: 'ulb', 
       updatedAt: new Date().toISOString()
     };
 
@@ -231,11 +232,9 @@ function GpUlbWasteDetailsContent() {
               <CardDescription className="font-bold italic text-muted-foreground">Authoritative audit ledger for {ulbParam || gpParam}.</CardDescription>
             </div>
           </div>
-          {role === 'ulb' && (
-            <Button onClick={handleOpenAdd} className="font-black uppercase tracking-widest bg-primary shadow-lg h-11 px-6">
-              <PlusCircle className="mr-2 h-5 w-5" /> Add New Verified Entry
-            </Button>
-          )}
+          <Button onClick={handleOpenAdd} className="font-black uppercase tracking-widest bg-primary shadow-lg h-11 px-6">
+            <PlusCircle className="mr-2 h-5 w-5" /> Add New Verified Entry
+          </Button>
         </CardHeader>
       </Card>
 
@@ -288,8 +287,8 @@ function GpUlbWasteDetailsContent() {
                                             <Calendar className="h-6 w-6 text-primary" />
                                             <span className="font-black text-xl uppercase tracking-tighter text-foreground">{month}</span>
                                         </div>
-                                        <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-4 py-1">
-                                            {reconciledRecords.length} RECEIPTS VERIFIED
+                                        <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[8px] bg-primary/5 px-4 py-1">
+                                            {monthItems.length} TOTAL RECEIPTS SYNCED
                                         </Badge>
                                     </div>
                                 </AccordionTrigger>
@@ -351,8 +350,8 @@ function GpUlbWasteDetailsContent() {
                                                             <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
                                                             <TableCell className="border text-center">
                                                                 <div className="flex justify-center gap-1">
-                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-primary" onClick={() => handleOpenEdit(row)}><Edit className="h-3 w-3" /></Button>
-                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>
+                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-primary hover:bg-primary hover:text-white transition-all" onClick={() => handleOpenEdit(row)} title="Edit Record"><Edit className="h-3 w-3" /></Button>
+                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-destructive hover:bg-destructive hover:text-white transition-all" onClick={() => handleDelete(row.id)} title="Remove Record"><Trash2 className="h-3 w-3" /></Button>
                                                                 </div>
                                                             </TableCell>
                                                         </TableRow>

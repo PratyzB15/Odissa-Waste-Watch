@@ -6,11 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Calendar, Calculator, BarChart3, Info, Edit, Trash2, Save, Loader2 } from "lucide-react";
+import { Calendar, Calculator, BarChart3, Info, Edit, Trash2, Save, Loader2, PlusCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, where, orderBy, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, setDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,7 +44,7 @@ function DriverWasteDetailsContent() {
   const [editingRecord, setEditingRecord] = useState<any | null>(null);
 
   const [formData, setFormData] = useState({
-    date: '',
+    date: new Date().toISOString().split('T')[0],
     routeId: '',
     mrf: '',
     driverSubmitted: '',
@@ -58,6 +58,24 @@ function DriverWasteDetailsContent() {
   });
 
   useEffect(() => { setMounted(true); }, []);
+
+  const handleOpenAdd = () => {
+    setEditingRecord(null);
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      routeId: '',
+      mrf: '',
+      driverSubmitted: '',
+      plastic: '',
+      paper: '',
+      metal: '',
+      cloth: '',
+      glass: '',
+      sanitation: '',
+      others: ''
+    });
+    setIsDialogOpen(true);
+  };
 
   const handleOpenEdit = (record: any) => {
     setEditingRecord(record);
@@ -85,7 +103,7 @@ function DriverWasteDetailsContent() {
   };
 
   const handleSubmit = async () => {
-    if (!db || !editingRecord) return;
+    if (!db) return;
     setIsSubmitting(true);
 
     const payload = {
@@ -98,12 +116,19 @@ function DriverWasteDetailsContent() {
       glass: parseFloat(formData.glass) || 0,
       sanitation: parseFloat(formData.sanitation) || 0,
       others: parseFloat(formData.others) || 0,
+      driverName,
+      submittedByRole: 'driver',
       updatedAt: new Date().toISOString()
     };
 
     try {
-      await setDoc(doc(db, 'wasteDetails', editingRecord.id), payload, { merge: true });
-      toast({ title: "Receipt Corrected", description: "Transmission data updated." });
+      if (editingRecord) {
+        await setDoc(doc(db, 'wasteDetails', editingRecord.id), payload, { merge: true });
+        toast({ title: "Receipt Corrected", description: "Transmission data updated." });
+      } else {
+        await addDoc(collection(db, 'wasteDetails'), { ...payload, submittedAt: new Date().toISOString() });
+        toast({ title: "Entry Created", description: "New receipt logged in master ledger." });
+      }
       setIsDialogOpen(false);
     } catch (err) {
       toast({ title: "Update Failed", description: "Database error.", variant: "destructive" });
@@ -129,7 +154,7 @@ function DriverWasteDetailsContent() {
   return (
     <div className="space-y-12">
       <Card className="border-2 border-primary/20 bg-primary/[0.01] shadow-md">
-        <CardHeader className="bg-primary/5 border-b">
+        <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between">
           <div className="flex items-center gap-3 text-primary">
             <Calculator className="h-10 w-10" />
             <div>
@@ -137,6 +162,9 @@ function DriverWasteDetailsContent() {
               <CardDescription className="font-bold italic text-muted-foreground">Verified collection records for {driverName}.</CardDescription>
             </div>
           </div>
+          <Button onClick={handleOpenAdd} className="font-black uppercase tracking-widest bg-primary shadow-lg h-11 px-6">
+            <PlusCircle className="mr-2 h-5 w-5" /> Add New Submission
+          </Button>
         </CardHeader>
       </Card>
 
@@ -207,8 +235,8 @@ function DriverWasteDetailsContent() {
                                                             <TableCell className="border-r text-right font-mono">{row.others}</TableCell>
                                                             <TableCell className="border text-center">
                                                                 <div className="flex justify-center gap-1">
-                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-primary" onClick={() => handleOpenEdit(row)}><Edit className="h-3 w-3" /></Button>
-                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>
+                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-primary hover:bg-primary hover:text-white transition-all" onClick={() => handleOpenEdit(row)} title="Edit Record"><Edit className="h-3 w-3" /></Button>
+                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-destructive hover:bg-destructive hover:text-white transition-all" onClick={() => handleDelete(row.id)} title="Remove Record"><Trash2 className="h-3 w-3" /></Button>
                                                                 </div>
                                                             </TableCell>
                                                         </TableRow>
@@ -273,10 +301,11 @@ function DriverWasteDetailsContent() {
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl border-2">
-            <DialogHeader><DialogTitle className="text-xl font-black uppercase text-primary">Edit Verified Receipt</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="text-xl font-black uppercase text-primary">{editingRecord ? 'Edit verified Receipt' : 'New Receipt Submission'}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-4 py-4 border-y my-4">
                 <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Date</Label><Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Route ID</Label><Input value={formData.routeId} onChange={e => setFormData({...formData, routeId: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Route ID</Label><Input value={formData.routeId} onChange={e => setFormData({...formData, routeId: e.target.value})} placeholder="e.g. RJ-01" /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Facility (MRF)</Label><Input value={formData.mrf} onChange={e => setFormData({...formData, mrf: e.target.value})} placeholder="e.g. Kodandapur" /></div>
                 <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Load (Kg)</Label><Input type="number" value={formData.driverSubmitted} onChange={e => setFormData({...formData, driverSubmitted: e.target.value})} /></div>
                 <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Plastic</Label><Input type="number" value={formData.plastic} onChange={e => setFormData({...formData, plastic: e.target.value})} /></div>
                 <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Paper</Label><Input type="number" value={formData.paper} onChange={e => setFormData({...formData, paper: e.target.value})} /></div>
@@ -284,10 +313,12 @@ function DriverWasteDetailsContent() {
                 <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Cloth</Label><Input type="number" value={formData.cloth} onChange={e => setFormData({...formData, cloth: e.target.value})} /></div>
                 <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Glass</Label><Input type="number" value={formData.glass} onChange={e => setFormData({...formData, glass: e.target.value})} /></div>
                 <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Sanitation</Label><Input type="number" value={formData.sanitation} onChange={e => setFormData({...formData, sanitation: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Others</Label><Input type="number" value={formData.others} onChange={e => setFormData({...formData, others: e.target.value})} /></div>
             </div>
             <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="font-bold">Cancel</Button>
                 <Button onClick={handleSubmit} disabled={isSubmitting} className="font-black uppercase px-8">
-                  {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2" />} Update Receipt
+                  {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2" />} {editingRecord ? 'Update Receipt' : 'Submit Receipt'}
                 </Button>
             </DialogFooter>
         </DialogContent>
