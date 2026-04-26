@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -165,7 +166,7 @@ function GpWasteDetailsContent() {
                                 <AccordionTrigger className="p-6 hover:no-underline bg-muted/10 data-[state=open]:bg-primary/5 transition-all border-b border-dashed">
                                     <div className="flex justify-between w-full pr-8 items-center">
                                         <div className="flex items-center gap-4">
-                                            <Calendar className="h-5 w-5 text-primary" />
+                                            <CalendarIcon className="h-5 w-5 text-primary" />
                                             <span className="font-black text-lg uppercase tracking-tighter text-foreground">{month}</span>
                                         </div>
                                         <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-3">

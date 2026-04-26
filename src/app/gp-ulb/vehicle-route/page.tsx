@@ -1,57 +1,94 @@
+
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Truck, User, Calendar, Route, Clock, Navigation, Anchor, Phone, Users, Info } from "lucide-react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { useMemo, Suspense } from "react";
-import { routePlanData as jajpurRoutes } from "@/lib/disJajpur/routePlanData";
-import { routePlanData as bhadrakRoutes } from "@/lib/disBhadrak/routePlanData";
-import { routePlanData as angulRoutes } from "@/lib/disAngul/routePlanData";
-import { routePlanData as balangirRoutes } from "@/lib/disBalangir/routePlanData";
-import { routePlanData as baleswarRoutes } from "@/lib/disBaleswar/routePlanData";
-import { routePlanData as jagatsinghpurRoutes } from "@/lib/disJagatsinghpur/routePlanData";
-import { collectionScheduleData as jajpurSchedules } from "@/lib/disJajpur/collectionScheduleData";
-import { collectionScheduleData as bhadrakSchedules } from "@/lib/disBhadrak/collectionScheduleData";
-import { collectionScheduleData as angulSchedules } from "@/lib/disAngul/collectionScheduleData";
-import { collectionScheduleData as balangirSchedules } from "@/lib/disBalangir/collectionScheduleData";
-import { collectionScheduleData as baleswarSchedules } from "@/lib/disBaleswar/collectionScheduleData";
-import { collectionScheduleData as jagatsinghpurSchedules } from "@/lib/disJagatsinghpur/collectionScheduleData";
+import { useMemo, Suspense, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+// District Data Imports
+import { angulDistrictData } from "@/lib/disAngul";
+import { balangirDistrictData } from "@/lib/disBalangir";
+import { bhadrakDistrictData } from "@/lib/disBhadrak";
+import { bargarhDistrictData } from "@/lib/disBargarh";
+import { sonepurDistrictData } from "@/lib/disSonepur";
+import { boudhDistrictData } from "@/lib/disBoudh";
+import { cuttackDistrictData } from "@/lib/disCuttack";
+import { deogarhDistrictData } from "@/lib/disDeogarh";
+import { dhenkanalDistrictData } from "@/lib/disDhenkanal";
+import { gajapatiDistrictData } from "@/lib/disGajapati";
+import { ganjamDistrictData } from "@/lib/disGanjam";
+import { jagatsinghpurDistrictData } from "@/lib/disJagatsinghpur";
+import { jajpurDistrictData } from "@/lib/disJajpur";
+import { jharsugudaDistrictData } from "@/lib/disJharsuguda";
+import { kalahandiDistrictData } from "@/lib/disKalahandi";
+import { kandhamalDistrictData } from "@/lib/disKandhamal";
+import { kendraparaDistrictData } from "@/lib/disKendrapara";
+import { kendujharDistrictData } from "@/lib/disKendujhar";
+import { khordhaDistrictData } from "@/lib/disKhordha";
+import { koraputDistrictData } from "@/lib/disKoraput";
+import { mayurbhanjDistrictData } from "@/lib/disMayurbhanj";
+import { malkangiriDistrictData } from "@/lib/disMalkangiri";
+import { rayagadaDistrictData } from "@/lib/disRayagada";
+import { nabarangpurDistrictData } from "@/lib/disNabarangpur";
+import { nayagarhDistrictData } from "@/lib/disNayagarh";
+import { nuapadaDistrictData } from "@/lib/disNuapada";
+import { puriDistrictData } from "@/lib/disPuri";
+import { sambalpurDistrictData } from "@/lib/disSambalpur";
+import { balasoreDistrictData } from "@/lib/disBalasore";
+import { baleswarDistrictData } from "@/lib/disBaleswar";
+
 function VehicleRouteContent() {
     const searchParams = useSearchParams();
     const gpName = searchParams.get('gp') || '';
+    const districtName = searchParams.get('district') || '';
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => { setMounted(true); }, []);
 
     const routeData = useMemo(() => {
-        const allRoutes = [...jajpurRoutes, ...bhadrakRoutes, ...angulRoutes, ...balangirRoutes, ...baleswarRoutes, ...jagatsinghpurRoutes];
-        const allSchedules = [...jajpurSchedules, ...bhadrakSchedules, ...angulSchedules, ...balangirSchedules, ...baleswarSchedules, ...jagatsinghpurSchedules];
+        if (!mounted || !gpName || !districtName) return null;
 
-        // Find the route that covers this GP
-        const route = allRoutes.find(r => 
+        const sourceMap: Record<string, any> = {
+          'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData,
+          'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData,
+          'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData,
+          'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData,
+          'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData,
+          'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
+          'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'khordha': khordhaDistrictData,
+          'koraput': koraputDistrictData, 'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
+          'rayagada': rayagadaDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData,
+          'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
+        };
+
+        const source = sourceMap[districtName.toLowerCase()];
+        if (!source) return null;
+
+        // Find the route that contains this GP
+        const route = source.data.routes.find((r: any) => 
             r.startingGp.toLowerCase() === gpName.toLowerCase() ||
-            (Array.isArray(r.intermediateGps) && r.intermediateGps.some((igp: any) => (typeof igp === 'string' ? igp : igp.name || igp).toLowerCase() === gpName.toLowerCase())) ||
-            (r as any).finalGp?.toLowerCase() === gpName.toLowerCase()
+            (Array.isArray(r.intermediateGps) && r.intermediateGps.some((igp: any) => igp.toLowerCase() === gpName.toLowerCase())) ||
+            (r.finalGp && r.finalGp.toLowerCase() === gpName.toLowerCase())
         );
 
         if (!route) return null;
 
-        // Find the corresponding schedule data for vehicle/driver details, prioritizing Route ID matching for clusters
-        const schedule = allSchedules.find(s => 
-            (route && s.gpName.toLowerCase().includes(route.routeId.toLowerCase())) ||
+        const schedule = source.data.collectionSchedules.find((s: any) => 
             s.gpName.toLowerCase().includes(gpName.toLowerCase()) ||
-            s.mrf.toLowerCase().includes(route.destination.toLowerCase()) ||
-            route.destination.toLowerCase().includes(s.mrf.toLowerCase())
+            s.routeId === route.routeId
         );
 
         return {
             routeId: route.routeId,
-            routeName: (route as any).routeName || route.routeId,
-            abbreviation: (route as any).routeAbbreviation || route.routeId,
+            routeName: route.routeName || route.routeId,
+            abbreviation: route.routeAbbreviation || route.routeId,
             destination: route.destination,
             distance: route.totalDistance,
-            path: [route.startingGp, ...route.intermediateGps.map((igp: any) => typeof igp === 'string' ? igp : igp.name || igp), (route as any).finalGp || route.destination],
+            path: [route.startingGp, ...(route.intermediateGps || []), route.finalGp || route.destination].filter(Boolean),
             vehicleNo: schedule?.vehicleNo && schedule.vehicleNo !== '-' ? schedule.vehicleNo : 'TBD',
             vehicleType: schedule?.vehicleType || 'Motorised',
             driverName: schedule?.driverName && schedule.driverName !== '-' ? schedule.driverName : 'Verified Personnel',
@@ -59,17 +96,19 @@ function VehicleRouteContent() {
             collectionDay: schedule?.collectionSchedule || 'Scheduled',
             startTime: "08:00 AM",
             endTime: "02:00 PM",
-            workers: (route as any).workers || []
+            workers: route.workers || []
         };
-    }, [gpName]);
+    }, [gpName, districtName, mounted]);
+
+    if (!mounted) return <div className="p-12 text-center animate-pulse">Initializing Hub...</div>;
 
     if (!routeData) {
         return (
             <Card className="border-2 border-dashed">
                 <CardHeader className="text-center py-12">
                     <Navigation className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-                    <CardTitle className="text-muted-foreground">No Active Route Found</CardTitle>
-                    <CardDescription>Your Gram Panchayat is currently not mapped to an active collection circuit.</CardDescription>
+                    <CardTitle className="text-muted-foreground uppercase font-black tracking-tight">No Active Route Found</CardTitle>
+                    <CardDescription className="font-bold">Your Gram Panchayat ({gpName}) is currently not mapped to an active collection circuit in {districtName}.</CardDescription>
                 </CardHeader>
             </Card>
         );
@@ -139,89 +178,65 @@ function VehicleRouteContent() {
                     </ScrollArea>
                 </CardContent>
             </Card>
-
-             <Card className="border-2 border-primary/20 shadow-md">
+        </div>
+        <div className="md:col-span-2 space-y-6">
+            <Card className="border-2 border-primary/20 shadow-md">
                 <CardHeader className="bg-primary/5 border-b pb-3">
                     <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                        <Navigation className="h-4 w-4 text-primary"/> Logistics Path
+                        <Navigation className="h-4 w-4 text-primary"/> Logistical Circuit Path
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-4 space-y-4">
-                    <div className="space-y-1">
-                        <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Route ID</p>
-                        <div className="font-black text-lg flex items-center flex-wrap gap-2">
-                            {routeData.routeId} 
-                            <Badge className="font-mono">{routeData.abbreviation}</Badge>
+                <CardContent className="pt-6 space-y-6">
+                    <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Route ID</p>
+                            <div className="font-black text-2xl flex items-center flex-wrap gap-3">
+                                {routeData.routeId} 
+                                <Badge className="font-mono text-xs">{routeData.abbreviation}</Badge>
+                            </div>
+                        </div>
+                        <div className="text-right space-y-1">
+                            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Total Path Length</p>
+                            <p className="text-2xl font-black text-primary">{routeData.distance} KM</p>
                         </div>
                     </div>
                     
-                    <div className="relative pl-4 border-l-2 border-primary/30 space-y-4 py-2">
+                    <div className="relative pl-6 border-l-4 border-primary/20 space-y-8 py-4 ml-2">
                         {routeData.path.map((stop, i) => (
                             <div key={i} className="relative">
-                                <div className="absolute -left-[21px] top-1.5 h-3 w-3 rounded-full bg-primary ring-4 ring-background border border-primary-foreground"></div>
-                                <div className={`text-xs font-bold flex items-center flex-wrap gap-1 ${stop.toLowerCase() === gpName.toLowerCase() ? 'text-primary' : 'text-muted-foreground'}`}>
-                                    {stop} {stop.toLowerCase() === gpName.toLowerCase() && <Badge variant="secondary" className="text-[8px] py-0">YOUR GP</Badge>}
+                                <div className="absolute -left-[30px] top-1.5 h-4 w-4 rounded-full bg-primary ring-4 ring-background border-2 border-white shadow-sm"></div>
+                                <div className={`text-sm font-black flex items-center flex-wrap gap-2 ${stop.toLowerCase() === gpName.toLowerCase() ? 'text-primary' : 'text-foreground'}`}>
+                                    {stop.toUpperCase()} 
+                                    {stop.toLowerCase() === gpName.toLowerCase() && <Badge variant="secondary" className="text-[9px] font-black uppercase h-4">Target Node</Badge>}
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    <Separator />
+                    <Separator className="border-dashed" />
                     
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs">
-                            <Calendar className="h-3.5 w-3.5 text-primary"/>
-                            <span className="font-bold">{routeData.collectionDay}</span>
+                    <div className="grid grid-cols-2 gap-8">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase text-muted-foreground">Cycle Schedule</p>
+                            <div className="flex items-center gap-2 text-sm font-bold text-blue-700">
+                                <Calendar className="h-4 w-4"/>
+                                <span className="uppercase">{routeData.collectionDay}</span>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2 text-xs">
-                            <Clock className="h-3.5 w-3.5 text-primary"/>
-                            <span className="font-bold text-muted-foreground">{routeData.startTime} - {routeData.endTime}</span>
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase text-muted-foreground">Operational Hours</p>
+                            <div className="flex items-center gap-2 text-sm font-bold">
+                                <Clock className="h-4 w-4 text-primary"/>
+                                <span>{routeData.startTime} - {routeData.endTime}</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="mt-4 pt-4 border-t border-dashed">
-                      <p className="text-[10px] text-muted-foreground italic leading-relaxed flex items-start gap-1.5">
-                        <Info className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
-                        If waste collection not happened during the scheduled day/date due to some issue, then collection will be done in next day/date or any date coordinating with ULB Nodal person.
-                      </p>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-        <div className="md:col-span-2">
-            <Card className="border-2 h-full overflow-hidden">
-                 <CardHeader className="border-b bg-muted/10">
-                    <CardTitle className="flex items-center gap-2"><Navigation className="text-primary"/> Live Logistical Intelligence</CardTitle>
-                    <CardDescription>Real-time coordination map for circuit: <span className="font-bold text-foreground">{routeData.routeName}</span></CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="relative w-full h-[65vh]">
-                         <Image
-                            src="https://images.unsplash.com/photo-1613390230578-93f353592d76?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzYXRlbGxpdGUlMjBtYXAlMjByb3V0ZSUyMHZlaGljbGV8ZW58MHx8fHwxNzE3NjE1MjgxfDA&ixlib=rb-4.1.0&q=80&w=1080"
-                            alt="Logistical map tracking"
-                            fill
-                            className="object-cover opacity-80"
-                            data-ai-hint="satellite map tracking"
-                        />
-                        <div className="absolute inset-0 bg-primary/5 pointer-events-none" />
-                        <div className="absolute top-6 left-6 bg-background/95 p-4 rounded-xl shadow-2xl border-2 border-primary/20 backdrop-blur-sm max-w-[240px]">
-                           <div className="flex items-center gap-2 mb-2">
-                               <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                               <span className="text-[10px] font-black uppercase tracking-widest">Active Circuit</span>
-                           </div>
-                           <p className="font-black text-sm text-primary mb-1">{routeData.vehicleNo}</p>
-                           <p className="text-[10px] font-bold text-muted-foreground mb-3">STATUS: <span className="text-foreground">IN TRANSIT</span></p>
-                           <div className="text-[10px] space-y-1 pt-2 border-t">
-                               <p className="font-bold">TOTAL DISTANCE: {routeData.distance} KM</p>
-                               <p className="font-bold text-blue-700 flex items-center gap-1"><Anchor className="h-3 w-3"/> TARGET: {routeData.destination}</p>
-                           </div>
-                        </div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                            <div className="w-10 h-10 bg-primary rounded-full border-4 border-white shadow-[0_0_20px_rgba(0,0,0,0.3)] flex items-center justify-center transform rotate-12 transition-transform hover:scale-110">
-                                <Truck className="w-6 h-6 text-white"/>
-                            </div>
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-4 h-4 bg-primary/30 rounded-full animate-ping"></div>
-                        </div>
+                    <div className="bg-muted/20 p-4 rounded-xl border border-dashed flex items-start gap-3">
+                        <Info className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
+                        <p className="text-[10px] text-muted-foreground font-bold italic leading-relaxed">
+                            Logistical adherence is monitored by the District SWM Cell. If collection is delayed due to operational constraints, circuits will be re-synchronized in coordination with the ULB Nodal Desk.
+                        </p>
                     </div>
                 </CardContent>
             </Card>

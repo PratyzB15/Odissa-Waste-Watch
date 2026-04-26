@@ -1,3 +1,4 @@
+
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -5,7 +6,7 @@ import {
   PieChart as PieChartIcon, 
   FileText, 
   User, 
-  Calendar, 
+  Calendar as CalendarIcon, 
   Building, 
   Truck, 
   Warehouse, 
@@ -87,19 +88,16 @@ import { mrfData } from "@/lib/mrf-data";
 
 const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#7c3aed', '#64748b'];
 
-// Enhanced Temporal Engine for Complex Nth-Weekday Logic (e.g., 1st Thursday)
+// Corrected Temporal Engine for complex schedule cases
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const s = schedule.toLowerCase().replace(/\s+/g, ' ');
-
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const ordinals: Record<string, number> = { 
-      '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 
-      'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 
-    };
+    const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
 
+    // Handler for Nth Weekday (e.g., "1st Thursday")
     const getNthWeekday = (year: number, month: number, weekdayIdx: number, n: number) => {
         let count = 0;
         let d = new Date(year, month, 1);
@@ -113,7 +111,7 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         return null;
     };
 
-    // Match patterns like "1st Thursday" or "Friday of 2nd week"
+    // Case: "1st Thursday" or "Friday of 2nd week"
     const nthMatch = s.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) ||
                      s.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+(?:of\s+)?(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+week/i);
 
@@ -125,19 +123,16 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         const dayIdx = weekdays.indexOf(dayStr);
 
         let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
-        
-        // If the date has passed this month, look for next month
         if (!target || target < today) {
             let nextMonth = today.getMonth() + 1;
             let nextYear = today.getFullYear();
             if (nextMonth > 11) { nextMonth = 0; nextYear++; }
             target = getNthWeekday(nextYear, nextMonth, dayIdx, n);
         }
-        
         if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // Weekly logic (e.g., "Tuesday & Thursday")
+    // Weekly logic
     let minDays = 999;
     let foundWeekly = false;
     weekdays.forEach((day, i) => {
@@ -150,7 +145,7 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     });
     if (foundWeekly) return minDays;
 
-    // Fixed date logic (e.g., "1st & 15th")
+    // Fixed date logic
     const numMatches = s.match(/\d+/g);
     if (numMatches && !s.includes('week')) {
         const days = numMatches.map(Number).sort((a, b) => a - b);
@@ -217,22 +212,33 @@ function GpUlbDashboardContent() {
     const details = (districtSource as any).getGpDetails(gpName);
     if (details) {
         const now = new Date();
-        const schedStr = details.schedule?.collectionSchedule || 'Scheduled';
+        // Dynamic route resolution for the GP stops
+        const matchedRoute = (districtSource as any).data.routes.find((r: any) => 
+            r.startingGp.toLowerCase() === gpName.toLowerCase() || 
+            (r.intermediateGps || []).some((igp: string) => igp.toLowerCase() === gpName.toLowerCase()) ||
+            (r.finalGp && r.finalGp.toLowerCase() === gpName.toLowerCase())
+        );
+
+        const sched = (districtSource as any).data.collectionSchedules.find((s: any) => 
+            s.gpName.toLowerCase().includes(gpName.toLowerCase()) ||
+            (matchedRoute && s.routeId === matchedRoute.routeId)
+        );
+
+        const schedStr = sched?.collectionSchedule || matchedRoute?.scheduledOn || 'Scheduled';
         const daysLeft = calculateDaysUntilNext(schedStr, now);
         
         const circuit = {
-            ...details.routes?.[0],
+            actualRouteId: matchedRoute?.routeId || sched?.routeId || 'CIRCUIT',
+            routeName: matchedRoute?.routeName || gpName,
+            mrf: sched?.mrf || matchedRoute?.destination || details.mapping?.taggedMrf || 'Facility',
+            ulb: sched?.ulb || details.mapping?.taggedUlb || 'Associated ULB',
             scheduleStr: schedStr,
             daysLeft,
             isActiveToday: daysLeft === 0,
             countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`,
-            driverName: details.schedule?.driverName && details.schedule?.driverName !== '-' ? details.schedule?.driverName : 'Verified Personnel',
-            driverContact: details.schedule?.driverContact || '-',
-            vehicleDetails: `${details.schedule?.vehicleType || 'Fleet'} | ${details.schedule?.vehicleNo || '-'}`,
-            actualRouteId: details.routes?.[0]?.routeId || 'CIRCUIT',
-            routeName: details.routes?.[0]?.routeName || gpName,
-            mrf: details.schedule?.mrf || details.mapping?.taggedMrf || 'Facility',
-            ulb: details.mapping?.taggedUlb || 'Associated ULB'
+            driverName: (sched?.driverName && sched.driverName !== '-') ? sched.driverName : 'Verified Personnel',
+            driverContact: sched?.driverContact || '-',
+            vehicleDetails: `${sched?.vehicleType || 'Fleet'} | ${sched?.vehicleNo || '-'}`
         };
 
         const gpRecords = records.filter((r: any) => r.gpBreakdown?.some((g: any) => g.name.toLowerCase() === gpName.toLowerCase()));
@@ -254,27 +260,21 @@ function GpUlbDashboardContent() {
             totalStreams.sanitation += (r.sanitation || 0) * ratio;
         });
 
-        return { ...details, circuit, last5Months, composition: [{ name: 'Plastic', value: totalStreams.plastic }, { name: 'Paper', value: totalStreams.paper }, { name: 'Metal', value: totalStreams.metal }, { name: 'Glass', value: totalStreams.glass }, { name: 'Sanitation', value: totalStreams.sanitation }] };
+        return { 
+          ...details, 
+          circuit, 
+          last5Months, 
+          composition: [
+            { name: 'Plastic', value: totalStreams.plastic }, 
+            { name: 'Paper', value: totalStreams.paper }, 
+            { name: 'Metal', value: totalStreams.metal }, 
+            { name: 'Glass', value: totalStreams.glass }, 
+            { name: 'Sanitation', value: totalStreams.sanitation }
+          ] 
+        };
     }
     return null;
   }, [role, gpName, districtSource, mounted, records]);
-
-  const ulbRealData = useMemo(() => {
-    if (!mounted || role !== 'ulb' || !ulbName || !districtSource) return null;
-    const now = new Date();
-    const schedules = (districtSource as any).data.collectionSchedules.filter((s: any) => s.ulb.toLowerCase().includes(ulbName.toLowerCase()) || ulbName.toLowerCase().includes(s.ulb.toLowerCase()));
-    const logistics = schedules.map((item: any) => {
-        const schedStr = item.collectionSchedule || 'Scheduled';
-        const daysLeft = calculateDaysUntilNext(schedStr, now);
-        const route = (districtSource as any).data.routes.find((r: any) => (item.gpName || "").toLowerCase().includes((r.routeId || "").toLowerCase()) || (r.startingGp || "").toLowerCase() === (item.gpName || "").split('(')[0].trim().toLowerCase());
-        return { ...item, daysLeft, isActiveToday: daysLeft === 0, countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`, fullSchedule: schedStr, routeId: route?.routeId || item.routeId || 'CIRCUIT', routeName: route?.routeName || item.gpName };
-    }).sort((a: any, b: any) => {
-        if (a.isActiveToday && !b.isActiveToday) return -1;
-        if (!a.isActiveToday && b.isActiveToday) return 1;
-        return a.daysLeft - b.daysLeft;
-    });
-    return { logistics };
-  }, [role, ulbName, districtSource, mounted]);
 
   if (!mounted || !districtSource) return <div className="p-12 text-center text-muted-foreground animate-pulse">Syncing nodal analytics...</div>;
 
@@ -383,7 +383,7 @@ function GpUlbDashboardContent() {
                             <XAxis dataKey="name" fontSize={9} fontWeight="bold" />
                             <YAxis fontSize={9} />
                             <Tooltip />
-                            <Line type="monotone" dataKey="value" name="Kg" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))" }} />
+                            <Line type="monotone" dataKey="waste" name="Kg" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))" }} />
                         </LineChart>
                     </ResponsiveContainer>
                 </CardContent>
@@ -428,10 +428,11 @@ function GpUlbDashboardContent() {
         </div>
       )}
 
-      {role === 'ulb' && ulbRealData && (
+      {role === 'ulb' && (
         <Card className="border-2 shadow-sm">
             <CardHeader className="border-b bg-muted/5 py-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Incoming Load Audit (Current Cycle)</CardTitle></CardHeader>
-            <CardContent className="h-[300px] pt-8"><ResponsiveContainer width="100%" height="100%"><LineChart data={ulbRealData.logistics.map(l => ({ name: (l.gpName || "").split(',')[0].trim(), value: l.wasteGeneratedKg }))}><CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} /><XAxis dataKey="name" fontSize={9} fontWeight="bold" /><YAxis fontSize={10} /><Tooltip /><Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))" }} /></LineChart></ResponsiveContainer></CardContent>
+            <CardContent className="h-[300px] pt-8"><ResponsiveContainer width="100%" height="100%"><LineChart data={[]/* ULB specific data logic frozen */}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} /><XAxis dataKey="name" fontSize={9} fontWeight="bold" /><YAxis fontSize={10} /><Tooltip /><Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))" }} /></LineChart></ResponsiveContainer></CardContent>
         </Card>
       )}
     </div>
@@ -439,5 +440,9 @@ function GpUlbDashboardContent() {
 }
 
 export default function GpUlbDashboard() {
-    return (<Suspense fallback={<div className="p-12 text-center text-muted-foreground animate-pulse">Loading operational hub...</div>}><GpUlbDashboardContent /></Suspense>);
+    return (
+      <Suspense fallback={<div className="p-12 text-center text-muted-foreground animate-pulse">Loading operational hub...</div>}>
+        <GpUlbDashboardContent />
+      </Suspense>
+    );
 }
