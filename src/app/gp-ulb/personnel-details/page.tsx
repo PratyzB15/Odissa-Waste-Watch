@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -196,7 +195,7 @@ function UlbPersonnelDetailsContent() {
                     <div>
                         <CardTitle className="text-2xl flex items-center gap-2 font-headline uppercase tracking-tight">
                         <Navigation className="text-primary h-8 w-8" /> 
-                        Route & Worker Roster: {ulbParam}
+                        Route Planning Directory: {ulbParam}
                         </CardTitle>
                         <CardDescription className="text-lg">Verified collection circuits and sanitation worker assignments for all associated MRF facilities.</CardDescription>
                     </div>

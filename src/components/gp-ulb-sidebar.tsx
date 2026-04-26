@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -29,7 +28,7 @@ const navItems = [
   { id: 'gp-data', href: '/gp-ulb/household-collection', icon: HomeIcon, label: 'Household Data', role: 'gp' },
   { id: 'gp-route', href: '/gp-ulb/vehicle-route', icon: Map, label: 'Vehicle Route', role: 'gp' },
   { id: 'ulb-gp-info', href: '/gp-ulb/gp-information', icon: TableProperties, label: 'Information about GPs', role: 'ulb' },
-  { id: 'ulb-roster', href: '/gp-ulb/personnel-details', icon: Navigation, label: 'Route & Worker Roster', role: 'ulb' },
+  { id: 'ulb-roster', href: '/gp-ulb/personnel-details', icon: Navigation, label: 'Route Planning', role: 'ulb' },
   { id: 'ulb-collection', href: '/gp-ulb/waste-collection-details', icon: ClipboardList, label: 'Waste Collection Details', role: 'ulb' },
   { id: 'ulb-requests', href: '/gp-ulb/personnel-requests', icon: MailWarning, label: 'Personnel Request & Complaints', role: 'ulb' },
   { id: 'receipt-view', href: '/gp-ulb/waste-receipt-details', icon: FileText, label: 'Waste Receipt Submission', role: 'ulb' },
