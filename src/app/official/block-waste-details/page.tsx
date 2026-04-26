@@ -2,24 +2,48 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { 
-  Calendar, 
-  Calculator, 
-  MapPin,
-  BarChart3,
-  Building,
-  Info,
-} from "lucide-react";
+import { Calendar, Calculator, MapPin, BarChart3, Info } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
-import { mrfData } from "@/lib/mrf-data";
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
+
+// District Data Imports for Baseline Calculation
+import { angulDistrictData } from "@/lib/disAngul";
+import { balangirDistrictData } from "@/lib/disBalangir";
+import { bhadrakDistrictData } from "@/lib/disBhadrak";
+import { bargarhDistrictData } from "@/lib/disBargarh";
+import { sonepurDistrictData } from "@/lib/disSonepur";
+import { boudhDistrictData } from "@/lib/disBoudh";
+import { cuttackDistrictData } from "@/lib/disCuttack";
+import { deogarhDistrictData } from "@/lib/disDeogarh";
+import { dhenkanalDistrictData } from "@/lib/disDhenkanal";
+import { gajapatiDistrictData } from "@/lib/disGajapati";
+import { ganjamDistrictData } from "@/lib/disGanjam";
+import { jagatsinghpurDistrictData } from "@/lib/disJagatsinghpur";
+import { jajpurDistrictData } from "@/lib/disJajpur";
+import { jharsugudaDistrictData } from "@/lib/disJharsuguda";
+import { kalahandiDistrictData } from "@/lib/disKalahandi";
+import { kandhamalDistrictData } from "@/lib/disKandhamal";
+import { kendraparaDistrictData } from "@/lib/disKendrapara";
+import { kendujharDistrictData } from "@/lib/disKendujhar";
+import { balasoreDistrictData } from "@/lib/disBalasore";
+import { baleswarDistrictData } from "@/lib/disBaleswar";
+import { khordhaDistrictData } from "@/lib/disKhordha";
+import { koraputDistrictData } from "@/lib/disKoraput";
+import { mayurbhanjDistrictData } from "@/lib/disMayurbhanj";
+import { malkangiriDistrictData } from "@/lib/disMalkangiri";
+import { rayagadaDistrictData } from "@/lib/disRayagada";
+import { nabarangpurDistrictData } from "@/lib/disNabarangpur";
+import { nayagarhDistrictData } from "@/lib/disNayagarh";
+import { nuapadaDistrictData } from "@/lib/disNuapada";
+import { puriDistrictData } from "@/lib/disPuri";
+import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June", 
@@ -45,9 +69,25 @@ function BlockWasteReconciliationContent() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const blockUlbs = useMemo(() => {
-    return mrfData.filter(m => m.blockCovered.toLowerCase() === blockName.toLowerCase());
-  }, [blockName]);
+  const blockBaselineAvg = useMemo(() => {
+    if (!districtName || !blockName) return 0;
+    const districtsMap: Record<string, any> = {
+        'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData,
+        'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData,
+        'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData,
+        'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData,
+        'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData,
+        'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
+        'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'khordha': khordhaDistrictData,
+        'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData,
+        'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
+        'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
+    };
+    const source = districtsMap[districtName.toLowerCase()];
+    if (!source) return 0;
+    const details = source.getBlockDetails(blockName);
+    return details.waste.reduce((sum: number, w: any) => sum + (w.totalWasteKg || (w.monthlyWasteTotalGm / 1000) || 0), 0);
+  }, [districtName, blockName]);
 
   if (!mounted) return null;
 
@@ -59,7 +99,7 @@ function BlockWasteReconciliationContent() {
             <Calculator className="h-10 w-10" />
             <div>
               <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">Block Waste Reconciliation Hub</CardTitle>
-              <CardDescription className="font-bold italic text-muted-foreground">High-fidelity oversight for Block: {blockName}.</CardDescription>
+              <CardDescription className="font-bold italic text-muted-foreground">Authoritative oversight for Block: {blockName}.</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -68,7 +108,7 @@ function BlockWasteReconciliationContent() {
       {FISCAL_YEARS.map((year) => (
         <div key={year} className="space-y-8">
             <div className="flex items-center gap-4">
-                <h2 className="text-2xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} FISCAL CYCLE</h2>
+                <h2 className="text-3xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} FISCAL CYCLE</h2>
                 <div className="h-px flex-1 bg-primary/20"></div>
             </div>
 
@@ -91,6 +131,19 @@ function BlockWasteReconciliationContent() {
                             gpBreakdownDetailed: matchingGPs.map(m => ({ name: m.gpName, amount: m.driverSubmitted }))
                         };
                     });
+
+                    const monthVerified = reconciledRecords.reduce((sum, r) => sum + (r.driverSubmitted || 0), 0);
+                    const discrepancy = blockBaselineAvg - monthVerified;
+                    const efficiency = blockBaselineAvg > 0 ? (monthVerified / blockBaselineAvg) * 100 : 0;
+                    
+                    const monthlyStreamTotals = reconciledRecords.reduce((acc, curr) => ({
+                        plastic: acc.plastic + (curr.plastic || 0),
+                        paper: acc.paper + (curr.paper || 0),
+                        metal: acc.metal + (curr.metal || 0),
+                        cloth: acc.cloth + (curr.cloth || 0),
+                        glass: acc.glass + (curr.glass || 0),
+                        sanitation: acc.sanitation + (curr.sanitation || 0),
+                    }), { plastic: 0, paper: 0, metal: 0, cloth: 0, glass: 0, sanitation: 0 });
 
                     return (
                         <AccordionItem value={`${year}-${month}`} key={`${year}-${month}`} className="border-none">
@@ -163,16 +216,114 @@ function BlockWasteReconciliationContent() {
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
+                                                <TableFooter className="bg-muted/30 font-black uppercase text-[9px]">
+                                                    <TableRow className="h-14">
+                                                        <TableCell colSpan={6} className="text-right border-r">Monthly Stream Totals:</TableCell>
+                                                        <TableCell className="text-right border-r">{monthlyStreamTotals.plastic.toFixed(1)}</TableCell>
+                                                        <TableCell className="text-right border-r">{monthlyStreamTotals.paper.toFixed(1)}</TableCell>
+                                                        <TableCell className="text-right border-r">{monthlyStreamTotals.metal.toFixed(1)}</TableCell>
+                                                        <TableCell className="text-right border-r">{monthlyStreamTotals.cloth.toFixed(1)}</TableCell>
+                                                        <TableCell className="text-right border-r">{monthlyStreamTotals.glass.toFixed(1)}</TableCell>
+                                                        <TableCell className="text-right border-r">{monthlyStreamTotals.sanitation.toFixed(1)}</TableCell>
+                                                    </TableRow>
+                                                </TableFooter>
                                             </Table>
                                         </div>
                                         <ScrollBar orientation="horizontal" />
                                     </ScrollArea>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6 bg-muted/5 border-t">
+                                        <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
+                                            <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Block Load on Avg (Month)</p>
+                                            <p className="text-2xl font-black">{blockBaselineAvg.toLocaleString()} KG</p>
+                                        </div>
+                                        <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
+                                            <p className="text-[10px] font-black uppercase text-primary mb-1">Total Block Verified</p>
+                                            <p className="text-2xl font-black text-primary">{monthVerified.toLocaleString()} KG</p>
+                                        </div>
+                                        <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
+                                            <p className="text-[10px] font-black uppercase text-destructive mb-1">Block Discrepancy</p>
+                                            <p className="text-2xl font-black text-destructive">{discrepancy.toLocaleString()} KG</p>
+                                        </div>
+                                        <div className="bg-primary text-primary-foreground rounded-xl p-5 shadow-lg">
+                                            <p className="text-[10px] font-black uppercase opacity-60 mb-1">Efficiency Score</p>
+                                            <p className="text-3xl font-black">{efficiency.toFixed(1)}%</p>
+                                        </div>
+                                    </div>
                                 </AccordionContent>
                             </Card>
                         </AccordionItem>
                     );
                 })}
             </Accordion>
+
+            <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
+                <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-8 text-center">
+                    <CardTitle className="text-4xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center justify-center gap-4">
+                        <BarChart3 className="h-12 w-12" /> Yearly Professional Audit: {year}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <ScrollArea className="w-full">
+                        <div className="min-w-[1600px]">
+                            <Table>
+                                <TableHeader className="bg-muted/50">
+                                    <TableRow>
+                                        <TableHead className="w-[150px] uppercase font-black border text-center">Route ID</TableHead>
+                                        <TableHead className="w-[200px] uppercase font-black border">Associated MRF</TableHead>
+                                        <TableHead className="w-[150px] uppercase font-black border text-center">Coll. Freq (Year)</TableHead>
+                                        <TableHead className="w-[180px] text-right uppercase font-black border bg-primary/5">Total Collected (Kg)</TableHead>
+                                        <TableHead className="w-[120px] text-right uppercase font-black border">Total Paper</TableHead>
+                                        <TableHead className="w-[120px] text-right uppercase font-black border">Total Plastic</TableHead>
+                                        <TableHead className="w-[120px] text-right uppercase font-black border">Total Metal</TableHead>
+                                        <TableHead className="w-[120px] text-right uppercase font-black border">Total Glass</TableHead>
+                                        <TableHead className="w-[120px] text-right uppercase font-black border">Total Sanitation</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {(() => {
+                                      const yearly = allRecords.filter(r => new Date(r.date).getFullYear().toString() === year && r.submittedByRole === 'driver');
+                                      if (yearly.length === 0) {
+                                        return <TableRow><TableCell colSpan={9} className="h-48 text-center italic font-black uppercase tracking-[0.3em] opacity-10 text-2xl">Awaiting Annual Audit Cycle</TableCell></TableRow>;
+                                      }
+
+                                      const routesMap = new Map();
+                                      yearly.forEach(r => {
+                                          const id = r.routeId || 'TBD';
+                                          const prev = routesMap.get(id) || { count: 0, received: 0, paper: 0, plastic: 0, metal: 0, glass: 0, sani: 0, mrf: r.mrf };
+                                          routesMap.set(id, {
+                                              ...prev,
+                                              count: prev.count + 1,
+                                              received: prev.received + (r.driverSubmitted || 0),
+                                              paper: prev.paper + (r.paper || 0),
+                                              plastic: prev.plastic + (r.plastic || 0),
+                                              metal: prev.metal + (r.metal || 0),
+                                              glass: prev.glass + (r.glass || 0),
+                                              sani: prev.sani + (r.sanitation || 0),
+                                          });
+                                      });
+
+                                      return Array.from(routesMap.entries()).map(([id, stats]) => (
+                                        <TableRow key={id} className="bg-primary/5 font-black text-primary h-16 hover:bg-primary/10 transition-colors">
+                                            <TableCell className="border text-center font-mono">{id}</TableCell>
+                                            <TableCell className="border uppercase">{stats.mrf}</TableCell>
+                                            <TableCell className="border text-center">{stats.count} Circuits</TableCell>
+                                            <TableCell className="border text-right text-lg">{stats.received.toFixed(1)} KG</TableCell>
+                                            <TableCell className="border text-right">{stats.paper.toFixed(1)}</TableCell>
+                                            <TableCell className="border text-right">{stats.plastic.toFixed(1)}</TableCell>
+                                            <TableCell className="border text-right">{stats.metal.toFixed(1)}</TableCell>
+                                            <TableCell className="border text-right">{stats.glass.toFixed(1)}</TableCell>
+                                            <TableCell className="border text-right">{stats.sani.toFixed(1)}</TableCell>
+                                        </TableRow>
+                                      ));
+                                    })()}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                </CardContent>
+            </Card>
         </div>
       ))}
     </div>
