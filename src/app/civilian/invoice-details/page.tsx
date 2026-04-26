@@ -8,10 +8,12 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { UploadCloud, Loader2, Save, Calendar, Truck, Anchor, MapPin, Building, Route, ListPlus, Phone, LayoutGrid, FileSearch, Sparkles, Info } from 'lucide-react';
 import React, { useState, useMemo, Suspense, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { extractWasteReceiptData } from '@/ai/flows/invoice-data-extraction';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 // District Data Imports for Logistical Resolution
 import { angulDistrictData } from "@/lib/disAngul";
@@ -46,6 +48,7 @@ import { puriDistrictData } from "@/lib/disPuri";
 import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
 function WasteReceiptGenerationContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const name = searchParams.get('name') || 'Personnel';
   const phone = searchParams.get('contact') || 'N/A';
@@ -53,8 +56,10 @@ function WasteReceiptGenerationContent() {
   const block = searchParams.get('block') || '';
 
   const { toast } = useToast();
+  const db = useFirestore();
   const [mounted, setMounted] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     dateOfCollection: new Date().toISOString().split('T')[0],
@@ -168,14 +173,47 @@ function WasteReceiptGenerationContent() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = () => {
-    console.log("Submitting Verified Driver Data:", { ...formData, gpWeights, totalCollected, route: routeData });
-    toast({ title: "Receipt Submitted", description: "Collection metrics synced with ULB Hub." });
-    setFormData({ dateOfCollection: new Date().toISOString().split('T')[0], plastic: '', paper: '', metal: '', glass: '', sanitation: '', others: '' });
-    setGpWeights({});
+  const handleSubmit = async () => {
+    if (!db || !routeData) return;
+    setIsSubmitting(true);
+
+    const gpList = Object.entries(gpWeights).map(([gpName, amount]) => ({
+      name: gpName,
+      amount: parseFloat(amount) || 0
+    }));
+
+    const payload = {
+      date: formData.dateOfCollection,
+      routeId: routeData.routeId,
+      mrf: routeData.mrf,
+      block: routeData.block,
+      district: routeData.district,
+      totalGpLoad: totalCollected, // This simulates the GP load for the trip
+      driverSubmitted: totalCollected, 
+      plastic: parseFloat(formData.plastic) || 0,
+      paper: parseFloat(formData.paper) || 0,
+      metal: parseFloat(formData.metal) || 0,
+      glass: parseFloat(formData.glass) || 0,
+      sanitation: parseFloat(formData.sanitation) || 0,
+      others: parseFloat(formData.others) || 0,
+      gpBreakdown: gpList
+    };
+
+    try {
+      await addDoc(collection(db, 'wasteDetails'), payload);
+      toast({ title: "Receipt Generated", description: "Logistical circuit marked as COMPLETED and synced with ULB Hub." });
+      setFormData({ dateOfCollection: new Date().toISOString().split('T')[0], plastic: '', paper: '', metal: '', glass: '', sanitation: '', others: '' });
+      setGpWeights({});
+      router.push(`/civilian?${searchParams.toString()}`);
+    } catch (err) {
+      toast({ title: "Submission Failed", description: "Error syncing with master ledger.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (!mounted || !routeData) return <div className="p-12 text-center animate-pulse">Syncing logistical context...</div>;
+  if (!mounted) return <div className="p-12 text-center animate-pulse">Initializing Hub...</div>;
+  if (!routeData) return <div className="p-12 text-center text-muted-foreground">Logistical circuit not resolved.</div>;
 
   return (
     <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-8">
@@ -195,7 +233,7 @@ function WasteReceiptGenerationContent() {
                         accept="image/*" 
                         onChange={handleFileUpload} 
                         className="absolute inset-0 opacity-0 cursor-pointer z-10" 
-                        disabled={isExtracting}
+                        disabled={isExtracting || isSubmitting}
                     />
                     <div className="p-4 rounded-full bg-primary/10 w-fit mx-auto group-hover:scale-110 transition-transform">
                         {isExtracting ? <Loader2 className="h-8 w-8 text-primary animate-spin" /> : <UploadCloud className="h-8 w-8 text-primary" />}
@@ -337,8 +375,9 @@ function WasteReceiptGenerationContent() {
                 </CardContent>
             </ScrollArea>
             <CardFooter className="bg-primary/5 border-t p-6">
-                <Button onClick={handleSubmit} disabled={totalCollected === 0 || isExtracting} className="w-full h-14 text-lg font-black uppercase tracking-[0.1em] shadow-xl hover:scale-[1.01] transition-all">
-                    <Save className="mr-2 h-6 w-6" /> Finalize & Submit Verified Receipt
+                <Button onClick={handleSubmit} disabled={totalCollected === 0 || isExtracting || isSubmitting} className="w-full h-14 text-lg font-black uppercase tracking-[0.1em] shadow-xl hover:scale-[1.01] transition-all">
+                    {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2 h-6 w-6" />}
+                    Finalize & Submit Verified Receipt
                 </Button>
             </CardFooter>
         </Card>

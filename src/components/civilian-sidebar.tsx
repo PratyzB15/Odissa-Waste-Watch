@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from './ui/separator';
 
 const navItems = [
-  { href: '/civilian', icon: Home, label: 'Dashboard' },
+  { href: '/civilian', icon: Home, label: 'Activities' },
   { href: '/civilian/schedule', icon: Clock, label: 'Route Schedule' },
   { href: '/civilian/invoice-details', icon: FileText, label: 'Waste Receipt Generation' },
   { href: '/civilian/waste-details', icon: Database, label: 'Waste Details' },
