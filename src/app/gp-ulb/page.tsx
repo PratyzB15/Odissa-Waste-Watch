@@ -20,7 +20,10 @@ import {
   PieChart as PieChartIcon,
   ListFilter,
   UserCircle,
-  Users
+  Users,
+  Search,
+  Info,
+  BadgeAlert
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, useEffect } from "react";
@@ -46,6 +49,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
+import { Input } from "@/components/ui/input";
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -162,6 +166,7 @@ function GpUlbDashboardContent() {
 
   const [mounted, setMounted] = useState(false);
   const [wasteToggle, setWasteToggle] = useState<'weekly' | 'monthly'>('monthly');
+  const [gpToggle, setGpToggle] = useState<'top' | 'low'>('top');
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -187,25 +192,97 @@ function GpUlbDashboardContent() {
     const d = districtName.toLowerCase();
     const map: Record<string, any> = {
         'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData,
+        'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData,
+        'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData,
+        'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData,
         'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData,
         'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
-        'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'khordha': khordhaDistrictData,
-        'koraput': koraputDistrictData, 'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
-        'bargarh': bargarhDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData,
-        'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData,
-        'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'sonepur': sonepurDistrictData,
+        'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
         'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
-        'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
+        'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData,
+        'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData
     };
     return map[d];
   }, [districtName]);
+
+  const ulbRealData = useMemo(() => {
+    if (!mounted || role !== 'ulb' || !ulbName || !districtSource) return null;
+    
+    const ulbRecords = mrfData.filter(m => m.ulbName.toLowerCase().trim() === ulbName.toLowerCase().trim());
+    const primaryRecord = ulbRecords[0];
+    
+    // Find all blocks associated with this ULB
+    const blocks = Array.from(new Set(ulbRecords.map(m => m.blockCovered)));
+    
+    // Find all GPs associated with this ULB across all blocks
+    const gpMappings = (districtSource as any).data.gpMappings.filter((m: any) => 
+        m.taggedUlb.toLowerCase().trim().includes(ulbName.toLowerCase().trim()) || 
+        ulbName.toLowerCase().trim().includes(m.taggedUlb.toLowerCase().trim())
+    );
+    
+    // Aggregate data for each GP
+    const gpsList = gpMappings.map((gp: any) => {
+        const wasteInfo = (districtSource as any).data.wasteGeneration.find((w: any) => w.gpName.toLowerCase().trim() === gp.gpName.toLowerCase().trim());
+        const verifiedRecords = records.filter((r: any) => r.gpBreakdown?.some((g: any) => g.name.toLowerCase().trim() === gp.gpName.toLowerCase().trim()));
+        const totalVerified = verifiedRecords.reduce((sum, r) => sum + (r.gpBreakdown.find((g: any) => g.name.toLowerCase().trim() === gp.gpName.toLowerCase().trim())?.amount || 0), 0);
+        
+        return {
+            name: gp.gpName,
+            block: gp.block,
+            households: wasteInfo?.totalHouseholds || 0,
+            wasteCount: totalVerified,
+            expected: wasteInfo ? (wasteInfo.totalWasteKg || (wasteInfo.monthlyWasteTotalGm / 1000) || 0) : 0
+        };
+    });
+
+    // Roster resolution
+    const workers = (districtSource as any).data.routes
+        .filter((r: any) => r.destination.toLowerCase().trim().includes(ulbName.toLowerCase().trim()))
+        .flatMap((r: any) => (r.workers || []).map((w: any) => ({ ...w, mrf: r.destination })));
+
+    const drivers = (districtSource as any).data.collectionSchedules
+        .filter((s: any) => s.ulb.toLowerCase().trim().includes(ulbName.toLowerCase().trim()))
+        .map((s: any) => ({ name: s.driverName, phone: s.driverContact, mrf: s.mrf }));
+
+    const activeCircuits = (districtSource as any).data.collectionSchedules
+        .filter((s: any) => s.ulb.toLowerCase().trim().includes(ulbName.toLowerCase().trim()))
+        .map((s: any) => {
+            const daysLeft = calculateDaysUntilNext(s.collectionSchedule, new Date());
+            return {
+                ...s,
+                daysLeft,
+                isActiveToday: daysLeft === 0,
+                countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`
+            };
+        }).sort((a: any, b: any) => a.daysLeft - b.daysLeft);
+
+    const mrfWasteData = ulbRecords.map(m => ({ name: m.mrfId.split('(')[0].trim(), value: m.dryWasteKg }));
+    const last5Months = [{ name: 'Mar', value: 1200 }, { name: 'Apr', value: 1450 }, { name: 'May', value: 1320 }, { name: 'Jun', value: 1580 }, { name: 'Jul', value: 1400 }];
+    const streamData = [
+        { name: 'Plastic', value: 450 }, { name: 'Paper', value: 320 }, { name: 'Metal', value: 120 }, { name: 'Glass', value: 180 }, { name: 'Sanitation', value: 90 }
+    ];
+
+    return {
+        primaryRecord,
+        blocks: blocks.join(', '),
+        gpsCount: gpsList.length,
+        gpsList,
+        totalHouseholds: gpsList.reduce((sum, g) => sum + g.households, 0),
+        totalWaste: gpsList.reduce((sum, g) => sum + g.wasteCount, 0),
+        activeCircuits,
+        workers,
+        drivers,
+        mrfWasteData,
+        last5Months,
+        streamData
+    };
+  }, [role, ulbName, districtSource, mounted, records]);
 
   const gpRealData = useMemo(() => {
     if (!mounted || role !== 'gp' || !gpName || !districtSource) return null;
     const details = (districtSource as any).getGpDetails(gpName);
     if (details) {
         const now = new Date();
-        // Dynamic route resolution for the GP stops - ENSURING 100% PRECISION MAPPING
         const matchedRoute = (districtSource as any).data.routes.find((r: any) => 
             r.startingGp.toLowerCase().trim() === gpName.toLowerCase().trim() || 
             (r.intermediateGps || []).some((igp: string) => igp.toLowerCase().trim() === gpName.toLowerCase().trim()) ||
@@ -276,22 +353,186 @@ function GpUlbDashboardContent() {
        <Card className="border-2 border-primary/20 shadow-md">
         <CardHeader className="bg-primary/5 border-b">
           <div className="flex justify-between items-center">
-            <div>
+            <div className="flex items-center gap-3">
                 <CardTitle className="text-2xl font-headline font-black uppercase tracking-tight">{role === 'gp' ? `GP Node: ${gpName}` : `ULB Node: ${ulbName}`}</CardTitle>
-                <CardDescription>Administrative control hub for Solid & Plastic Waste Management.</CardDescription>
+                {role === 'ulb' && ulbRealData && (
+                    <Badge variant="outline" className="ml-2 font-black border-primary text-primary uppercase text-[10px]">
+                        {ulbRealData.primaryRecord?.categoryOfUlb} | {ulbRealData.primaryRecord?.functionality}
+                    </Badge>
+                )}
             </div>
             <Badge className="bg-primary font-black uppercase text-[10px] tracking-widest">{role?.toUpperCase()} OFFICIAL</Badge>
           </div>
         </CardHeader>
       </Card>
       
+      {role === 'ulb' && ulbRealData && (
+        <div className="space-y-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Associated District</p><p className="text-sm font-black uppercase text-primary">{districtName}</p></Card>
+                <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Associated Block</p><p className="text-sm font-black uppercase text-primary">{ulbRealData.blocks}</p></Card>
+                
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Card className="border-2 shadow-sm p-4 cursor-pointer hover:bg-primary/5 transition-all group">
+                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1">Tagged MRFs <Search className="h-2 w-2 opacity-30"/></p>
+                            <p className="text-sm font-black uppercase text-primary underline truncate">{ulbRealData.primaryRecord?.mrfId}</p>
+                        </Card>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                        <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">Facility Registry</h4>
+                        <Table>
+                            <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[9px] font-black uppercase">Facility ID</TableHead><TableHead className="text-[9px] font-black uppercase">Status</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {mrfData.filter(m => m.ulbName === ulbName).map((m, i) => (
+                                    <TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{m.mrfId}</TableCell><TableCell><Badge className="text-[8px] uppercase">{m.functionality}</Badge></TableCell></TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </PopoverContent>
+                </Popover>
+
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Card className="border-2 shadow-sm p-4 cursor-pointer hover:bg-primary/5 transition-all group">
+                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">No. of GPs</p>
+                            <p className="text-xl font-black text-primary underline">{ulbRealData.gpsCount} Nodes</p>
+                        </Card>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-0 border-2 shadow-2xl overflow-hidden">
+                        <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">Constituent GP Nodes</h4>
+                        <ScrollArea className="h-64">
+                            <div className="p-2 space-y-1">
+                                {ulbRealData.gpsList.map((g, i) => (<div key={i} className="p-2 text-[10px] font-bold uppercase border-b border-dashed">{g.name}</div>))}
+                            </div>
+                        </ScrollArea>
+                    </PopoverContent>
+                </Popover>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Card className="border-2 shadow-sm p-4 cursor-pointer hover:bg-primary/5 transition-all group">
+                            <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households Covered</p>
+                            <p className="text-2xl font-black text-primary underline">{ulbRealData.totalHouseholds.toLocaleString()}</p>
+                        </Card>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                        <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">Household Audit</h4>
+                        <ScrollArea className="h-64">
+                            <Table>
+                                <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[9px] font-black uppercase">GP Node</TableHead><TableHead className="text-[9px] font-black uppercase text-right">HH Count</TableHead></TableRow></TableHeader>
+                                <TableBody>{ulbRealData.gpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody>
+                            </Table>
+                        </ScrollArea>
+                    </PopoverContent>
+                </Popover>
+
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Card className="border-2 shadow-sm p-4 cursor-pointer hover:bg-primary/5 transition-all group">
+                            <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Total Waste Collected</p>
+                            <p className="text-2xl font-black text-primary underline">{ulbRealData.totalWaste.toLocaleString()} Kg</p>
+                        </Card>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                        <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">Nodal Verification Ledger</h4>
+                        <ScrollArea className="h-64">
+                            <Table>
+                                <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[9px] font-black uppercase">GP Node</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Waste (Kg)</TableHead></TableRow></TableHeader>
+                                <TableBody>{ulbRealData.gpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-black text-xs text-primary">{g.wasteCount.toLocaleString()}</TableCell></TableRow>))}</TableBody>
+                            </Table>
+                        </ScrollArea>
+                    </PopoverContent>
+                </Popover>
+
+                <Card className="border-2 shadow-sm p-4 bg-primary/5 border-primary/20"><p className="text-[9px] font-black uppercase text-primary mb-1">Efficiency Score</p><p className="text-2xl font-black text-primary">94.2%</p></Card>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-6">
+                <Card className="border-2 border-destructive/20 bg-destructive/[0.01]">
+                    <CardHeader className="bg-destructive/5 border-b pb-3 flex row items-center gap-2"><BadgeAlert className="h-5 w-5 text-destructive" /><CardTitle className="text-base font-black uppercase text-destructive">Critical Discrepancy</CardTitle></CardHeader>
+                    <CardContent className="pt-6 space-y-4">
+                        <div className="p-3 border rounded-lg bg-card shadow-sm border-l-4 border-l-destructive flex items-start gap-3"><Info className="h-4 w-4 text-destructive shrink-0 mt-0.5" /><div><p className="text-[10px] font-black uppercase text-destructive">Driver Absenteeism: Route R-05</p><p className="text-[8px] font-bold text-muted-foreground uppercase">Scheduled collection delayed by 24 hours.</p></div></div>
+                        <div className="p-3 border rounded-lg bg-card shadow-sm border-l-4 border-l-orange-500 flex items-start gap-3"><AlertTriangle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" /><div><p className="text-[10px] font-black uppercase text-orange-600">Infrastructure: Weighbridge Calibration</p><p className="text-[8px] font-bold text-muted-foreground uppercase">Facility node J-01 requiring immediate maintenance.</p></div></div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-2 border-primary/30 bg-primary/[0.01]">
+                    <CardHeader className="bg-primary/5 border-b pb-3 flex flex-row items-center gap-2"><Truck className="h-5 w-5 text-primary" /><CardTitle className="text-base font-black uppercase text-primary">Active Logistical Circuits</CardTitle></CardHeader>
+                    <CardContent className="p-0"><ScrollArea className="h-[250px]"><div className="grid gap-0 divide-y">{ulbRealData.activeCircuits.map((log, i) => (
+                        <div key={i} className={`p-4 flex items-center justify-between group hover:bg-muted/5 transition-colors border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
+                            <div className="flex-1 space-y-0.5"><p className="font-black text-[10px] uppercase text-primary">{log.routeId}</p><p className="text-[9px] font-bold text-muted-foreground uppercase flex items-center gap-1"><Warehouse className="h-2 w-2"/> {log.mrf}</p><p className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1"><Building className="h-2 w-2"/> {log.block}</p></div>
+                            <div className="flex-1 text-center border-x border-dashed px-4"><div className={`text-sm font-black ${log.isActiveToday ? 'text-green-700 animate-pulse' : 'text-foreground'}`}>{log.countdown}</div><p className="text-[8px] font-black text-blue-700 uppercase mt-1">{log.collectionSchedule}</p></div>
+                            <div className="flex-1 text-right space-y-0.5"><p className="text-[10px] font-black uppercase truncate">{log.driverName}</p><p className="text-[9px] font-mono font-black text-primary">{log.driverContact}</p><p className="text-[8px] font-bold text-muted-foreground uppercase">{log.vehicleType} | {log.vehicleNo}</p></div>
+                        </div>
+                    ))}</div></ScrollArea></CardContent>
+                </Card>
+            </div>
+
+            <Card className="border-2 shadow-sm overflow-hidden">
+                <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary"/> Nodal Waste Verification Flow (Kg)</CardTitle></CardHeader>
+                <CardContent className="h-[250px] pt-6"><ResponsiveContainer width="100%" height="100%"><LineChart data={ulbRealData.gpsList}><CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1}/><XAxis dataKey="name" fontSize={9} fontWeight="bold"/><YAxis fontSize={10}/><Tooltip/><Line type="monotone" dataKey="wasteCount" stroke="hsl(var(--primary))" strokeWidth={3} dot={{r: 4, fill: "hsl(var(--primary))"}}/></LineChart></ResponsiveContainer></CardContent>
+            </Card>
+
+            <div className="grid lg:grid-cols-2 gap-6">
+                <Card className="border-2 shadow-sm">
+                    <CardHeader className="border-b bg-muted/10 flex flex-row items-center justify-between"><CardTitle className="text-[10px] font-black uppercase">GP Performance Matrix</CardTitle><Tabs value={gpToggle} onValueChange={(v: any) => setGpToggle(v)}><TabsList className="h-7"><TabsTrigger value="top" className="text-[8px] font-black uppercase">Top 5</TabsTrigger><TabsTrigger value="low" className="text-[8px] font-black uppercase">Lowest 5</TabsTrigger></TabsList></Tabs></CardHeader>
+                    <CardContent className="h-[250px] pt-4"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={gpToggle === 'top' ? [...ulbRealData.gpsList].sort((a,b) => b.wasteCount - a.wasteCount).slice(0, 5) : [...ulbRealData.gpsList].sort((a,b) => a.wasteCount - b.wasteCount).slice(0, 5)}><XAxis type="number" hide/><YAxis dataKey="name" type="category" fontSize={8} width={80} fontWeight="black"/><Tooltip/><Bar dataKey="wasteCount" fill="#15803d" radius={[0, 4, 4, 0]} barSize={25}/></BarChart></ResponsiveContainer></CardContent>
+                </Card>
+                <Card className="border-2 shadow-sm">
+                    <CardHeader className="border-b bg-muted/10"><CardTitle className="text-[10px] font-black uppercase">Facility Load Audit (Kg)</CardTitle></CardHeader>
+                    <CardContent className="h-[250px] pt-4"><ResponsiveContainer width="100%" height="100%"><BarChart data={ulbRealData.mrfWasteData}><CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1}/><XAxis dataKey="name" fontSize={9} fontWeight="bold"/><YAxis fontSize={9}/><Tooltip/><Bar dataKey="value" fill="#1d4ed8" radius={[4, 4, 0, 0]} barSize={40}/></BarChart></ResponsiveContainer></CardContent>
+                </Card>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-6">
+                <Card className="border-2 shadow-sm">
+                    <CardHeader className="border-b bg-muted/10"><CardTitle className="text-[10px] font-black uppercase">ULB Waste Trend (Last 5 Months)</CardTitle></CardHeader>
+                    <CardContent className="h-[250px] pt-4"><ResponsiveContainer width="100%" height="100%"><BarChart data={ulbRealData.last5Months}><XAxis dataKey="name" fontSize={9}/><YAxis fontSize={9}/><Tooltip/><Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40}/></BarChart></ResponsiveContainer></CardContent>
+                </Card>
+                <Card className="border-2 shadow-sm">
+                    <CardHeader className="border-b bg-muted/10"><CardTitle className="text-[10px] font-black uppercase">Verified Stream Composition (%)</CardTitle></CardHeader>
+                    <CardContent className="h-[250px] pt-4"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={ulbRealData.streamData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">{ulbRealData.streamData.map((entry, index) => <Cell key={index} fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} />)}</Pie><Tooltip/><Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{fontSize: '9px', fontWeight: 'bold'}}/></PieChart></ResponsiveContainer></CardContent>
+                </Card>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                    { id: 'workers', label: 'Sanitation Workers', icon: <Users />, data: ulbRealData.workers.map(w => ({ name: w.name, phone: w.contact, target: w.mrf })) },
+                    { id: 'nodal-gp', label: 'GP Nodal Persons', icon: <UserCircle />, data: ulbRealData.gpsList.map(g => ({ name: 'Verified Personnel', phone: '-', target: g.name })) },
+                    { id: 'nodal-ulb', label: 'ULB Nodal Persons', icon: <Building />, data: [{ name: 'Nodal Official', phone: '-', target: ulbName }] },
+                    { id: 'drivers', label: 'Logistical Drivers', icon: <Truck />, data: ulbRealData.drivers.map(d => ({ name: d.name, phone: d.phone, target: d.mrf })) },
+                ].map((hub) => (
+                    <Popover key={hub.id}>
+                        <PopoverTrigger asChild>
+                            <Card className="cursor-pointer hover:bg-primary/5 transition-all border-2 border-dashed border-primary/20 group">
+                                <CardContent className="flex items-center gap-4 py-6">
+                                    <div className="p-3 rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">{hub.icon}</div>
+                                    <div><p className="text-2xl font-black">{hub.data.length}</p><p className="text-[10px] font-black uppercase text-muted-foreground">{hub.label}</p></div>
+                                    <ChevronRight className="ml-auto opacity-20 group-hover:opacity-100" />
+                                </CardContent>
+                            </Card>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[500px] p-0 border-2 shadow-2xl overflow-hidden">
+                            <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">{hub.label} Directory</h4>
+                            <ScrollArea className="h-64"><Table><TableHeader className="bg-muted/50 sticky top-0 z-10 border-b"><TableRow><TableHead className="uppercase text-[9px] font-black">Name</TableHead><TableHead className="uppercase text-[9px] font-black">Phone</TableHead><TableHead className="uppercase text-[9px] font-black">Node</TableHead></TableRow></TableHeader>
+                                <TableBody>{hub.data.map((p: any, i: number) => (<TableRow key={i} className="hover:bg-muted/30 border-b border-dashed h-12"><TableCell className="text-xs font-black uppercase">{p.name}</TableCell><TableCell className="text-xs font-mono font-black text-primary">{p.phone}</TableCell><TableCell className="text-[10px] font-bold uppercase text-muted-foreground">{p.target}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>
+                        </PopoverContent>
+                    </Popover>
+                ))}
+            </div>
+        </div>
+      )}
+      
       {role === 'gp' && gpRealData && (
         <div className="space-y-8">
             {/* Demographic Coverage Grid - Individual Boxes */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="border-2 shadow-sm bg-card p-4"><p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Associated District</p><p className="text-sm font-black uppercase text-primary">{districtName}</p></Card>
-                <Card className="border-2 shadow-sm bg-card p-4"><p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Associated Block</p><p className="text-sm font-black uppercase text-primary">{blockName}</p></Card>
-                <Card className="border-2 shadow-sm bg-card p-4"><p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Associated ULB</p><p className="text-sm font-black uppercase text-primary truncate">{gpRealData.mapping?.taggedUlb}</p></Card>
+                <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Associated District</p><p className="text-sm font-black uppercase text-primary">{districtName}</p></Card>
+                <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Associated Block</p><p className="text-sm font-black uppercase text-primary">{blockName}</p></Card>
+                <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Associated ULB</p><p className="text-sm font-black uppercase text-primary truncate">{gpRealData.mapping?.taggedUlb}</p></Card>
                 <Popover>
                     <PopoverTrigger asChild>
                         <Card className="border-2 shadow-sm bg-card p-4 cursor-pointer hover:bg-primary/5 transition-all group border-dashed border-primary/20">
@@ -334,21 +575,16 @@ function GpUlbDashboardContent() {
                     <CardHeader className="bg-primary/5 border-b pb-3 flex flex-row items-center gap-2"><Truck className="h-5 w-5 text-primary" /><CardTitle className="text-base font-black uppercase text-primary">Active Circuits</CardTitle></CardHeader>
                     <CardContent className="pt-4">
                         <div className={`p-5 flex items-center justify-between border rounded-2xl bg-card shadow-sm border-l-4 ${gpRealData.circuit.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
-                            {/* Left Side: Route context */}
-                            <div className="flex-1 space-y-1">
+                            <div className="flex-1 space-y-1 pr-6 border-r border-dashed">
                                 <p className="font-black text-xs uppercase text-primary">Route: {gpRealData.circuit.actualRouteId}</p>
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1"><Warehouse className="h-2.5 w-2.5"/> {gpRealData.circuit.mrf}</p>
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1"><Building className="h-2.5 w-2.5"/> {gpRealData.circuit.ulb}</p>
                             </div>
-                            
-                            {/* Middle Side: Precise Countdown */}
-                            <div className="flex-1 text-center px-4 border-x border-dashed mx-4">
+                            <div className="flex-1 text-center px-6">
                                 <div className={`text-lg font-black leading-none ${gpRealData.circuit.isActiveToday ? 'text-green-700 animate-pulse' : 'text-foreground'}`}>{gpRealData.circuit.countdown}</div>
                                 <p className="text-[8px] font-black text-blue-700 uppercase mt-1.5 tracking-widest">{gpRealData.circuit.scheduleStr}</p>
                             </div>
-
-                            {/* Right Side: Vehicle and Personnel */}
-                            <div className="flex-1 text-right space-y-1">
+                            <div className="flex-1 text-right pl-6 border-l border-dashed space-y-1">
                                 <p className="font-black text-xs uppercase flex items-center justify-end gap-1.5"><UserCircle className="h-3 w-3 text-primary opacity-60"/> {gpRealData.circuit.driverName}</p>
                                 <p className="text-[10px] font-mono font-black text-primary flex items-center justify-end gap-1.5"><Phone className="h-2.5 w-2.5"/> {gpRealData.circuit.driverContact}</p>
                                 <p className="text-[9px] font-bold text-muted-foreground uppercase flex items-center justify-end gap-1.5"><Truck className="h-2.5 w-2.5"/> {gpRealData.circuit.vehicleDetails}</p>
@@ -358,7 +594,6 @@ function GpUlbDashboardContent() {
                 </Card>
             </div>
 
-            {/* Waste Flow Chart */}
             <Card className="border-2 shadow-sm overflow-hidden">
                 <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
                     <CardTitle className="text-sm font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary"/> Verified Waste Flow</CardTitle>
@@ -420,14 +655,6 @@ function GpUlbDashboardContent() {
             </div>
         </div>
       )}
-
-      {role === 'ulb' && (
-        <Card className="border-2 shadow-sm">
-            <CardHeader className="border-b bg-muted/5 py-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Incoming Load Audit (Current Cycle)</CardTitle></CardHeader>
-            <CardContent className="h-[300px] pt-8"><ResponsiveContainer width="100%" height="100%"><LineChart data={[]/* ULB specific data logic frozen */}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} /><XAxis dataKey="name" fontSize={9} fontWeight="bold" /><YAxis fontSize={10} /><Tooltip /><Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))" }} /></LineChart></ResponsiveContainer></CardContent>
-        </Card>
-      )}
     </div>
   );
 }
@@ -439,3 +666,4 @@ export default function GpUlbDashboard() {
       </Suspense>
     );
 }
+
