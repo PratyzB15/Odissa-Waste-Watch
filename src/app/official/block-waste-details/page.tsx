@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Calendar, Calculator, MapPin, BarChart3, Warehouse } from "lucide-react";
+import { Calendar, Calculator, MapPin, Warehouse, Building } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
 import { useCollection, useFirestore } from '@/firebase';
@@ -31,6 +31,8 @@ import { kalahandiDistrictData } from "@/lib/disKalahandi";
 import { kandhamalDistrictData } from "@/lib/disKandhamal";
 import { kendraparaDistrictData } from "@/lib/disKendrapara";
 import { kendujharDistrictData } from "@/lib/disKendujhar";
+import { balasoreDistrictData } from "@/lib/disBalasore";
+import { baleswarDistrictData } from "@/lib/disBaleswar";
 import { khordhaDistrictData } from "@/lib/disKhordha";
 import { koraputDistrictData } from "@/lib/disKoraput";
 import { mayurbhanjDistrictData } from "@/lib/disMayurbhanj";
@@ -41,8 +43,6 @@ import { nayagarhDistrictData } from "@/lib/disNayagarh";
 import { nuapadaDistrictData } from "@/lib/disNuapada";
 import { puriDistrictData } from "@/lib/disPuri";
 import { sambalpurDistrictData } from "@/lib/disSambalpur";
-import { balasoreDistrictData } from "@/lib/disBalasore";
-import { baleswarDistrictData } from "@/lib/disBaleswar";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June", 
@@ -70,7 +70,7 @@ function BlockWasteReconciliationContent() {
 
   const blockBaselineAvg = useMemo(() => {
     if (!districtName || !blockName) return 0;
-    const districtsMap: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
+    const districtsMap: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
     const source = districtsMap[districtName.toLowerCase()];
     if (!source) return 0;
     const details = source.getBlockDetails(blockName);
@@ -110,10 +110,10 @@ function BlockWasteReconciliationContent() {
 
                     if (year === '2026' && mIdx < 3) return null;
 
-                    const reconciledRecords = monthItems.filter(r => r.submittedByRole === 'driver').map(driverRec => {
+                    const reconciledRecords = monthItems.filter(r => r.submittedByRole === 'driver' || r.submittedByRole === 'ulb').map(driverRec => {
                         const matchingGPs = monthItems.filter(r => r.submittedByRole === 'gp' && r.date === driverRec.date && r.routeId === driverRec.routeId);
                         const totalFromGPs = matchingGPs.reduce((sum, r) => sum + (r.driverSubmitted || 0), 0);
-                        return { ...driverRec, reconciledGpTotal: totalFromGPs, gpBreakdownDetailed: matchingGPs.map(m => ({ name: m.gpName, amount: m.driverSubmitted })) };
+                        return { ...driverRec, reconciledGpTotal: totalFromGPs || driverRec.totalGpLoad || 0, gpBreakdownDetailed: matchingGPs.map(m => ({ name: m.gpName, amount: m.driverSubmitted })) };
                     });
 
                     const monthVerified = reconciledRecords.reduce((sum, r) => sum + (r.driverSubmitted || 0), 0);
@@ -163,6 +163,7 @@ function BlockWasteReconciliationContent() {
                                                                   <TableRow>
                                                                     <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
                                                                     <TableHead className="w-[120px] uppercase font-black border text-center">Route ID</TableHead>
+                                                                    <TableHead className="w-[200px] uppercase font-black border text-center">Facility (MRF)</TableHead>
                                                                     <TableHead className="w-[200px] uppercase font-black border text-right px-6 bg-blue-50/20">Total Waste from GPs (Click)</TableHead>
                                                                     <TableHead className="w-[150px] text-right uppercase font-black border bg-primary/5 text-primary">Driver Submitted (Kg)</TableHead>
                                                                     <TableHead className="w-[120px] text-right uppercase font-black border bg-destructive/5 text-destructive">Discrepancy</TableHead>
@@ -179,11 +180,12 @@ function BlockWasteReconciliationContent() {
                                                                     <TableRow key={row.id} className="hover:bg-primary/[0.01] border-b last:border-0 h-16 transition-colors">
                                                                       <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
                                                                       <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
+                                                                      <TableCell className="border-r font-bold uppercase text-center">{row.mrf}</TableCell>
                                                                       <TableCell className="border-r p-0">
                                                                         <Popover>
                                                                           <PopoverTrigger asChild>
                                                                             <button className="w-full h-16 flex items-center justify-end px-6 font-bold text-blue-700 hover:bg-blue-50 underline decoration-dotted underline-offset-4 uppercase">
-                                                                              {row.reconciledGpTotal.toFixed(1)} KG
+                                                                              {row.reconciledGpTotal?.toFixed(1)} KG
                                                                             </button>
                                                                           </PopoverTrigger>
                                                                           <PopoverContent className="w-72 p-0 border-2 shadow-2xl overflow-hidden" align="end">
@@ -251,7 +253,7 @@ function BlockWasteReconciliationContent() {
                                     <TableHeader className="bg-muted/50">
                                         <TableRow>
                                             <TableHead className="w-[150px] uppercase font-black border text-center">Route ID</TableHead>
-                                            <TableHead className="w-[200px] uppercase font-black border">Associated MRF</TableHead>
+                                            <TableHead className="w-[200px] uppercase font-black border text-center">Associated MRF</TableHead>
                                             <TableHead className="w-[150px] uppercase font-black border text-center">Coll. Freq (Year)</TableHead>
                                             <TableHead className="w-[180px] text-right uppercase font-black border bg-primary/5">Total Collected (Kg)</TableHead>
                                             <TableHead className="w-[120px] text-right uppercase font-black border">Total Paper</TableHead>
@@ -264,7 +266,7 @@ function BlockWasteReconciliationContent() {
                                     </TableHeader>
                                     <TableBody>
                                         {(() => {
-                                          const yearly = allRecords.filter(r => new Date(r.date).getFullYear().toString() === year && r.submittedByRole === 'driver');
+                                          const yearly = allRecords.filter(r => new Date(r.date).getFullYear().toString() === year && (r.submittedByRole === 'driver' || r.submittedByRole === 'ulb'));
                                           if (yearly.length === 0) return <TableRow><TableCell colSpan={10} className="h-48 text-center italic font-black uppercase tracking-[0.3em] opacity-10 text-2xl">Awaiting Annual Audit Cycle</TableCell></TableRow>;
                                           
                                           const routesMap = new Map();
@@ -279,15 +281,15 @@ function BlockWasteReconciliationContent() {
                                                   plastic: prev.plastic + (r.plastic || 0),
                                                   metal: prev.metal + (r.metal || 0),
                                                   glass: prev.glass + (r.glass || 0),
-                                                  sani: prev.sani + (r.sanitation || 0),
-                                                  other: prev.other + (r.others || 0)
+                                                  sani: prev.sanitation + (r.sanitation || 0),
+                                                  other: prev.others || 0
                                               });
                                           });
 
                                           return Array.from(routesMap.entries()).map(([id, stats]) => (
                                             <TableRow key={id} className="bg-primary/5 font-black text-primary h-16 hover:bg-primary/10 transition-colors">
                                                 <TableCell className="border text-center font-mono">{id}</TableCell>
-                                                <TableCell className="border uppercase">{stats.mrf}</TableCell>
+                                                <TableCell className="border text-center uppercase">{stats.mrf}</TableCell>
                                                 <TableCell className="border text-center">{stats.count} Circuits</TableCell>
                                                 <TableCell className="border text-right text-lg">{stats.received.toFixed(1)} KG</TableCell>
                                                 <TableCell className="border text-right">{stats.paper.toFixed(1)}</TableCell>

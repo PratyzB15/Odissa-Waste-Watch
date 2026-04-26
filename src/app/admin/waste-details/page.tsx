@@ -95,10 +95,10 @@ function StateWasteReconciliationContent() {
                     });
                     if (year === '2026' && mIdx < 3) return null;
 
-                    const reconciledRecords = monthItems.filter(r => r.submittedByRole === 'driver').map(driverRec => {
+                    const reconciledRecords = monthItems.filter(r => r.submittedByRole === 'driver' || r.submittedByRole === 'ulb').map(driverRec => {
                         const matchingGPs = monthItems.filter(r => r.submittedByRole === 'gp' && r.date === driverRec.date && r.routeId === driverRec.routeId);
                         const totalFromGPs = matchingGPs.reduce((sum, r) => sum + (r.driverSubmitted || 0), 0);
-                        return { ...driverRec, reconciledGpTotal: totalFromGPs, gpBreakdownDetailed: matchingGPs.map(m => ({ name: m.gpName, amount: m.driverSubmitted })) };
+                        return { ...driverRec, reconciledGpTotal: totalFromGPs || driverRec.totalGpLoad || 0, gpBreakdownDetailed: matchingGPs.map(m => ({ name: m.gpName, amount: m.driverSubmitted })) };
                     });
 
                     const monthVerified = reconciledRecords.reduce((sum, r) => sum + (r.driverSubmitted || 0), 0);
@@ -152,79 +152,79 @@ function StateWasteReconciliationContent() {
                                                                 </AccordionTrigger>
                                                                 <AccordionContent className="p-4 space-y-4">
                                                                     {Array.from(new Set(reconciledRecords.filter(r => r.district === dist && r.block === block).map(r => r.mrf))).sort().map(ulb => (
-                                                                        <AccordionItem value={`${year}-${month}-${dist}-${block}-${ulb}`} key={ulb} className="border-none">
-                                                                            <Card className="border shadow-sm mb-4 overflow-hidden">
-                                                                                <AccordionTrigger className="px-4 py-2 hover:no-underline bg-primary/[0.02]">
-                                                                                  <div className="flex items-center gap-2">
-                                                                                    <Warehouse className="h-3 w-3 text-primary/60" />
-                                                                                    <p className="font-bold uppercase text-[10px] text-primary">Facility (MRF): {ulb}</p>
-                                                                                  </div>
-                                                                                </AccordionTrigger>
-                                                                                <AccordionContent className="p-0">
-                                                                                    <ScrollArea className="w-full">
-                                                                                        <div className="min-w-[1500px]">
-                                                                                            <Table className="border text-[10px]">
-                                                                                                <TableHeader className="bg-muted/50">
-                                                                                                  <TableRow>
-                                                                                                    <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
-                                                                                                    <TableHead className="w-[120px] uppercase font-black border text-center">Route ID</TableHead>
-                                                                                                    <TableHead className="w-[200px] uppercase font-black border text-right px-6 bg-blue-50/20">Total Waste from GPs (Click)</TableHead>
-                                                                                                    <TableHead className="w-[150px] text-right uppercase font-black border bg-primary/5 text-primary">Driver Submitted (Kg)</TableHead>
-                                                                                                    <TableHead className="w-[120px] text-right uppercase font-black border bg-destructive/5 text-destructive">Discrepancy</TableHead>
-                                                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Plastic</TableHead>
-                                                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Paper</TableHead>
-                                                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Metal</TableHead>
-                                                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Cloth</TableHead>
-                                                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Glass</TableHead>
-                                                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Sanitation</TableHead>
-                                                                                                  </TableRow>
-                                                                                                </TableHeader>
-                                                                                                <TableBody>
-                                                                                                  {reconciledRecords.filter(r => r.district === dist && r.block === block && r.mrf === ulb).map((row) => (
-                                                                                                    <TableRow key={row.id} className="hover:bg-primary/[0.01] border-b last:border-0 h-14 transition-colors">
-                                                                                                      <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
-                                                                                                      <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
-                                                                                                      <TableCell className="border-r p-0">
-                                                                                                        <Popover>
-                                                                                                          <PopoverTrigger asChild>
-                                                                                                            <button className="w-full h-14 flex items-center justify-end px-6 font-bold text-blue-700 hover:bg-blue-50 underline decoration-dotted underline-offset-4 uppercase">
-                                                                                                              {row.reconciledGpTotal.toFixed(1)} KG
-                                                                                                            </button>
-                                                                                                          </PopoverTrigger>
-                                                                                                          <PopoverContent className="w-72 p-0 border-2 shadow-2xl overflow-hidden" align="end">
-                                                                                                            <div className="bg-blue-700 text-white p-3 font-black uppercase text-[9px] flex items-center gap-2">
-                                                                                                              <MapPin className="h-3 w-3" /> GP Breakdown
-                                                                                                            </div>
-                                                                                                            <Table>
-                                                                                                              <TableBody>
-                                                                                                                {row.gpBreakdownDetailed?.map((gp: any, i: number) => (
-                                                                                                                  <TableRow key={i} className="h-10 border-b border-dashed">
-                                                                                                                    <TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell>
-                                                                                                                    <TableCell className="text-right font-mono font-black text-blue-700">{gp.amount?.toFixed(1)}</TableCell>
-                                                                                                                  </TableRow>
-                                                                                                                ))}
-                                                                                                              </TableBody>
-                                                                                                            </Table>
-                                                                                                          </PopoverContent>
-                                                                                                        </Popover>
-                                                                                                      </TableCell>
-                                                                                                      <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02] text-sm">{row.driverSubmitted?.toFixed(1)} KG</TableCell>
-                                                                                                      <TableCell className="border-r text-right font-mono font-black text-destructive">{(row.reconciledGpTotal - row.driverSubmitted).toFixed(1)} KG</TableCell>
-                                                                                                      <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
-                                                                                                      <TableCell className="border-r text-right font-mono">{row.paper}</TableCell>
-                                                                                                      <TableCell className="border-r text-right font-mono">{row.metal}</TableCell>
-                                                                                                      <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
-                                                                                                      <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
-                                                                                                      <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
-                                                                                                    </TableRow>
-                                                                                                  ))}
-                                                                                                </TableBody>
-                                                                                            </Table>
-                                                                                        </div>
-                                                                                        <ScrollBar orientation="horizontal" />
-                                                                                    </ScrollArea>
-                                                                                </AccordionContent>
-                                                                            </Card>
+                                                                        <AccordionItem value={`${year}-${month}-${dist}-${block}-${ulb}`} key={ulb} className="border rounded-xl shadow-sm border-primary/10 overflow-hidden">
+                                                                            <AccordionTrigger className="px-4 py-2 hover:no-underline bg-primary/[0.02]">
+                                                                              <div className="flex items-center gap-2">
+                                                                                <Warehouse className="h-3 w-3 text-primary/60" />
+                                                                                <p className="font-bold uppercase text-[10px] text-primary">Facility (MRF): {ulb}</p>
+                                                                              </div>
+                                                                            </AccordionTrigger>
+                                                                            <AccordionContent className="p-0">
+                                                                                <ScrollArea className="w-full">
+                                                                                    <div className="min-w-[1500px]">
+                                                                                        <Table className="border text-[10px]">
+                                                                                            <TableHeader className="bg-muted/50">
+                                                                                              <TableRow>
+                                                                                                <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
+                                                                                                <TableHead className="w-[120px] uppercase font-black border text-center">Route ID</TableHead>
+                                                                                                <TableHead className="w-[180px] uppercase font-black border text-center">Facility (MRF)</TableHead>
+                                                                                                <TableHead className="w-[200px] uppercase font-black border text-right px-6 bg-blue-50/20">Total Waste from GPs (Click)</TableHead>
+                                                                                                <TableHead className="w-[150px] text-right uppercase font-black border bg-primary/5 text-primary">Driver Submitted (Kg)</TableHead>
+                                                                                                <TableHead className="w-[120px] text-right uppercase font-black border bg-destructive/5 text-destructive">Discrepancy</TableHead>
+                                                                                                <TableHead className="w-[90px] text-right uppercase font-black border">Plastic</TableHead>
+                                                                                                <TableHead className="w-[90px] text-right uppercase font-black border">Paper</TableHead>
+                                                                                                <TableHead className="w-[90px] text-right uppercase font-black border">Metal</TableHead>
+                                                                                                <TableHead className="w-[90px] text-right uppercase font-black border">Cloth</TableHead>
+                                                                                                <TableHead className="w-[90px] text-right uppercase font-black border">Glass</TableHead>
+                                                                                                <TableHead className="w-[90px] text-right uppercase font-black border">Sanitation</TableHead>
+                                                                                              </TableRow>
+                                                                                            </TableHeader>
+                                                                                            <TableBody>
+                                                                                              {reconciledRecords.filter(r => r.district === dist && r.block === block && r.mrf === ulb).map((row) => (
+                                                                                                <TableRow key={row.id} className="hover:bg-primary/[0.01] border-b last:border-0 h-14 transition-colors">
+                                                                                                  <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
+                                                                                                  <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
+                                                                                                  <TableCell className="border-r font-bold uppercase text-center">{row.mrf}</TableCell>
+                                                                                                  <TableCell className="border-r p-0">
+                                                                                                    <Popover>
+                                                                                                      <PopoverTrigger asChild>
+                                                                                                        <button className="w-full h-14 flex items-center justify-end px-6 font-bold text-blue-700 hover:bg-blue-50 underline decoration-dotted underline-offset-4 uppercase">
+                                                                                                          {row.reconciledGpTotal.toFixed(1)} KG
+                                                                                                        </button>
+                                                                                                      </PopoverTrigger>
+                                                                                                      <PopoverContent className="w-72 p-0 border-2 shadow-2xl overflow-hidden" align="end">
+                                                                                                        <div className="bg-blue-700 text-white p-3 font-black uppercase text-[9px] flex items-center gap-2">
+                                                                                                          <MapPin className="h-3 w-3" /> GP Breakdown
+                                                                                                        </div>
+                                                                                                        <Table>
+                                                                                                          <TableBody>
+                                                                                                            {row.gpBreakdownDetailed?.map((gp: any, i: number) => (
+                                                                                                              <TableRow key={i} className="h-10 border-b border-dashed">
+                                                                                                                <TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell>
+                                                                                                                <TableCell className="text-right font-mono font-black text-blue-700">{gp.amount?.toFixed(1)}</TableCell>
+                                                                                                              </TableRow>
+                                                                                                            ))}
+                                                                                                          </TableBody>
+                                                                                                        </Table>
+                                                                                                      </PopoverContent>
+                                                                                                    </Popover>
+                                                                                                  </TableCell>
+                                                                                                  <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02] text-sm">{row.driverSubmitted?.toFixed(1)} KG</TableCell>
+                                                                                                  <TableCell className="border-r text-right font-mono font-black text-destructive">{(row.reconciledGpTotal - row.driverSubmitted).toFixed(1)} KG</TableCell>
+                                                                                                  <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
+                                                                                                  <TableCell className="border-r text-right font-mono">{row.paper}</TableCell>
+                                                                                                  <TableCell className="border-r text-right font-mono">{row.metal}</TableCell>
+                                                                                                  <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
+                                                                                                  <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
+                                                                                                  <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
+                                                                                                </TableRow>
+                                                                                              ))}
+                                                                                            </TableBody>
+                                                                                        </Table>
+                                                                                    </div>
+                                                                                    <ScrollBar orientation="horizontal" />
+                                                                                </ScrollArea>
+                                                                            </AccordionContent>
                                                                         </AccordionItem>
                                                                     ))}
                                                                 </AccordionContent>
@@ -276,7 +276,7 @@ function StateWasteReconciliationContent() {
                                     </TableHeader>
                                     <TableBody>
                                         {(() => {
-                                          const yearly = allRecords.filter(r => new Date(r.date).getFullYear().toString() === year && r.submittedByRole === 'driver');
+                                          const yearly = allRecords.filter(r => new Date(r.date).getFullYear().toString() === year && (r.submittedByRole === 'driver' || r.submittedByRole === 'ulb'));
                                           if (yearly.length === 0) return <TableRow><TableCell colSpan={9} className="h-48 text-center italic font-black uppercase tracking-[0.3em] opacity-10 text-2xl">Awaiting Annual Audit Cycle</TableCell></TableRow>;
                                           
                                           const distMap = new Map();
@@ -290,8 +290,8 @@ function StateWasteReconciliationContent() {
                                                   plastic: prev.plastic + (r.plastic || 0),
                                                   metal: prev.metal + (r.metal || 0),
                                                   glass: prev.glass + (r.glass || 0),
-                                                  sani: prev.sani + (r.sanitation || 0),
-                                                  other: prev.other + (r.others || 0)
+                                                  sani: prev.sanitation + (r.sanitation || 0),
+                                                  other: prev.others || 0
                                               });
                                           });
 

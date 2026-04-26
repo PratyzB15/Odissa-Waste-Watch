@@ -108,10 +108,10 @@ function DistrictWasteReconciliationContent() {
 
                     if (year === '2026' && mIdx < 3) return null;
 
-                    const reconciledRecords = monthItems.filter(r => r.submittedByRole === 'driver').map(driverRec => {
+                    const reconciledRecords = monthItems.filter(r => r.submittedByRole === 'driver' || r.submittedByRole === 'ulb').map(driverRec => {
                         const matchingGPs = monthItems.filter(r => r.submittedByRole === 'gp' && r.date === driverRec.date && r.routeId === driverRec.routeId);
                         const totalFromGPs = matchingGPs.reduce((sum, r) => sum + (r.driverSubmitted || 0), 0);
-                        return { ...driverRec, reconciledGpTotal: totalFromGPs, gpBreakdownDetailed: matchingGPs.map(m => ({ name: m.gpName, amount: m.driverSubmitted })) };
+                        return { ...driverRec, reconciledGpTotal: totalFromGPs || driverRec.totalGpLoad || 0, gpBreakdownDetailed: matchingGPs.map(m => ({ name: m.gpName, amount: m.driverSubmitted })) };
                     });
 
                     const monthVerified = reconciledRecords.reduce((sum, r) => sum + (r.driverSubmitted || 0), 0);
@@ -160,7 +160,7 @@ function DistrictWasteReconciliationContent() {
                                                                 <AccordionTrigger className="px-5 py-3 hover:no-underline bg-muted/5">
                                                                   <div className="flex items-center gap-2">
                                                                     <Warehouse className="h-4 w-4 text-muted-foreground" />
-                                                                    <h5 className="font-bold uppercase text-[10px] text-muted-foreground">ULB Node: {ulb}</h5>
+                                                                    <h5 className="font-bold uppercase text-[10px] text-muted-foreground">Facility (MRF): {ulb}</h5>
                                                                   </div>
                                                                 </AccordionTrigger>
                                                                 <AccordionContent className="p-0">
@@ -171,6 +171,7 @@ function DistrictWasteReconciliationContent() {
                                                                                   <TableRow>
                                                                                     <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
                                                                                     <TableHead className="w-[120px] uppercase font-black border text-center">Route ID</TableHead>
+                                                                                    <TableHead className="w-[200px] uppercase font-black border text-center">Facility (MRF)</TableHead>
                                                                                     <TableHead className="w-[200px] uppercase font-black border text-right px-6 bg-blue-50/20">Total Waste from GPs (Click)</TableHead>
                                                                                     <TableHead className="w-[150px] text-right uppercase font-black border bg-primary/5 text-primary">Driver Submitted (Kg)</TableHead>
                                                                                     <TableHead className="w-[120px] text-right uppercase font-black border bg-destructive/5 text-destructive">Discrepancy</TableHead>
@@ -187,6 +188,7 @@ function DistrictWasteReconciliationContent() {
                                                                                     <TableRow key={row.id} className="hover:bg-primary/[0.01] border-b last:border-0 h-16 transition-colors">
                                                                                       <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
                                                                                       <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
+                                                                                      <TableCell className="border-r font-bold uppercase text-center">{row.mrf}</TableCell>
                                                                                       <TableCell className="border-r p-0">
                                                                                         <Popover>
                                                                                           <PopoverTrigger asChild>
@@ -275,7 +277,7 @@ function DistrictWasteReconciliationContent() {
                                     </TableHeader>
                                     <TableBody>
                                         {(() => {
-                                          const yearly = allRecords.filter(r => new Date(r.date).getFullYear().toString() === year && r.submittedByRole === 'driver');
+                                          const yearly = allRecords.filter(r => new Date(r.date).getFullYear().toString() === year && (r.submittedByRole === 'driver' || r.submittedByRole === 'ulb'));
                                           if (yearly.length === 0) return <TableRow><TableCell colSpan={9} className="h-48 text-center italic font-black uppercase tracking-[0.3em] opacity-10 text-2xl">Awaiting Annual Audit Cycle</TableCell></TableRow>;
                                           
                                           const blockMap = new Map();
@@ -290,7 +292,7 @@ function DistrictWasteReconciliationContent() {
                                                   metal: prev.metal + (r.metal || 0),
                                                   glass: prev.glass + (r.glass || 0),
                                                   sani: prev.sani + (r.sanitation || 0),
-                                                  other: prev.other + (r.others || 0)
+                                                  other: prev.others || 0
                                               });
                                           });
 
