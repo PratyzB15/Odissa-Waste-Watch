@@ -79,23 +79,12 @@ import { khordhaDistrictData } from "@/lib/disKhordha";
 import { koraputDistrictData } from "@/lib/disKoraput";
 import { mayurbhanjDistrictData } from "@/lib/disMayurbhanj";
 import { malkangiriDistrictData } from "@/lib/disMalkangiri";
-
-const CustomTabularTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    return (
-      <div className="bg-background border-2 border-primary/20 p-3 rounded-xl shadow-2xl space-y-1.5 min-w-[200px]">
-        <p className="text-xs font-black uppercase text-primary border-b pb-1">{data.name}</p>
-        <div className="text-[10px] space-y-1 pt-1">
-          <p className="flex justify-between gap-4"><span className="text-muted-foreground font-bold">BLOCK:</span> <span className="font-black uppercase">{data.block}</span></p>
-          <p className="flex justify-between gap-4"><span className="text-muted-foreground font-bold">DISTRICT:</span> <span className="font-black uppercase">{data.district}</span></p>
-          <p className="flex justify-between gap-4 border-t pt-1 mt-1"><span className="text-primary font-black">QUANTITY:</span> <span className="font-mono font-black">{data.waste.toLocaleString()} KG</span></p>
-        </div>
-      </div>
-    );
-  }
-  return null;
-};
+import { rayagadaDistrictData } from "@/lib/disRayagada";
+import { nabarangpurDistrictData } from "@/lib/disNabarangpur";
+import { nayagarhDistrictData } from "@/lib/disNayagarh";
+import { nuapadaDistrictData } from "@/lib/disNuapada";
+import { puriDistrictData } from "@/lib/disPuri";
+import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
 const calculateDaysUntilNext = (schedule: string, checkDate: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
@@ -127,9 +116,7 @@ export default function AdminDashboard() {
 
   const {
     demographicData,
-    districtWasteData,
     blockWasteData,
-    compositionData,
     statewideActiveToday,
   } = useMemo(() => {
     const now = new Date();
@@ -143,7 +130,6 @@ export default function AdminDashboard() {
       .sort((a, b) => a.name.localeCompare(b.name));
 
     const totalMrfs = mrfData.length;
-    const totalDryWaste = mrfData.reduce((sum, item) => sum + item.dryWasteKg, 0);
     const totalGps = mrfData.reduce((sum, item) => sum + item.gpsCovered, 0);
     const totalHh = mrfData.reduce((sum, item) => sum + item.households, 0);
     const ulbsSet = new Set(mrfData.map(item => item.ulbName));
@@ -168,7 +154,9 @@ export default function AdminDashboard() {
         dhenkanalDistrictData, gajapatiDistrictData, ganjamDistrictData, jagatsinghpurDistrictData,
         jajpurDistrictData, jharsugudaDistrictData, kalahandiDistrictData, kandhamalDistrictData,
         kendraparaDistrictData, kendujharDistrictData, balasoreDistrictData, baleswarDistrictData,
-        khordhaDistrictData, koraputDistrictData, mayurbhanjDistrictData, malkangiriDistrictData
+        khordhaDistrictData, koraputDistrictData, mayurbhanjDistrictData, malkangiriDistrictData,
+        rayagadaDistrictData, nabarangpurDistrictData, nayagarhDistrictData, nuapadaDistrictData,
+        puriDistrictData, sambalpurDistrictData
     ];
 
     const gpsMap = new Map<string, any>();
@@ -200,20 +188,6 @@ export default function AdminDashboard() {
       { id: "mrfs", title: "SWM Units (MRF)", value: totalMrfs.toLocaleString(), icon: <Warehouse className="h-5 w-5 text-primary" />, list: mrfsList, type: 'mrfs' },
     ];
 
-    const districtWasteLine = districtsList.map(d => ({
-      name: d,
-      waste: mrfData.filter(m => m.district === d).reduce((s, curr) => s + curr.dryWasteKg, 0)
-    }));
-
-    const composition = [
-      { name: 'Plastic', value: totalDryWaste * 0.40, gradient: 'url(#plasticGrad)' },
-      { name: 'Paper', value: totalDryWaste * 0.25, gradient: 'url(#paperGrad)' },
-      { name: 'Metal', value: totalDryWaste * 0.12, gradient: 'url(#metalGrad)' },
-      { name: 'Glass', value: totalDryWaste * 0.10, gradient: 'url(#glassGrad)' },
-      { name: 'Sanitation', value: totalDryWaste * 0.08, gradient: 'url(#saniGrad)' },
-      { name: 'Other', value: totalDryWaste * 0.05, gradient: 'url(#otherGrad)' },
-    ];
-
     const activeToday = districtSources.flatMap(resource => {
         const schedules = resource.data.collectionSchedules || [];
         const routes = resource.data.routes || [];
@@ -230,9 +204,7 @@ export default function AdminDashboard() {
 
     return { 
       demographicData: demographicItems, 
-      districtWasteData: districtWasteLine,
       blockWasteData: blockLineData,
-      compositionData: composition,
       statewideActiveToday: activeToday,
     };
   }, []);
@@ -240,18 +212,155 @@ export default function AdminDashboard() {
   const renderDemographicList = (item: any) => {
     switch (item.type) {
         case 'districts':
-            return (<div className="w-[300px] overflow-hidden rounded-xl border shadow-xl bg-card"><h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">District Directory</h4><ScrollArea className="h-72"><div className="p-2 space-y-1">{item.list.map((d: string) => (<div key={d} className="p-2.5 rounded-lg text-xs font-bold uppercase hover:bg-primary/5 transition-colors border-b border-dashed last:border-0 "{d}</div>))}</div></ScrollArea></div>);
+            return (
+                <div className="w-[300px] overflow-hidden rounded-xl border shadow-xl bg-card">
+                    <h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">District Directory</h4>
+                    <ScrollArea className="h-72">
+                        <div className="p-2 space-y-1">
+                            {item.list.map((d: string) => (
+                                <div key={d} className="p-2.5 rounded-lg text-xs font-bold uppercase hover:bg-primary/5 transition-colors border-b border-dashed last:border-0">{d}</div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                </div>
+            );
         case 'blocks':
-            return (<div className="w-[450px] overflow-hidden rounded-xl border shadow-xl bg-card"><h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">Block & District Mapping</h4><ScrollArea className="h-80"><Table><TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[9px] font-black uppercase tracking-widest">Block Node</TableHead><TableHead className="text-[9px] font-black uppercase tracking-widest">District</TableHead></TableRow></TableHeader><TableBody>{item.list.map((b: any, i: number) => (<TableRow key={i} className="hover:bg-muted/30 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{b.name}</TableCell><TableCell className="text-[10px] uppercase font-medium text-muted-foreground">{b.district}</TableCell></TableRow>))}</TableBody></Table></ScrollArea></div>);
+            return (
+                <div className="w-[450px] overflow-hidden rounded-xl border shadow-xl bg-card">
+                    <h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">Block & District Mapping</h4>
+                    <ScrollArea className="h-80">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">Block Node</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">District</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {item.list.map((b: any, i: number) => (
+                                    <TableRow key={i} className="hover:bg-muted/30 border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase">{b.name}</TableCell>
+                                        <TableCell className="text-[10px] uppercase font-medium text-muted-foreground">{b.district}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </div>
+            );
         case 'gps':
-            return (<div className="w-[600px] overflow-hidden rounded-xl border shadow-xl bg-card"><h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">Gram Panchayat Master Directory</h4><ScrollArea className="h-96"><Table><TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[9px] font-black uppercase tracking-widest">GP Node</TableHead><TableHead className="text-[9px] font-black uppercase tracking-widest">Block</TableHead><TableHead className="text-[9px] font-black uppercase tracking-widest">District</TableHead><TableHead className="text-[9px] font-black uppercase tracking-widest text-right">Waste (Kg)</TableHead></TableRow></TableHeader><TableBody>{item.list.map((gp: any, i: number) => (<TableRow key={i} className="hover:bg-muted/30 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase text-primary">{gp.name}</TableCell><TableCell className="text-[10px] uppercase font-medium text-muted-foreground">{gp.block}</TableCell><TableCell className="text-[10px] uppercase font-bold text-muted-foreground/60">{gp.district}</TableCell><TableCell className="text-right font-mono font-bold text-[10px]">{gp.waste.toLocaleString()}</TableCell></TableRow>))}</TableBody></Table></ScrollArea></div>);
+            return (
+                <div className="w-[600px] overflow-hidden rounded-xl border shadow-xl bg-card">
+                    <h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">Gram Panchayat Master Directory</h4>
+                    <ScrollArea className="h-96">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">GP Node</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">Block</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">District</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-right">Waste (Kg)</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {item.list.map((gp: any, i: number) => (
+                                    <TableRow key={i} className="hover:bg-muted/30 border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase text-primary">{gp.name}</TableCell>
+                                        <TableCell className="text-[10px] uppercase font-medium text-muted-foreground">{gp.block}</TableCell>
+                                        <TableCell className="text-[10px] uppercase font-bold text-muted-foreground/60">{gp.district}</TableCell>
+                                        <TableCell className="text-right font-mono font-bold text-[10px]">{gp.waste.toLocaleString()}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </div>
+            );
         case 'households':
             const totalHh = item.list.reduce((sum: number, b: any) => sum + b.hh, 0);
-            return (<div className="w-[450px] overflow-hidden rounded-xl border shadow-xl bg-card"><h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">Household Audit Breakdown</h4><ScrollArea className="h-80"><Table><TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[9px] font-black uppercase tracking-widest">Block / Node</TableHead><TableHead className="text-[9px] font-black uppercase tracking-widest text-right">Households</TableHead></TableRow></TableHeader><TableBody>{item.list.map((b: any, i: number) => (<TableRow key={i} className="hover:bg-muted/30 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{b.block} <span className="text-[8px] opacity-40 ml-1">({b.district})</span></TableCell><TableCell className="text-right font-mono font-black text-[11px]">{b.hh.toLocaleString()}</TableCell></TableRow>))}<TableRow className="bg-primary/5 font-black"><TableCell className="text-[10px] uppercase text-right">Grand Total State-wide</TableCell><TableCell className="text-right font-mono text-xs text-primary">{totalHh.toLocaleString()}</TableCell></TableRow></TableBody></Table></ScrollArea></div>);
+            return (
+                <div className="w-[450px] overflow-hidden rounded-xl border shadow-xl bg-card">
+                    <h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">Household Audit Breakdown</h4>
+                    <ScrollArea className="h-80">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">Block / Node</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-right">Households</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {item.list.map((b: any, i: number) => (
+                                    <TableRow key={i} className="hover:bg-muted/30 border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase">{b.block} <span className="text-[8px] opacity-40 ml-1">({b.district})</span></TableCell>
+                                        <TableCell className="text-right font-mono font-black text-[11px]">{b.hh.toLocaleString()}</TableCell>
+                                    </TableRow>
+                                ))}
+                                <TableRow className="bg-primary/5 font-black">
+                                    <TableCell className="text-[10px] uppercase text-right">Grand Total State-wide</TableCell>
+                                    <TableCell className="text-right font-mono text-xs text-primary">{totalHh.toLocaleString()}</TableCell>
+                                </TableRow>
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </div>
+            );
         case 'ulbs':
-            return (<div className="w-[500px] overflow-hidden rounded-xl border shadow-xl bg-card"><h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">ULB Directory</h4><ScrollArea className="h-80"><Table><TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[9px] font-black uppercase tracking-widest">ULB Name</TableHead><TableHead className="text-[9px] font-black uppercase tracking-widest">Block</TableHead><TableHead className="text-[9px] font-black uppercase tracking-widest">District</TableHead></TableRow></TableHeader><TableBody>{item.list.map((u: any, i: number) => (<TableRow key={i} className="hover:bg-muted/30 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase text-blue-700">{u.name}</TableCell><TableCell className="text-[10px] uppercase font-medium text-muted-foreground">{u.block}</TableCell><TableCell className="text-[10px] uppercase font-bold text-muted-foreground/60">{u.district}</TableCell></TableRow>))}</TableBody></Table></ScrollArea></div>);
+            return (
+                <div className="w-[500px] overflow-hidden rounded-xl border shadow-xl bg-card">
+                    <h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">ULB Directory</h4>
+                    <ScrollArea className="h-80">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">ULB Name</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">Block</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">District</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {item.list.map((u: any, i: number) => (
+                                    <TableRow key={i} className="hover:bg-muted/30 border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase text-blue-700">{u.name}</TableCell>
+                                        <TableCell className="text-[10px] uppercase font-medium text-muted-foreground">{u.block}</TableCell>
+                                        <TableCell className="text-[10px] uppercase font-bold text-muted-foreground/60">{u.district}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </div>
+            );
         case 'mrfs':
-            return (<div className="w-[600px] overflow-hidden rounded-xl border shadow-xl bg-card"><h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">SWM Units Directory</h4><ScrollArea className="h-96"><Table><TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[9px] font-black uppercase tracking-widest">MRF ID</TableHead><TableHead className="text-[9px] font-black uppercase tracking-widest text-center">Status</TableHead><TableHead className="text-[9px] font-black uppercase tracking-widest">Block</TableHead><TableHead className="text-[9px] font-black uppercase tracking-widest">District</TableHead></TableRow></TableHeader><TableBody>{item.list.map((m: any, i: number) => (<TableRow key={i} className="hover:bg-muted/30 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase text-primary">{m.id}</TableCell><TableCell className="text-center"><Badge className={`text-[8px] uppercase h-4 ${m.status === 'Functional' ? 'bg-green-600' : 'bg-orange-500'}`}>{m.status}</Badge></TableCell><TableCell className="text-[10px] uppercase font-medium text-muted-foreground">{m.block}</TableCell><TableCell className="text-[10px] uppercase font-bold text-muted-foreground/60">{m.district}</TableCell></TableRow>))}</TableBody></Table></ScrollArea></div>);
+            return (
+                <div className="w-[600px] overflow-hidden rounded-xl border shadow-xl bg-card">
+                    <h4 className="font-black uppercase text-[10px] p-3 bg-muted/80 text-center tracking-widest border-b">SWM Units Directory</h4>
+                    <ScrollArea className="h-96">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">MRF ID</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-center">Status</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">Block</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest">District</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {item.list.map((m: any, i: number) => (
+                                    <TableRow key={i} className="hover:bg-muted/30 border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase text-primary">{m.id}</TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge className={`text-[8px] uppercase h-4 ${m.status === 'Functional' ? 'bg-green-600' : 'bg-orange-500'}`}>{m.status}</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-[10px] uppercase font-medium text-muted-foreground">{m.block}</TableCell>
+                                        <TableCell className="text-[10px] uppercase font-bold text-muted-foreground/60">{m.district}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </div>
+            );
         default: return null;
     }
   };
@@ -261,14 +370,30 @@ export default function AdminDashboard() {
   return (
     <div className="grid gap-6">
        <Card className="border-2 border-primary/20 bg-primary/[0.01]">
-        <CardHeader><div className="flex justify-between items-center"><div><CardTitle className="text-2xl font-black uppercase tracking-tight">Analytical Monitoring Hub (State Admin)</CardTitle><CardDescription>Consolidated real-time insights from verified district registries.</CardDescription></div><Badge variant="outline" className="border-primary text-primary font-bold">LIVE STATE AUDIT</Badge></div></CardHeader>
+        <CardHeader>
+            <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle className="text-2xl font-black uppercase tracking-tight">Analytical Monitoring Hub (State Admin)</CardTitle>
+                    <CardDescription>Consolidated real-time insights from verified district registries.</CardDescription>
+                </div>
+                <Badge variant="outline" className="border-primary text-primary font-bold">LIVE STATE AUDIT</Badge>
+            </div>
+        </CardHeader>
       </Card>
 
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         {demographicData.map((item, index) => (
           <Popover key={item.id}>
             <PopoverTrigger asChild>
-                <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all group"><CardHeader className="p-3 pb-1 flex row items-center justify-between space-y-0"><CardTitle className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">{item.title}</CardTitle><div className="opacity-10 group-hover:opacity-100 transition-opacity">{item.icon}</div></CardHeader><CardContent className="px-3 pb-3"><div className="text-xl font-black text-foreground">{item.value}</div></CardContent></Card>
+                <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all group">
+                    <CardHeader className="p-3 pb-1 flex row items-center justify-between space-y-0">
+                        <CardTitle className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">{item.title}</CardTitle>
+                        <div className="opacity-10 group-hover:opacity-100 transition-opacity">{item.icon}</div>
+                    </CardHeader>
+                    <CardContent className="px-3 pb-3">
+                        <div className="text-xl font-black text-foreground">{item.value}</div>
+                    </CardContent>
+                </Card>
             </PopoverTrigger>
             <PopoverContent className="p-0 border-none bg-transparent" align={index > 3 ? "end" : "start"} sideOffset={10}>{renderDemographicList(item)}</PopoverContent>
           </Popover>
@@ -277,14 +402,58 @@ export default function AdminDashboard() {
 
       <div className="grid lg:grid-cols-1 gap-6">
         <Card className="border-2 border-primary/30 bg-primary/[0.01]">
-          <CardHeader className="bg-primary/5 border-b pb-3 flex flex-row items-center justify-between space-y-0"><div className="flex items-center gap-2"><Truck className="h-5 w-5 text-primary" /><CardTitle className="text-base font-black text-primary uppercase">Circuits Active Today</CardTitle></div><Badge className="bg-green-600 font-black animate-pulse">{statewideActiveToday.length} DEPLOYED</Badge></CardHeader>
-          <CardContent className="pt-4"><ScrollArea className="h-[400px]"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pr-4">{statewideActiveToday.map((log, i) => (<div key={i} className={`p-4 border rounded-xl bg-card shadow-sm flex flex-col gap-3 border-l-4 border-l-green-600`}><div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="font-black text-sm uppercase text-primary">{log.routeId || 'CIRCUIT'}</span><Badge variant="outline" className="text-[8px] font-black border-primary/30">{log.district}</Badge></div><span className="text-[10px] font-black text-blue-700 uppercase">{log.collectionSchedule}</span></div><div className="space-y-1 text-[10px] font-bold uppercase"><div className="flex items-center gap-2 text-muted-foreground"><span className="text-green-700">START: {log.pathStart}</span><ArrowRight className="h-2.5 w-2.5" /><span className="text-blue-700">END: {log.pathEnd}</span></div><div className="flex items-center gap-4 pt-2 border-t border-dashed mt-2"><p className="flex items-center gap-1 text-primary"><Anchor className="h-3 w-3 opacity-50" /> {log.mrf}</p><p className="flex items-center gap-1"><Truck className="h-3 w-3 opacity-50" /> {log.vehicleType}</p></div></div></div>))}{statewideActiveToday.length === 0 && <p className="text-center py-12 text-muted-foreground italic">No active circuits for today.</p>}</div></ScrollArea></CardContent>
+          <CardHeader className="bg-primary/5 border-b pb-3 flex flex-row items-center justify-between space-y-0">
+            <div className="flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base font-black text-primary uppercase">Circuits Active Today</CardTitle>
+            </div>
+            <Badge className="bg-green-600 font-black animate-pulse">{statewideActiveToday.length} DEPLOYED</Badge>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <ScrollArea className="h-[400px]">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pr-4">
+                    {statewideActiveToday.map((log, i) => (
+                        <div key={i} className={`p-4 border rounded-xl bg-card shadow-sm flex flex-col gap-3 border-l-4 border-l-green-600`}>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-black text-sm uppercase text-primary">{log.routeId || 'CIRCUIT'}</span>
+                                    <Badge variant="outline" className="text-[8px] font-black border-primary/30">{log.district}</Badge>
+                                </div>
+                                <span className="text-[10px] font-black text-blue-700 uppercase">{log.collectionSchedule}</span>
+                            </div>
+                            <div className="space-y-1 text-[10px] font-bold uppercase">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <span className="text-green-700">START: {log.pathStart}</span>
+                                    <ArrowRight className="h-2.5 w-2.5" />
+                                    <span className="text-blue-700">END: {log.pathEnd}</span>
+                                </div>
+                                <div className="flex items-center gap-4 pt-2 border-t border-dashed mt-2">
+                                    <p className="flex items-center gap-1 text-primary"><Anchor className="h-3 w-3 opacity-50" /> {log.mrf}</p>
+                                    <p className="flex items-center gap-1"><Truck className="h-3 w-3 opacity-50" /> {log.vehicleType}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    {statewideActiveToday.length === 0 && <p className="text-center py-12 text-muted-foreground italic">No active circuits for today.</p>}
+                </div>
+            </ScrollArea>
+          </CardContent>
         </Card>
       </div>
 
       <Card className="border-2 shadow-sm">
         <CardHeader className="border-b bg-muted/5 py-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><BarChart2 className="h-4 w-4 text-primary" /> Administrative Block Load (Kg)</CardTitle></CardHeader>
-        <CardContent className="h-[350px] pt-6"><ResponsiveContainer width="100%" height="100%"><LineChart data={blockWasteData} margin={{ bottom: 60, left: 10, right: 10 }}><CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} /><XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} fontSize={8} /><YAxis fontSize={10} tickFormatter={(val) => `${(val / 1000).toFixed(1)}T`} /><Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} /><Line type="monotone" dataKey="waste" name="Block Load" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 3, fill: "hsl(var(--primary))" }} /></LineChart></ResponsiveContainer></CardContent>
+        <CardContent className="h-[350px] pt-6">
+            <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={blockWasteData} margin={{ bottom: 60, left: 10, right: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                    <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} fontSize={8} />
+                    <YAxis fontSize={10} tickFormatter={(val) => `${(val / 1000).toFixed(1)}T`} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                    <Line type="monotone" dataKey="waste" name="Block Load" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 3, fill: "hsl(var(--primary))" }} />
+                </LineChart>
+            </ResponsiveContainer>
+        </CardContent>
       </Card>
     </div>
   );
