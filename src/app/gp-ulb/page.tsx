@@ -1,4 +1,3 @@
-
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -19,23 +18,14 @@ import {
   AlertTriangle,
   ArrowRight,
   TrendingUp,
-  Navigation as NavIcon,
   ListFilter,
   UserCircle,
-  Phone,
-  LayoutGrid,
-  TableProperties,
-  Navigation,
-  ClipboardList,
-  ChevronRight,
-  Weight,
-  MessageSquareWarning
+  ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   ResponsiveContainer, 
@@ -56,9 +46,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 
-// District Data Imports correctly mapped
+// District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
 import { balangirDistrictData } from "@/lib/disBalangir";
 import { bhadrakDistrictData } from "@/lib/disBhadrak";
@@ -71,21 +61,23 @@ import { dhenkanalDistrictData } from "@/lib/disDhenkanal";
 import { gajapatiDistrictData } from "@/lib/disGajapati";
 import { ganjamDistrictData } from "@/lib/disGanjam";
 import { jagatsinghpurDistrictData } from "@/lib/disJagatsinghpur";
+import { jajpurDistrictData } from "@/lib/disJajpur";
+import { jharsugudaDistrictData } from "@/lib/disJharsuguda";
 import { kalahandiDistrictData } from "@/lib/disKalahandi";
 import { kandhamalDistrictData } from "@/lib/disKandhamal";
 import { kendraparaDistrictData } from "@/lib/disKendrapara";
 import { kendujharDistrictData } from "@/lib/disKendujhar";
+import { balasoreDistrictData } from "@/lib/disBalasore";
+import { baleswarDistrictData } from "@/lib/disBaleswar";
 import { khordhaDistrictData } from "@/lib/disKhordha";
 import { koraputDistrictData } from "@/lib/disKoraput";
 import { mayurbhanjDistrictData } from "@/lib/disMayurbhanj";
 import { malkangiriDistrictData } from "@/lib/disMalkangiri";
-import { balasoreDistrictData } from "@/lib/disBalasore";
-import { baleswarDistrictData } from "@/lib/disBaleswar";
-import { puriDistrictData } from "@/lib/disPuri";
 import { rayagadaDistrictData } from "@/lib/disRayagada";
 import { nabarangpurDistrictData } from "@/lib/disNabarangpur";
 import { nayagarhDistrictData } from "@/lib/disNayagarh";
 import { nuapadaDistrictData } from "@/lib/disNuapada";
+import { puriDistrictData } from "@/lib/disPuri";
 import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
 import { mrfData } from "@/lib/mrf-data";
@@ -139,7 +131,7 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // Weekly/Specific Day logic: "Monday", "1, 15"
+    // Weekly logic
     let minDays = 999;
     let foundWeekly = false;
     weekdays.forEach((day, i) => {
@@ -237,7 +229,8 @@ function GpUlbDashboardContent() {
             routeName: details.routes?.[0]?.routeName || gpName,
             startGp: details.routes?.[0]?.startingGp || gpName,
             endGp: details.routes?.[0]?.finalGp || details.routes?.[0]?.destination || details.schedule?.mrf || 'Facility',
-            mrf: details.schedule?.mrf || details.mapping?.taggedMrf || 'Facility'
+            mrf: details.schedule?.mrf || details.mapping?.taggedMrf || 'Facility',
+            ulb: details.mapping?.taggedUlb || 'Associated ULB'
         };
 
         const gpRecords = records.filter((r: any) => r.gpBreakdown?.some((g: any) => g.name.toLowerCase() === gpName.toLowerCase()));
@@ -314,6 +307,7 @@ function GpUlbDashboardContent() {
     { title: "Personal Details", description: "Profile management.", icon: <User className="h-6 w-6 text-primary" />, href: "/gp-ulb/personal-details" },
     ...(role === 'gp' ? [
         { title: "Household Data", description: "Log collection.", icon: <HomeIcon className="h-6 w-6 text-primary" />, href: "/gp-ulb/household-collection" },
+        { title: "Vehicle Route", description: "Route mapping.", icon: <MapPin className="h-6 w-6 text-primary" />, href: "/gp-ulb/vehicle-route" },
     ] : [
         { title: "Information about GPs", description: "Constituent survey data.", icon: <TableProperties className="h-6 w-6 text-primary" />, href: "/gp-ulb/gp-information" },
         { title: "Driver & Worker Status", description: "Check personnel.", icon: <Truck className="h-6 w-6 text-primary" />, href: "/gp-ulb/driver-details" },
@@ -342,7 +336,6 @@ function GpUlbDashboardContent() {
       
       {role === 'gp' && gpRealData && (
         <div className="space-y-6">
-            {/* Demographic Coverage Bar */}
             <Card className="border-2 shadow-sm bg-muted/10">
                 <CardContent className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-6">
                     <div className="space-y-1">
@@ -365,7 +358,7 @@ function GpUlbDashboardContent() {
                                 <p className="text-xs font-black uppercase text-primary underline truncate">{gpRealData.mapping?.taggedMrf}</p>
                             </div>
                         </PopoverTrigger>
-                        <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                        <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden" align="end">
                             <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">Facility Registry</h4>
                             <Table>
                                 <TableHeader className="bg-muted/50">
@@ -416,7 +409,6 @@ function GpUlbDashboardContent() {
                 </CardContent>
             </Card>
 
-            {/* Critical Discrepancy & Active Circuit Grid */}
             <div className="grid lg:grid-cols-2 gap-6">
                 <Card className="border-2 border-destructive/20 bg-destructive/[0.01]">
                     <CardHeader className="bg-destructive/5 border-b pb-3 flex row items-center justify-between space-y-0">
@@ -440,10 +432,9 @@ function GpUlbDashboardContent() {
                     <CardContent className="pt-6">
                         <div className={`p-5 flex items-center justify-between border rounded-2xl bg-card shadow-sm border-l-4 ${gpRealData.circuit.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
                             <div className="flex-1 space-y-1 pr-4">
-                                <p className="font-black text-xs uppercase text-foreground">{gpRealData.circuit.actualRouteId}</p>
-                                <p className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">
-                                    {gpRealData.circuit.mrf} | {gpRealData.mapping?.taggedUlb}
-                                </p>
+                                <p className="font-black text-xs uppercase text-foreground leading-tight">{gpRealData.circuit.driverName}</p>
+                                <p className="text-[9px] font-mono text-primary">{gpRealData.circuit.driverContact}</p>
+                                <p className="text-[8px] font-bold text-muted-foreground uppercase pt-1">{gpRealData.circuit.vehicleDetails}</p>
                             </div>
                             <div className="flex-1 text-center">
                                 <div className={`text-xl font-black leading-none ${gpRealData.circuit.isActiveToday ? 'text-green-700 animate-pulse' : 'text-foreground'}`}>
@@ -452,16 +443,16 @@ function GpUlbDashboardContent() {
                                 <div className="text-[9px] font-black text-blue-700 uppercase mt-1.5">{gpRealData.circuit.scheduleStr}</div>
                             </div>
                             <div className="flex-1 text-right">
-                                <p className="text-[10px] font-black uppercase text-foreground truncate">{gpRealData.circuit.driverName}</p>
-                                <p className="text-[9px] font-mono text-primary">{gpRealData.circuit.driverContact}</p>
-                                <p className="text-[8px] font-bold text-muted-foreground uppercase pt-1">{gpRealData.circuit.vehicleDetails}</p>
+                                <p className="font-black text-xs uppercase text-foreground">{gpRealData.circuit.actualRouteId}</p>
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">
+                                    {gpRealData.circuit.mrf} | {gpRealData.circuit.ulb}
+                                </p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Waste Flow Chart with Toggle */}
             <Card className="border-2 shadow-sm overflow-hidden">
                 <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
                     <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
@@ -487,7 +478,6 @@ function GpUlbDashboardContent() {
                 </CardContent>
             </Card>
 
-            {/* Historical Bar Chart & Stream Composition Pie Chart */}
             <div className="grid lg:grid-cols-2 gap-6">
                 <Card className="border-2 shadow-sm">
                     <CardHeader className="border-b bg-muted/10 pb-3">
@@ -528,7 +518,6 @@ function GpUlbDashboardContent() {
                 </Card>
             </div>
 
-            {/* Worker Roster Hub */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
                     { id: 'workers', label: 'Sanitation Workers', icon: <Users />, count: (gpRealData.routes?.[0]?.workers || []).length, data: (gpRealData.routes?.[0]?.workers || []).map((w: any) => ({ name: w.name, phone: w.contact, target: gpName })) },
@@ -574,21 +563,6 @@ function GpUlbDashboardContent() {
         </div>
       )}
 
-      {/* Grid Activity Links for non-GP or secondary view */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {activities.map(activity => (
-            <Link href={`${activity.href}?${searchParams.toString()}&district=${districtName}`} key={activity.title}>
-                 <Card className="hover:bg-muted/50 transition-all hover:scale-[1.02] h-full border shadow-sm group">
-                    <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
-                        <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">{activity.icon}</div>
-                        <CardTitle className="text-lg font-bold uppercase tracking-tight">{activity.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent><p className="text-sm text-muted-foreground font-medium italic">{activity.description}</p></CardContent>
-                 </Card>
-            </Link>
-        ))}
-      </div>
-
       {role === 'ulb' && ulbRealData && (
         <Card className="border-2 shadow-sm">
             <CardHeader className="border-b bg-muted/5 py-3">
@@ -609,6 +583,20 @@ function GpUlbDashboardContent() {
             </CardContent>
         </Card>
       )}
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {activities.map(activity => (
+            <Link href={`${activity.href}?${searchParams.toString()}&district=${districtName}`} key={activity.title}>
+                 <Card className="hover:bg-muted/50 transition-all hover:scale-[1.02] h-full border shadow-sm group">
+                    <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
+                        <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">{activity.icon}</div>
+                        <CardTitle className="text-lg font-bold uppercase tracking-tight">{activity.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent><p className="text-sm text-muted-foreground font-medium italic">{activity.description}</p></CardContent>
+                 </Card>
+            </Link>
+        ))}
+      </div>
     </div>
   );
 }
@@ -616,3 +604,5 @@ function GpUlbDashboardContent() {
 export default function GpUlbDashboard() {
     return (<Suspense fallback={<div className="p-12 text-center text-muted-foreground animate-pulse">Loading operational hub...</div>}><GpUlbDashboardContent /></Suspense>);
 }
+
+import { MessageSquareWarning, TableProperties, ClipboardList, Navigation } from "lucide-react";
