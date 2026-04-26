@@ -28,12 +28,10 @@ const navItems = [
   { href: '/admin/schedule-meeting', icon: Video, label: 'Steering Committee Meeting' },
   { href: '/admin/organization-structure', icon: Network, label: 'Organization Structure' },
   { href: '/admin/route-planning', icon: Navigation, label: 'Route Planning' },
-  { href: '/admin/waste-collection-details', icon: ClipboardList, label: 'Waste and Waste Collection Details' },
+  { href: '/admin/waste-collection-details', icon: ClipboardList, label: 'Waste Collection Details' },
   { href: '/admin/driver-details', icon: Truck, label: 'Driver Details' },
-  { href: '/admin/gp-details', icon: Building, label: 'Information about MRFs and its Associated GPs' },
-  { id: 'ulb-link', href: '/admin/ulb-details', icon: Building, label: 'ULB Details' },
+  { href: '/admin/gp-details', icon: Building, label: 'Information about MRFs and Associated GPs' },
   { href: '/admin/monthly-details', icon: FileText, label: 'Approved Reports' },
-  { href: '/admin/schedule', icon: Calendar, label: 'Schedule/Planner' },
 ];
 
 export function AdminSidebar({ isMobile = false }: { isMobile?: boolean }) {
