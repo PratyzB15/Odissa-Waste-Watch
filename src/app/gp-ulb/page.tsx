@@ -2,49 +2,15 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Truck, 
-  Anchor, 
   ArrowRight,
-  TrendingUp,
-  Activity,
-  ChevronRight,
-  Phone,
-  Building,
-  Home,
-  Warehouse,
-  PieChart as PieChartIcon,
-  ListFilter,
-  UserCircle,
-  Users,
-  Search,
-  Info,
-  BadgeAlert,
-  MapPin,
-  Clock
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  BarChart, 
-  Bar, 
-  Cell, 
-  Legend, 
-  PieChart, 
-  Pie, 
-  CartesianGrid 
-} from 'recharts';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -79,8 +45,6 @@ import { balasoreDistrictData } from "@/lib/disBalasore";
 import { baleswarDistrictData } from "@/lib/disBaleswar";
 
 import { mrfData } from "@/lib/mrf-data";
-
-const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#7c3aed', '#64748b'];
 
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;

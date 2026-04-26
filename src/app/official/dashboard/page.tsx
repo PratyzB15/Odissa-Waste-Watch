@@ -1,63 +1,26 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
-  Users, 
   Truck, 
-  Building, 
-  Map as MapIcon, 
-  Home, 
-  Warehouse, 
-  Activity, 
-  TrendingUp, 
-  PieChart as PieChartIcon, 
-  ListFilter,
-  BarChart2,
-  AlertTriangle,
-  Info,
   ArrowRight,
-  Anchor,
-  UserCircle,
-  Search,
-  ChevronRight,
-  MapPin
+  TrendingUp,
 } from "lucide-react";
+import { useMemo, useState, useEffect, Suspense } from "react";
+import { Badge } from "@/components/ui/badge";
 import { 
   ResponsiveContainer, 
-  BarChart, 
   XAxis, 
   YAxis, 
   Tooltip, 
+  BarChart, 
   Bar, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  LineChart, 
-  Line, 
-  CartesianGrid,
-  Legend as RechartsLegend 
+  CartesianGrid 
 } from 'recharts';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { mrfData } from "@/lib/mrf-data";
-import { useMemo, useState, useEffect, Suspense } from "react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import { useSearchParams } from 'next/navigation';
 
-// District Data Imports
+import { mrfData } from "@/lib/mrf-data";
 import { angulDistrictData } from "@/lib/disAngul";
 import { balangirDistrictData } from "@/lib/disBalangir";
 import { bhadrakDistrictData } from "@/lib/disBhadrak";
@@ -116,15 +79,21 @@ function DistrictDashboardContent() {
   useEffect(() => { setMounted(true); }, []);
   const districtData = useMemo(() => {
     if (!mounted || !districtName) return null;
-    const sourceMap: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
+    const sourceMap: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
     const source = sourceMap[districtName.toLowerCase()];
     const districtMRFs = mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase());
-    const blocksList = Array.from(new Set(districtMRFs.map(m => m.blockCovered))).sort();
     const activeCircuits = (source?.data?.collectionSchedules || []).map((s: any) => {
         const daysLeft = calculateDaysUntilNext(s.collectionSchedule, new Date());
         return { ...s, daysLeft, isActiveToday: daysLeft === 0, countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days` };
     }).sort((a: any, b: any) => a.daysLeft - b.daysLeft);
-    return { blocks: blocksList, mrfs: districtMRFs, activeCircuits };
+
+    const gpList = (source?.data?.gpMappings || []).map((gp: any) => {
+        const w = (source?.data?.wasteGeneration || []).find((waste: any) => waste.gpName.toLowerCase() === gp.gpName.toLowerCase());
+        const collected = w ? (w.totalWasteKg || (w.monthlyWasteTotalGm / 1000) || 0) : 0;
+        return { name: gp.gpName, value: collected };
+    }).sort((a: any, b: any) => b.value - a.value);
+
+    return { activeCircuits, topGps: gpList.slice(0, 5), lowGps: gpList.slice(-5).reverse() };
   }, [mounted, districtName]);
 
   if (!mounted || !districtData) return null;
@@ -134,7 +103,44 @@ function DistrictDashboardContent() {
       <Card className="border-2 border-primary/20 shadow-md">
         <CardHeader className="bg-primary/5 border-b"><CardTitle className="text-3xl font-black uppercase text-primary">District {districtName} Dashboard</CardTitle></CardHeader>
       </Card>
+      
       <Card className="border-2 border-primary/30 bg-primary/[0.01]"><CardHeader className="bg-primary/5 border-b pb-3 flex row items-center gap-2"><Truck className="h-5 w-5 text-primary" /><CardTitle className="text-base font-black uppercase text-primary">Active Logistical Circuits</CardTitle></CardHeader><CardContent className="p-0"><ScrollArea className="h-[290px]"><div className="grid gap-0 divide-y">{districtData.activeCircuits.map((log, i) => (<div key={i} className={`p-5 flex items-center justify-between border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}><div className="flex-1 pr-6 border-r border-dashed"><p className="text-[9px] font-black uppercase text-primary">{log.mrf}</p><p className="font-black text-xs uppercase">{log.gpName}</p></div><div className="flex-1 text-center px-6"><div className={`text-lg font-black ${log.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>{log.countdown}</div></div><div className="flex-1 text-right pl-6"><p className="text-[10px] font-black uppercase">{log.driverName}</p><p className="text-[8px] font-bold uppercase text-muted-foreground">{log.vehicleType}</p></div></div>))}</div></ScrollArea></CardContent></Card>
+
+      <Card className="border-2 shadow-sm overflow-hidden">
+        <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary"/> Nodal Performance Hub (Kg)</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[400px] pt-8">
+            <Tabs defaultValue="top">
+                <TabsList className="mb-4">
+                    <TabsTrigger value="top" className="text-[10px] font-black uppercase">Top 5 Nodes</TabsTrigger>
+                    <TabsTrigger value="low" className="text-[10px] font-black uppercase">Lowest 5 Nodes</TabsTrigger>
+                </TabsList>
+                <TabsContent value="top" className="h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={districtData.topGps} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
+                            <XAxis type="number" fontSize={10} />
+                            <YAxis dataKey="name" type="category" fontSize={9} width={100} fontWeights="bold" />
+                            <Tooltip />
+                            <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </TabsContent>
+                <TabsContent value="low" className="h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={districtData.lowGps} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
+                            <XAxis type="number" fontSize={10} />
+                            <YAxis dataKey="name" type="category" fontSize={9} width={100} fontWeights="bold" />
+                            <Tooltip />
+                            <Bar dataKey="value" fill="#ef4444" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </TabsContent>
+            </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 }
