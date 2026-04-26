@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -120,7 +121,7 @@ function StateWasteReconciliationContent() {
                                                                     {Array.from(new Set(reconciledRecords.filter(r => r.district === dist && r.block === block).map(r => r.mrf))).sort().map(ulb => (
                                                                         <AccordionItem value={`${year}-${month}-${dist}-${block}-${ulb}`} key={ulb} className="border-none">
                                                                             <Card className="border shadow-sm mb-4">
-                                                                                <AccordionTrigger className="px-4 py-2 hover:no-underline bg-muted/5"><div className="flex items-center gap-2"><Warehouse className="h-3 w-3 text-muted-foreground/60" /><p className="font-bold uppercase text-[9px] text-muted-foreground/60">ULB: {ulb}</p></div></AccordionTrigger>
+                                                                                <AccordionTrigger className="px-4 py-2 hover:no-underline bg-muted/5"><div className="flex items-center gap-2"><Warehouse className="h-3 w-3 text-muted-foreground/60" /><p className="font-bold uppercase text-[9px] text-muted-foreground/60">ULB Node: {ulb}</p></div></AccordionTrigger>
                                                                                 <AccordionContent className="p-0">
                                                                                     <ScrollArea className="w-full">
                                                                                         <div className="min-w-[1500px]">
