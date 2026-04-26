@@ -1,16 +1,21 @@
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Calendar, Calculator, BarChart3, Info } from "lucide-react";
+import { Calendar, Calculator, BarChart3, Info, Edit, Trash2, Save, Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June", 
@@ -22,7 +27,7 @@ const FISCAL_YEARS = ["2026", "2027"];
 function DriverWasteDetailsContent() {
   const searchParams = useSearchParams();
   const driverName = searchParams.get('name') || 'Personnel';
-  const ulbParam = searchParams.get('ulb') || '';
+  const { toast } = useToast();
   
   const [mounted, setMounted] = useState(false);
   const db = useFirestore();
@@ -34,7 +39,78 @@ function DriverWasteDetailsContent() {
   
   const { data: records = [] } = useCollection(wasteDetailsQuery);
 
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<any | null>(null);
+
+  const [formData, setFormData] = useState({
+    date: '',
+    routeId: '',
+    mrf: '',
+    driverSubmitted: '',
+    plastic: '',
+    paper: '',
+    metal: '',
+    cloth: '',
+    glass: '',
+    sanitation: '',
+    others: ''
+  });
+
   useEffect(() => { setMounted(true); }, []);
+
+  const handleOpenEdit = (record: any) => {
+    setEditingRecord(record);
+    setFormData({
+      date: record.date,
+      routeId: record.routeId,
+      mrf: record.mrf,
+      driverSubmitted: record.driverSubmitted?.toString() || '',
+      plastic: record.plastic?.toString() || '',
+      paper: record.paper?.toString() || '',
+      metal: record.metal?.toString() || '',
+      cloth: record.cloth?.toString() || '',
+      glass: record.glass?.toString() || '',
+      sanitation: record.sanitation?.toString() || '',
+      others: record.others?.toString() || ''
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (!db) return;
+    deleteDoc(doc(db, 'wasteDetails', id))
+      .then(() => toast({ title: "Receipt Removed", description: "Ledger updated." }))
+      .catch(() => toast({ title: "Error", description: "Delete failed.", variant: "destructive" }));
+  };
+
+  const handleSubmit = async () => {
+    if (!db || !editingRecord) return;
+    setIsSubmitting(true);
+
+    const payload = {
+      ...formData,
+      driverSubmitted: parseFloat(formData.driverSubmitted) || 0,
+      plastic: parseFloat(formData.plastic) || 0,
+      paper: parseFloat(formData.paper) || 0,
+      metal: parseFloat(formData.metal) || 0,
+      cloth: parseFloat(formData.cloth) || 0,
+      glass: parseFloat(formData.glass) || 0,
+      sanitation: parseFloat(formData.sanitation) || 0,
+      others: parseFloat(formData.others) || 0,
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      await setDoc(doc(db, 'wasteDetails', editingRecord.id), payload, { merge: true });
+      toast({ title: "Receipt Corrected", description: "Transmission data updated." });
+      setIsDialogOpen(false);
+    } catch (err) {
+      toast({ title: "Update Failed", description: "Database error.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const calculateMonthlyTotals = (monthRecords: any[]) => {
     return monthRecords.reduce((acc, curr) => ({
@@ -113,6 +189,7 @@ function DriverWasteDetailsContent() {
                                                         <TableHead className="w-[100px] text-right uppercase font-black border">Glass</TableHead>
                                                         <TableHead className="w-[100px] text-right uppercase font-black border">Sanitation</TableHead>
                                                         <TableHead className="w-[100px] text-right uppercase font-black border">Others</TableHead>
+                                                        <TableHead className="w-[120px] uppercase font-black border text-center">Actions</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -128,6 +205,12 @@ function DriverWasteDetailsContent() {
                                                             <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.others}</TableCell>
+                                                            <TableCell className="border text-center">
+                                                                <div className="flex justify-center gap-1">
+                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-primary" onClick={() => handleOpenEdit(row)}><Edit className="h-3 w-3" /></Button>
+                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>
+                                                                </div>
+                                                            </TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
@@ -141,6 +224,7 @@ function DriverWasteDetailsContent() {
                                                         <TableCell className="text-right border-r">{totals.glass.toFixed(1)}</TableCell>
                                                         <TableCell className="text-right border-r">{totals.sanitation.toFixed(1)}</TableCell>
                                                         <TableCell className="text-right border-r">{totals.others.toFixed(1)}</TableCell>
+                                                        <TableCell></TableCell>
                                                     </TableRow>
                                                 </TableFooter>
                                             </Table>
@@ -158,16 +242,16 @@ function DriverWasteDetailsContent() {
             <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-8 text-center">
                     <CardTitle className="text-4xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center justify-center gap-4">
-                        <BarChart3 className="h-12 w-12" /> Yearly Professional Audit: {year}
+                        <BarChart3 className="h-12 w-12" /> Yearly Professional Audit: 2026
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-10">
                     {(() => {
-                        const yearlyRecords = records.filter(r => new Date(r.date).getFullYear().toString() === year);
+                        const yearlyRecords = records.filter(r => new Date(r.date).getFullYear() === 2026);
                         const yearlyTotals = calculateMonthlyTotals(yearlyRecords);
                         
                         if (yearlyRecords.length === 0) {
-                            return <p className="text-center py-12 text-muted-foreground italic uppercase font-black tracking-widest opacity-30">Awaiting annual cycle completion for {year}.</p>;
+                            return <p className="text-center py-12 text-muted-foreground italic uppercase font-black tracking-widest opacity-30">Awaiting annual cycle completion for 2026.</p>;
                         }
 
                         return (
@@ -187,12 +271,34 @@ function DriverWasteDetailsContent() {
         </div>
       ))}
 
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl border-2">
+            <DialogHeader><DialogTitle className="text-xl font-black uppercase text-primary">Edit Verified Receipt</DialogTitle></DialogHeader>
+            <div className="grid grid-cols-2 gap-4 py-4 border-y my-4">
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Date</Label><Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Route ID</Label><Input value={formData.routeId} onChange={e => setFormData({...formData, routeId: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Load (Kg)</Label><Input type="number" value={formData.driverSubmitted} onChange={e => setFormData({...formData, driverSubmitted: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Plastic</Label><Input type="number" value={formData.plastic} onChange={e => setFormData({...formData, plastic: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Paper</Label><Input type="number" value={formData.paper} onChange={e => setFormData({...formData, paper: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Metal</Label><Input type="number" value={formData.metal} onChange={e => setFormData({...formData, metal: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Cloth</Label><Input type="number" value={formData.cloth} onChange={e => setFormData({...formData, cloth: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Glass</Label><Input type="number" value={formData.glass} onChange={e => setFormData({...formData, glass: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Sanitation</Label><Input type="number" value={formData.sanitation} onChange={e => setFormData({...formData, sanitation: e.target.value})} /></div>
+            </div>
+            <DialogFooter>
+                <Button onClick={handleSubmit} disabled={isSubmitting} className="font-black uppercase px-8">
+                  {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2" />} Update Receipt
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="bg-muted/20 border-l-4 border-primary p-6 rounded-r-xl shadow-inner flex items-start gap-4 mt-8">
         <Info className="h-6 w-6 text-primary mt-0.5 shrink-0" />
         <div className="space-y-1">
           <p className="text-sm font-black uppercase tracking-tight">Temporal Engine Guidelines</p>
           <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-            Data is organized by fiscal cycle. Each month card concludes with a high-precision summation row. Yearly audits are automatically generated post-December, aggregating multi-stream recovery metrics across the portal's entire verification history.
+            Personal collection history is archived by reporting month. Each receipt is a verified transmission node in the jurisdictional audit. Edits or corrections are mirrored in the ULB and District command centers to maintain fiscal integrity.
           </p>
         </div>
       </div>

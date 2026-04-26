@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -13,12 +13,21 @@ import {
   MapPin,
   BarChart3,
   Info,
+  Edit,
+  Trash2,
+  PlusCircle,
+  Save,
+  Loader2
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { collection, query, where, orderBy, doc, setDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 // District Data Imports for Baseline Calculation
 import { angulDistrictData } from "@/lib/disAngul";
@@ -60,11 +69,13 @@ const MONTHS = [
 const FISCAL_YEARS = ["2026", "2027"];
 
 function GpUlbWasteDetailsContent() {
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const role = searchParams.get('role');
   const gpParam = searchParams.get('gp') || '';
   const ulbParam = searchParams.get('ulb') || '';
   const districtParam = searchParams.get('district') || '';
+  const blockParam = searchParams.get('block') || '';
   
   const [mounted, setMounted] = useState(false);
   const db = useFirestore();
@@ -75,6 +86,26 @@ function GpUlbWasteDetailsContent() {
   }, [db, ulbParam]);
   
   const { data: allRecords = [] } = useCollection(wasteDetailsQuery);
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<any | null>(null);
+
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    routeId: '',
+    mrf: ulbParam,
+    totalGpLoad: '',
+    driverSubmitted: '',
+    plastic: '',
+    paper: '',
+    metal: '',
+    cloth: '',
+    glass: '',
+    sanitation: '',
+    district: districtParam,
+    block: blockParam
+  });
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -106,12 +137,93 @@ function GpUlbWasteDetailsContent() {
     }, 0);
   }, [districtParam, ulbParam]);
 
+  const handleOpenAdd = () => {
+    setEditingRecord(null);
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      routeId: '',
+      mrf: ulbParam,
+      totalGpLoad: '',
+      driverSubmitted: '',
+      plastic: '',
+      paper: '',
+      metal: '',
+      cloth: '',
+      glass: '',
+      sanitation: '',
+      district: districtParam,
+      block: blockParam
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenEdit = (record: any) => {
+    setEditingRecord(record);
+    setFormData({
+      date: record.date,
+      routeId: record.routeId,
+      mrf: record.mrf,
+      totalGpLoad: record.totalGpLoad?.toString() || '',
+      driverSubmitted: record.driverSubmitted?.toString() || '',
+      plastic: record.plastic?.toString() || '',
+      paper: record.paper?.toString() || '',
+      metal: record.metal?.toString() || '',
+      cloth: record.cloth?.toString() || '',
+      glass: record.glass?.toString() || '',
+      sanitation: record.sanitation?.toString() || '',
+      district: record.district || districtParam,
+      block: record.block || blockParam
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (!db) return;
+    deleteDoc(doc(db, 'wasteDetails', id))
+      .then(() => toast({ title: "Record Removed", description: "Audit ledger updated successfully." }))
+      .catch(() => toast({ title: "Error", description: "Delete failed.", variant: "destructive" }));
+  };
+
+  const handleSubmit = async () => {
+    if (!db) return;
+    setIsSubmitting(true);
+
+    const payload = {
+      ...formData,
+      totalGpLoad: parseFloat(formData.totalGpLoad) || 0,
+      driverSubmitted: parseFloat(formData.driverSubmitted) || 0,
+      plastic: parseFloat(formData.plastic) || 0,
+      paper: parseFloat(formData.paper) || 0,
+      metal: parseFloat(formData.metal) || 0,
+      cloth: parseFloat(formData.cloth) || 0,
+      glass: parseFloat(formData.glass) || 0,
+      sanitation: parseFloat(formData.sanitation) || 0,
+      submittedByRole: 'driver', // Ensure consistent hierarchical sync
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      if (editingRecord) {
+        await setDoc(doc(db, 'wasteDetails', editingRecord.id), payload, { merge: true });
+        toast({ title: "Record Updated", description: "Jurisdictional data synchronized." });
+      } else {
+        await addDoc(collection(db, 'wasteDetails'), { ...payload, submittedAt: new Date().toISOString() });
+        toast({ title: "Entry Created", description: "New circuit added to master ledger." });
+      }
+      setIsDialogOpen(false);
+    } catch (err) {
+      toast({ title: "Submission Failed", description: "Database sync error.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (!mounted) return null;
 
   return (
     <div className="space-y-12">
       <Card className="border-2 border-primary/20 bg-primary/[0.01] shadow-md">
-        <CardHeader className="bg-primary/5 border-b">
+        <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between">
           <div className="flex items-center gap-3 text-primary">
             <Calculator className="h-10 w-10" />
             <div>
@@ -119,6 +231,11 @@ function GpUlbWasteDetailsContent() {
               <CardDescription className="font-bold italic text-muted-foreground">Authoritative audit ledger for {ulbParam || gpParam}.</CardDescription>
             </div>
           </div>
+          {role === 'ulb' && (
+            <Button onClick={handleOpenAdd} className="font-black uppercase tracking-widest bg-primary shadow-lg h-11 px-6">
+              <PlusCircle className="mr-2 h-5 w-5" /> Add New Verified Entry
+            </Button>
+          )}
         </CardHeader>
       </Card>
 
@@ -139,13 +256,13 @@ function GpUlbWasteDetailsContent() {
 
                     if (year === '2026' && mIdx < 3) return null;
 
-                    const reconciledRecords = monthItems.filter(r => r.submittedByRole === 'driver').map(driverRec => {
+                    const reconciledRecords = monthItems.filter(r => r.submittedByRole === 'driver' || r.submittedByRole === 'ulb').map(driverRec => {
                         const matchingGPs = monthItems.filter(r => r.submittedByRole === 'gp' && r.date === driverRec.date && r.routeId === driverRec.routeId);
                         const totalFromGPs = matchingGPs.reduce((sum, r) => sum + (r.driverSubmitted || 0), 0);
                         return {
                             ...driverRec,
-                            reconciledGpTotal: totalFromGPs,
-                            gpBreakdownDetailed: matchingGPs.map(m => ({ name: m.gpName, amount: m.driverSubmitted }))
+                            reconciledGpTotal: totalFromGPs || driverRec.totalGpLoad || 0,
+                            gpBreakdownDetailed: matchingGPs.length > 0 ? matchingGPs.map(m => ({ name: m.gpName, amount: m.driverSubmitted })) : (driverRec.gpBreakdown || [])
                         };
                     });
 
@@ -159,9 +276,8 @@ function GpUlbWasteDetailsContent() {
                         metal: acc.metal + (curr.metal || 0),
                         cloth: acc.cloth + (curr.cloth || 0),
                         glass: acc.glass + (curr.glass || 0),
-                        sanitation: acc.sanitation + (curr.sanitation || 0),
-                        others: acc.others + (curr.others || 0)
-                    }), { plastic: 0, paper: 0, metal: 0, cloth: 0, glass: 0, sanitation: 0, others: 0 });
+                        sanitation: acc.sanitation + (curr.sanitation || 0)
+                    }), { plastic: 0, paper: 0, metal: 0, cloth: 0, glass: 0, sanitation: 0 });
 
                     return (
                         <AccordionItem value={`${year}-${month}`} key={`${year}-${month}`} className="border-none">
@@ -195,6 +311,7 @@ function GpUlbWasteDetailsContent() {
                                                         <TableHead className="w-[90px] text-right uppercase font-black border">Cloth</TableHead>
                                                         <TableHead className="w-[90px] text-right uppercase font-black border">Glass</TableHead>
                                                         <TableHead className="w-[90px] text-right uppercase font-black border">Sanitation</TableHead>
+                                                        <TableHead className="w-[120px] uppercase font-black border text-center">Actions</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -207,7 +324,7 @@ function GpUlbWasteDetailsContent() {
                                                                 <Popover>
                                                                     <PopoverTrigger asChild>
                                                                         <button className="w-full h-16 flex items-center justify-end px-6 font-bold text-blue-700 hover:bg-blue-50 underline decoration-dotted underline-offset-4 uppercase">
-                                                                            {row.reconciledGpTotal.toFixed(1)} KG
+                                                                            {row.reconciledGpTotal?.toFixed(1)} KG
                                                                         </button>
                                                                     </PopoverTrigger>
                                                                     <PopoverContent className="w-72 p-0 border-2 shadow-2xl overflow-hidden" align="end">
@@ -218,6 +335,7 @@ function GpUlbWasteDetailsContent() {
                                                                             <TableBody>
                                                                                 {row.gpBreakdownDetailed?.map((gp: any, i: number) => (
                                                                                     <TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell><TableCell className="text-right font-mono font-black text-blue-700">{gp.amount?.toFixed(1)}</TableCell></TableRow>                                                                                                ))}
+                                                                                {(row.gpBreakdownDetailed?.length === 0 || !row.gpBreakdownDetailed) && <TableRow><TableCell className="p-4 text-center italic text-muted-foreground">No granular breakdown synced.</TableCell></TableRow>}
                                                                             </TableBody>
                                                                         </Table>
                                                                     </PopoverContent>
@@ -231,6 +349,12 @@ function GpUlbWasteDetailsContent() {
                                                             <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
+                                                            <TableCell className="border text-center">
+                                                                <div className="flex justify-center gap-1">
+                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-primary" onClick={() => handleOpenEdit(row)}><Edit className="h-3 w-3" /></Button>
+                                                                    <Button size="icon" variant="outline" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>
+                                                                </div>
+                                                            </TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
@@ -243,6 +367,7 @@ function GpUlbWasteDetailsContent() {
                                                         <TableCell className="text-right border-r">{monthlyStreamTotals.cloth.toFixed(1)}</TableCell>
                                                         <TableCell className="text-right border-r">{monthlyStreamTotals.glass.toFixed(1)}</TableCell>
                                                         <TableCell className="text-right border-r">{monthlyStreamTotals.sanitation.toFixed(1)}</TableCell>
+                                                        <TableCell className="border-l"></TableCell>
                                                     </TableRow>
                                                 </TableFooter>
                                             </Table>
@@ -252,15 +377,15 @@ function GpUlbWasteDetailsContent() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6 bg-muted/5 border-t">
                                         <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
-                                            <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">ULB Load on Avg (Month)</p>
+                                            <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Target Load (Avg Month)</p>
                                             <p className="text-2xl font-black">{baselineAvg.toLocaleString()} KG</p>
                                         </div>
                                         <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
-                                            <p className="text-[10px] font-black uppercase text-primary mb-1">Total ULB Verified</p>
+                                            <p className="text-[10px] font-black uppercase text-primary mb-1">Total Verified</p>
                                             <p className="text-2xl font-black text-primary">{monthVerified.toLocaleString()} KG</p>
                                         </div>
                                         <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
-                                            <p className="text-[10px] font-black uppercase text-destructive mb-1">ULB Discrepancy</p>
+                                            <p className="text-[10px] font-black uppercase text-destructive mb-1">Cumulative Discrepancy</p>
                                             <p className="text-2xl font-black text-destructive">{discrepancy.toLocaleString()} KG</p>
                                         </div>
                                         <div className="bg-primary text-primary-foreground rounded-xl p-5 shadow-lg">
@@ -275,10 +400,11 @@ function GpUlbWasteDetailsContent() {
                 })}
             </Accordion>
 
+            {/* Yearly Professional Audit Section */}
             <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-8 text-center">
                     <CardTitle className="text-4xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center justify-center gap-4">
-                        <BarChart3 className="h-12 w-12" /> Yearly Professional Audit: {year}
+                        <BarChart3 className="h-12 w-12" /> Yearly Professional Audit: 2026
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -301,7 +427,7 @@ function GpUlbWasteDetailsContent() {
                                 </TableHeader>
                                 <TableBody>
                                     {(() => {
-                                      const yearly = allRecords.filter(r => new Date(r.date).getFullYear().toString() === year && r.submittedByRole === 'driver');
+                                      const yearly = allRecords.filter(r => new Date(r.date).getFullYear() === 2026);
                                       if (yearly.length === 0) {
                                         return <TableRow><TableCell colSpan={10} className="h-48 text-center italic font-black uppercase tracking-[0.3em] opacity-10 text-2xl">Awaiting Annual Audit Cycle</TableCell></TableRow>;
                                       }
@@ -318,8 +444,8 @@ function GpUlbWasteDetailsContent() {
                                               plastic: prev.plastic + (r.plastic || 0),
                                               metal: prev.metal + (r.metal || 0),
                                               glass: prev.glass + (r.glass || 0),
-                                              sani: prev.sani + (r.sanitation || 0),
-                                              other: prev.other + (r.others || 0)
+                                              sani: prev.sanitation + (r.sanitation || 0),
+                                              other: prev.others + (r.others || 0)
                                           });
                                       });
 
@@ -347,6 +473,46 @@ function GpUlbWasteDetailsContent() {
             </Card>
         </div>
       ))}
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-2">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black uppercase text-primary">Administrative Verified Entry</DialogTitle>
+            <DialogDescription className="font-bold">Manual synchronization of logistical waste recovery metrics.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 py-6 border-y my-4">
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Collection Date</Label><Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Route ID</Label><Input value={formData.routeId} onChange={e => setFormData({...formData, routeId: e.target.value})} placeholder="e.g., RJ-01" /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Tagged MRF</Label><Input value={formData.mrf} disabled className="bg-muted/20 font-bold" /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Total Load from GPs (Kg)</Label><Input type="number" value={formData.totalGpLoad} onChange={e => setFormData({...formData, totalGpLoad: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Driver Submitted (Kg)</Label><Input type="number" value={formData.driverSubmitted} onChange={e => setFormData({...formData, driverSubmitted: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">District</Label><Input value={formData.district} disabled className="bg-muted/20" /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Block</Label><Input value={formData.block} disabled className="bg-muted/20" /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Plastic</Label><Input type="number" value={formData.plastic} onChange={e => setFormData({...formData, plastic: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Paper</Label><Input type="number" value={formData.paper} onChange={e => setFormData({...formData, paper: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Metal</Label><Input type="number" value={formData.metal} onChange={e => setFormData({...formData, metal: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Cloth</Label><Input type="number" value={formData.cloth} onChange={e => setFormData({...formData, cloth: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Glass</Label><Input type="number" value={formData.glass} onChange={e => setFormData({...formData, glass: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Sanitation</Label><Input type="number" value={formData.sanitation} onChange={e => setFormData({...formData, sanitation: e.target.value})} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="font-bold">Cancel</Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="font-black uppercase px-8">
+              {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2" />} Save Verified Entry
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div className="bg-muted/20 border-l-4 border-primary p-6 rounded-r-xl shadow-inner flex items-start gap-4 mt-8">
+        <Info className="h-6 w-6 text-primary mt-0.5 shrink-0" />
+        <div className="space-y-1">
+          <p className="text-sm font-black uppercase tracking-tight">Temporal Engine Guidelines</p>
+          <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
+            Nodal reconciliation data is organized by fiscal cycle. Each monthly card features nested jurisdictional auditing with real-time discrepancy monitoring. Large variances trigger automatic block-level audit flags. Professional yearly reports aggregate state-wide recovery metrics for official steering committee review.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
