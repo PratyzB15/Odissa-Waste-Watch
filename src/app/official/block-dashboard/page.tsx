@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
@@ -83,13 +84,22 @@ import { sambalpurDistrictData } from "@/lib/disSambalpur";
 const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#7c3aed', '#64748b'];
 
 /**
- * High-Precision Temporal Arrival Engine
+ * High-Precision Temporal Arrival Engine for Block Oversight
  */
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const s = schedule.toLowerCase().replace(/\s+/g, ' ');
+    const s = schedule.toLowerCase()
+        .replace(/thurs\s*day/g, 'thursday')
+        .replace(/tues\s*day/g, 'tuesday')
+        .replace(/wednes\s*day/g, 'wednesday')
+        .replace(/mon\s*day/g, 'monday')
+        .replace(/fri\s*day/g, 'friday')
+        .replace(/satur\s*day/g, 'saturday')
+        .replace(/sun\s*day/g, 'sunday')
+        .replace(/\s+/g, ' ');
+
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
 
@@ -121,7 +131,10 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         }
         const dayIdx = weekdays.indexOf(dayName);
         
+        // Find target in current month
         let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
+        
+        // If target is in the past, look in the next month
         if (!target || target < today) {
             let nextMonth = today.getMonth() + 1;
             let nextYear = today.getFullYear();
@@ -131,11 +144,12 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // 2. Handle Fixed Dates
-    const dayMatches = s.match(/(\d+)/g);
+    // 2. Handle Fixed Dates (1st, 15th, etc)
+    const dayMatches = s.match(/(\d+)(?:st|nd|rd|th)?/g);
     if (dayMatches && !s.includes('week')) {
-        const days = dayMatches.map(Number).sort((a, b) => a - b);
+        const days = dayMatches.map(m => parseInt(m)).filter(d => !isNaN(d)).sort((a, b) => a - b);
         const nextDay = days.find(d => d >= today.getDate());
+        
         if (nextDay === today.getDate()) return 0;
         if (nextDay) return nextDay - today.getDate();
         
@@ -143,7 +157,7 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         return (lastDayThisMonth - today.getDate()) + days[0];
     }
 
-    // 3. Handle Simple Weekdays
+    // 3. Handle Simple Weekdays (Monday, Tuesday, etc)
     let minDays = 999;
     weekdays.forEach((day, i) => {
         if (s.includes(day)) {
@@ -228,7 +242,8 @@ function BlockDashboardContent() {
                 actualRouteId: route.routeId,
                 mrf: sched?.mrf || route.destination || 'Mapped Facility',
                 startGp: route.startingGp,
-                endGp: route.finalGp || route.destination
+                endGp: route.finalGp || route.destination,
+                driverContact: (sched?.driverContact && sched.driverContact !== '-') ? sched.driverContact : '9437XXXXXX'
             };
         }).sort((a: any, b: any) => a.daysLeft - b.daysLeft);
 
@@ -304,18 +319,17 @@ function BlockDashboardContent() {
                         <Card className="border-2 shadow-sm cursor-pointer hover:bg-primary/5 transition-all group">
                             <CardHeader className="p-3 pb-1 flex row items-center justify-between space-y-0"><CardTitle className="text-[9px] uppercase font-black text-muted-foreground">Households</CardTitle><Home className="h-3 w-3 opacity-20 group-hover:opacity-100" /></CardHeader>
                             <CardContent className="px-3 pb-3"><div className="text-xl font-black underline">{data.households.toLocaleString()}</div></CardContent>
-                        </Card>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-72 p-0 border-2 shadow-2xl overflow-hidden">
-                        <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">Household Audit</h4>
-                        <ScrollArea className="h-72">
-                            <Table>
-                                <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[9px] font-black uppercase">GP Node</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Count</TableHead></TableRow></TableHeader>
-                                <TableBody>{data.flatGpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody>
-                                <TableFooter className="bg-primary/5 font-black"><TableRow><TableCell className="text-[10px] uppercase">Total</TableCell><TableCell className="text-right font-mono text-xs text-primary">{data.households.toLocaleString()}</TableCell></TableRow></TableFooter>
-                            </Table>
-                        </ScrollArea>
-                    </PopoverContent>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 p-0 border-2 shadow-2xl overflow-hidden">
+                            <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">Household Audit</h4>
+                            <ScrollArea className="h-72">
+                                <Table>
+                                    <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[9px] font-black uppercase">GP Node</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Count</TableHead></TableRow></TableHeader>
+                                    <TableBody>{data.flatGpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody>
+                                    <TableFooter className="bg-primary/5 font-black"><TableRow><TableCell className="text-[10px] uppercase">Total</TableCell><TableCell className="text-right font-mono text-xs text-primary">{data.households.toLocaleString()}</TableCell></TableRow></TableFooter>
+                                </Table>
+                            </ScrollArea>
+                        </PopoverContent>
                 </Popover>
 
                 <Popover>
@@ -349,7 +363,7 @@ function BlockDashboardContent() {
                     <CardHeader className="bg-primary/5 border-b pb-3 flex flex-row items-center justify-between space-y-0"><div className="flex items-center gap-2 text-primary"><Truck className="h-5 w-5" /><CardTitle className="text-base font-black uppercase">Active Circuits</CardTitle></div><Badge variant="outline" className="border-primary text-primary font-bold">{data.activeCircuits.filter(c => c.isActiveToday).length} DEPLOYED</Badge></CardHeader>
                     <CardContent className="p-0"><ScrollArea className="h-[290px]"><div className="grid gap-0 divide-y">{data.activeCircuits.map((log, i) => (<div key={i} className={`p-5 flex items-center justify-between group hover:bg-muted/5 transition-colors border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
                         <div className="flex-1 space-y-1 pr-6 border-r border-dashed"><p className="text-[9px] font-black uppercase text-primary flex items-center gap-1.5"><Anchor className="h-2.5 w-2.5 opacity-40"/> {log.mrf}</p><p className="font-black text-xs uppercase text-foreground">{log.actualRouteId}: {log.routeName}</p><div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase pt-1"><span className="text-green-700">{log.startGp}</span><ArrowRight className="h-2 w-2" /><span className="text-blue-700">{log.endGp}</span></div></div>
-                        <div className="flex-1 border-x border-dashed px-6 text-center"><p className="text-[10px] font-black uppercase text-foreground truncate"><UserCircle className="h-3.5 w-3.5 inline mr-1 opacity-40"/> {log.driverName}</p><p className="text-[9px] font-bold text-muted-foreground uppercase truncate pt-1"><Truck className="h-3.5 w-3.5 inline mr-1 opacity-40"/> {log.vehicleDetails}</p></div>
+                        <div className="flex-1 border-x border-dashed px-6 text-center"><p className="text-[10px] font-black uppercase text-foreground truncate"><UserCircle className="h-3.5 w-3.5 inline mr-1 opacity-40"/> {log.driverName}</p><p className="text-[9px] font-mono font-black text-primary truncate pt-1">{log.driverContact}</p><p className="text-[9px] font-bold text-muted-foreground uppercase truncate pt-1"><Truck className="h-3.5 w-3.5 inline mr-1 opacity-40"/> {log.vehicleDetails}</p></div>
                         <div className="flex-1 text-right pl-6"><div className={`text-lg font-black leading-none ${log.isActiveToday ? 'text-green-700 animate-pulse' : 'text-foreground'}`}>{log.countdown}</div><div className="text-[10px] font-black text-blue-700 uppercase mt-1.5">{log.scheduleStr}</div></div>
                     </div>))}</div></ScrollArea></CardContent>
                 </Card>
@@ -369,8 +383,8 @@ function BlockDashboardContent() {
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
-                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 py-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><ListFilter className="h-4 w-4 text-primary" /> Nodal Activity Status</CardTitle></CardHeader><CardContent className="h-[350px] pt-8"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={data.activeSummary} margin={{ left: 20, right: 30 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} /><XAxis type="number" fontSize={10} /><YAxis dataKey="name" type="category" fontSize={10} fontWeights="black" width={80} /><Tooltip content={<CustomActiveTooltip />} /><Bar dataKey="value" name="Nodes" radius={[0, 4, 4, 0]} barSize={50} /></BarChart></ResponsiveContainer></CardContent></Card>
-                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 pb-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><PieIcon className="h-5 w-5 text-primary" /> Waste Stream Composition (%)</CardTitle></CardHeader><CardContent className="h-[350px] pt-6"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data.compositionData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">{data.compositionData.map((entry, index) => <Cell key={index} fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} />)}</Pie><Tooltip /><RechartsLegend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 'bold'}} /></PieChart></ResponsiveContainer></CardContent></Card>
+                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 py-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><ListFilter className="h-4 w-4 text-primary" /> Nodal Activity Status</CardTitle></CardHeader><CardContent className="h-[350px] pt-8"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={data.activeSummary} margin={{ left: 20, right: 30 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} /><XAxis type="number" fontSize={10} /><YAxis dataKey="name" type="category" fontSize={10} fontWeights="black" width={80} /><Tooltip content={<CustomActiveTooltip />} /><Bar dataKey="value" name="Nodes" radius={[0, 4, 4, 0]} barSize={50} /></BarChart></ResponsiveContainer></CardContent>
+                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 pb-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><PieIcon className="h-5 w-5 text-primary" /> Waste Stream Composition (%)</CardTitle></CardHeader><CardContent className="h-[350px] pt-6"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data.compositionData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">{data.compositionData.map((entry, index) => <Cell key={index} fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} />)}</Pie><Tooltip /><RechartsLegend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 'bold'}} /></PieChart></ResponsiveContainer></CardContent>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
