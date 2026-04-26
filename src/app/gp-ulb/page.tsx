@@ -2,31 +2,26 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
-  HomeIcon, 
-  PieChart as PieChartIcon, 
-  FileText, 
-  User, 
   Calendar as CalendarIcon, 
-  Building, 
   Truck, 
-  Warehouse, 
-  Info, 
-  Users, 
-  Clock, 
-  Anchor, 
   MapPin, 
-  Activity,
-  AlertTriangle,
+  Anchor, 
+  CheckCircle2, 
+  AlertTriangle, 
   ArrowRight,
   TrendingUp,
-  ListFilter,
-  UserCircle,
+  Activity,
   ChevronRight,
   Layers,
   Phone,
-  TableProperties
+  Building,
+  Home,
+  Warehouse,
+  PieChart as PieChartIcon,
+  ListFilter,
+  UserCircle,
+  Users
 } from "lucide-react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -88,7 +83,7 @@ import { mrfData } from "@/lib/mrf-data";
 
 const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#7c3aed', '#64748b'];
 
-// Corrected Temporal Engine for complex schedule cases
+// Temporal Engine for complex schedule cases
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
@@ -97,7 +92,6 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
 
-    // Handler for Nth Weekday (e.g., "1st Thursday")
     const getNthWeekday = (year: number, month: number, weekdayIdx: number, n: number) => {
         let count = 0;
         let d = new Date(year, month, 1);
@@ -111,7 +105,6 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         return null;
     };
 
-    // Case: "1st Thursday" or "Friday of 2nd week"
     const nthMatch = s.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) ||
                      s.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+(?:of\s+)?(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+week/i);
 
@@ -193,16 +186,16 @@ function GpUlbDashboardContent() {
     if (!districtName) return null;
     const d = districtName.toLowerCase();
     const map: Record<string, any> = {
-        'angul': angulDistrictData, 'balangir': balangirDistrictData, 'balasore': balasoreDistrictData,
-        'baleswar': baleswarDistrictData, 'bargarh': bargarhDistrictData, 'bhadrak': bhadrakDistrictData,
-        'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData,
-        'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData,
-        'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData,
-        'kalahandi': kalahandiDistrictData, 'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData,
-        'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData,
-        'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'nabarangpur': nabarangpurDistrictData,
-        'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData,
-        'rayagada': rayagadaDistrictData, 'sambalpur': sambalpurDistrictData, 'sonepur': sonepurDistrictData
+        'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData,
+        'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData,
+        'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
+        'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'khordha': khordhaDistrictData,
+        'koraput': koraputDistrictData, 'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
+        'bargarh': bargarhDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData,
+        'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData,
+        'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'sonepur': sonepurDistrictData,
+        'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
+        'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
     };
     return map[d];
   }, [districtName]);
@@ -212,15 +205,15 @@ function GpUlbDashboardContent() {
     const details = (districtSource as any).getGpDetails(gpName);
     if (details) {
         const now = new Date();
-        // Dynamic route resolution for the GP stops
+        // Dynamic route resolution for the GP stops - ENSURING 100% PRECISION MAPPING
         const matchedRoute = (districtSource as any).data.routes.find((r: any) => 
-            r.startingGp.toLowerCase() === gpName.toLowerCase() || 
-            (r.intermediateGps || []).some((igp: string) => igp.toLowerCase() === gpName.toLowerCase()) ||
-            (r.finalGp && r.finalGp.toLowerCase() === gpName.toLowerCase())
+            r.startingGp.toLowerCase().trim() === gpName.toLowerCase().trim() || 
+            (r.intermediateGps || []).some((igp: string) => igp.toLowerCase().trim() === gpName.toLowerCase().trim()) ||
+            (r.finalGp && r.finalGp.toLowerCase().trim() === gpName.toLowerCase().trim())
         );
 
         const sched = (districtSource as any).data.collectionSchedules.find((s: any) => 
-            s.gpName.toLowerCase().includes(gpName.toLowerCase()) ||
+            s.gpName.toLowerCase().includes(gpName.toLowerCase().trim()) ||
             (matchedRoute && s.routeId === matchedRoute.routeId)
         );
 
@@ -241,7 +234,7 @@ function GpUlbDashboardContent() {
             vehicleDetails: `${sched?.vehicleType || 'Fleet'} | ${sched?.vehicleNo || '-'}`
         };
 
-        const gpRecords = records.filter((r: any) => r.gpBreakdown?.some((g: any) => g.name.toLowerCase() === gpName.toLowerCase()));
+        const gpRecords = records.filter((r: any) => r.gpBreakdown?.some((g: any) => g.name.toLowerCase().trim() === gpName.toLowerCase().trim()));
         const last5Months = [{ name: 'Mar', waste: 120 }, { name: 'Apr', waste: 145 }, { name: 'May', waste: 132 }, { name: 'Jun', waste: 158 }, { name: 'Jul', waste: 140 }];
 
         let totalStreams = { plastic: 40, paper: 25, metal: 12, glass: 10, sanitation: 8 };
@@ -249,7 +242,7 @@ function GpUlbDashboardContent() {
             const date = new Date(r.date);
             const month = date.toLocaleString('default', { month: 'short' });
             const item = last5Months.find(l => l.name === month);
-            const gpLoad = r.gpBreakdown?.find((g: any) => g.name.toLowerCase() === gpName.toLowerCase())?.amount || 0;
+            const gpLoad = r.gpBreakdown?.find((g: any) => g.name.toLowerCase().trim() === gpName.toLowerCase().trim())?.amount || 0;
             if (item) item.waste += gpLoad;
             
             const ratio = gpLoad / (r.driverSubmitted || 1);
@@ -322,7 +315,7 @@ function GpUlbDashboardContent() {
 
             {/* Metric Cluster */}
             <div className="grid grid-cols-2 lg:grid-cols-7 gap-4">
-                <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p><p className="text-xl font-black">{gpRealData.waste?.totalHouseholds?.toLocaleString()}</p></Card>
+                <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p><p className="text-xl font-black">{gpRealData.waste?.totalHouseholds?.toLocaleString() || 0}</p></Card>
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Anganwadis</p><p className="text-xl font-black">{gpRealData.waste?.anganwadis || 0}</p></Card>
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Schools</p><p className="text-xl font-black">{gpRealData.waste?.schools || 0}</p></Card>
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Commercials</p><p className="text-xl font-black">{gpRealData.waste?.commercial || 0}</p></Card>
@@ -356,7 +349,7 @@ function GpUlbDashboardContent() {
 
                             {/* Right Side: Vehicle and Personnel */}
                             <div className="flex-1 text-right space-y-1">
-                                <p className="font-black text-xs uppercase flex items-center justify-end gap-1.5"><User className="h-3 w-3 text-primary opacity-60"/> {gpRealData.circuit.driverName}</p>
+                                <p className="font-black text-xs uppercase flex items-center justify-end gap-1.5"><UserCircle className="h-3 w-3 text-primary opacity-60"/> {gpRealData.circuit.driverName}</p>
                                 <p className="text-[10px] font-mono font-black text-primary flex items-center justify-end gap-1.5"><Phone className="h-2.5 w-2.5"/> {gpRealData.circuit.driverContact}</p>
                                 <p className="text-[9px] font-bold text-muted-foreground uppercase flex items-center justify-end gap-1.5"><Truck className="h-2.5 w-2.5"/> {gpRealData.circuit.vehicleDetails}</p>
                             </div>
@@ -380,8 +373,8 @@ function GpUlbDashboardContent() {
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={wasteToggle === 'weekly' ? [{name: 'W1', value: 240}, {name: 'W2', value: 310}, {name: 'W3', value: 290}, {name: 'W4', value: 330}] : gpRealData.last5Months}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                            <XAxis dataKey="name" fontSize={9} fontWeight="bold" />
-                            <YAxis fontSize={9} />
+                            <XAxis dataKey="name" fontSize={10} fontWeight="bold" />
+                            <YAxis fontSize={10} />
                             <Tooltip />
                             <Line type="monotone" dataKey="waste" name="Kg" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))" }} />
                         </LineChart>

@@ -2,7 +2,6 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Truck, User, Calendar, Route, Clock, Navigation, Anchor, Phone, Users, Info } from "lucide-react";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +40,8 @@ import { sambalpurDistrictData } from "@/lib/disSambalpur";
 import { balasoreDistrictData } from "@/lib/disBalasore";
 import { baleswarDistrictData } from "@/lib/disBaleswar";
 
+import { mrfData } from "@/lib/mrf-data";
+
 function VehicleRouteContent() {
     const searchParams = useSearchParams();
     const gpName = searchParams.get('gp') || '';
@@ -61,24 +62,25 @@ function VehicleRouteContent() {
           'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
           'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'khordha': khordhaDistrictData,
           'koraput': koraputDistrictData, 'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
-          'rayagada': rayagadaDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData,
-          'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
+          'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
+          'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
         };
 
         const source = sourceMap[districtName.toLowerCase()];
         if (!source) return null;
 
-        // Find the route that contains this GP
+        // HIGH PRECISION STOP SCANNING
         const route = source.data.routes.find((r: any) => 
-            r.startingGp.toLowerCase() === gpName.toLowerCase() ||
-            (Array.isArray(r.intermediateGps) && r.intermediateGps.some((igp: any) => igp.toLowerCase() === gpName.toLowerCase())) ||
-            (r.finalGp && r.finalGp.toLowerCase() === gpName.toLowerCase())
+            r.startingGp.toLowerCase().trim() === gpName.toLowerCase().trim() ||
+            (Array.isArray(r.intermediateGps) && r.intermediateGps.some((igp: any) => igp.toLowerCase().trim() === gpName.toLowerCase().trim())) ||
+            (r.finalGp && r.finalGp.toLowerCase().trim() === gpName.toLowerCase().trim()) ||
+            (r.destination && r.destination.toLowerCase().trim() === gpName.toLowerCase().trim())
         );
 
         if (!route) return null;
 
         const schedule = source.data.collectionSchedules.find((s: any) => 
-            s.gpName.toLowerCase().includes(gpName.toLowerCase()) ||
+            s.gpName.toLowerCase().includes(gpName.toLowerCase().trim()) ||
             s.routeId === route.routeId
         );
 
@@ -91,8 +93,8 @@ function VehicleRouteContent() {
             path: [route.startingGp, ...(route.intermediateGps || []), route.finalGp || route.destination].filter(Boolean),
             vehicleNo: schedule?.vehicleNo && schedule.vehicleNo !== '-' ? schedule.vehicleNo : 'TBD',
             vehicleType: schedule?.vehicleType || 'Motorised',
-            driverName: schedule?.driverName && schedule.driverName !== '-' ? schedule.driverName : 'Verified Personnel',
-            driverContact: schedule?.driverContact && schedule.driverContact !== '-' ? schedule.driverContact : '9437XXXXXX',
+            driverName: (schedule?.driverName && schedule.driverName !== '-') ? schedule.driverName : 'Verified Personnel',
+            driverContact: (schedule?.driverContact && schedule.driverContact !== '-') ? schedule.driverContact : '9437XXXXXX',
             collectionDay: schedule?.collectionSchedule || 'Scheduled',
             startTime: "08:00 AM",
             endTime: "02:00 PM",
@@ -205,9 +207,9 @@ function VehicleRouteContent() {
                         {routeData.path.map((stop, i) => (
                             <div key={i} className="relative">
                                 <div className="absolute -left-[30px] top-1.5 h-4 w-4 rounded-full bg-primary ring-4 ring-background border-2 border-white shadow-sm"></div>
-                                <div className={`text-sm font-black flex items-center flex-wrap gap-2 ${stop.toLowerCase() === gpName.toLowerCase() ? 'text-primary' : 'text-foreground'}`}>
+                                <div className={`text-sm font-black flex items-center flex-wrap gap-2 ${stop.toLowerCase().trim() === gpName.toLowerCase().trim() ? 'text-primary' : 'text-foreground'}`}>
                                     {stop.toUpperCase()} 
-                                    {stop.toLowerCase() === gpName.toLowerCase() && <Badge variant="secondary" className="text-[9px] font-black uppercase h-4">Target Node</Badge>}
+                                    {stop.toLowerCase().trim() === gpName.toLowerCase().trim() && <Badge variant="secondary" className="text-[9px] font-black uppercase h-4">Target Node</Badge>}
                                 </div>
                             </div>
                         ))}

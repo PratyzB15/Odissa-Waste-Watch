@@ -22,7 +22,7 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,7 +53,7 @@ function GpWasteDetailsContent() {
 
   const records = useMemo(() => {
     return allRecords.filter((r: any) => 
-        r.gpBreakdown?.some((g: any) => g.name.toLowerCase() === gpParam.toLowerCase())
+        r.gpBreakdown?.some((g: any) => g.name.toLowerCase().trim() === gpParam.toLowerCase().trim())
     );
   }, [allRecords, gpParam]);
 
@@ -61,7 +61,7 @@ function GpWasteDetailsContent() {
   const [editingRecord, setEditingRecord] = useState<any | null>(null);
   const [formData, setFormData] = useState({
     date: '', routeId: '', mrf: '', totalKg: '', plasticGm: '', paper: '', 
-    metal: '', cloth: '', glass: '', sanitation: '', others: ''
+    metal: '', glass: '', sanitation: '', others: ''
   });
 
   useEffect(() => { setMounted(true); }, []);
@@ -166,7 +166,7 @@ function GpWasteDetailsContent() {
                                 <AccordionTrigger className="p-6 hover:no-underline bg-muted/10 data-[state=open]:bg-primary/5 transition-all border-b border-dashed">
                                     <div className="flex justify-between w-full pr-8 items-center">
                                         <div className="flex items-center gap-4">
-                                            <CalendarIcon className="h-5 w-5 text-primary" />
+                                            <Calendar className="h-5 w-5 text-primary" />
                                             <span className="font-black text-lg uppercase tracking-tighter text-foreground">{month}</span>
                                         </div>
                                         <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-3">
@@ -249,6 +249,7 @@ function GpWasteDetailsContent() {
                 })}
             </Accordion>
 
+            {/* Yearly GP Audit Summary - Triggers post-December */}
             <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
                     <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
