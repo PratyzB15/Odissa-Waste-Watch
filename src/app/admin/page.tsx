@@ -182,8 +182,11 @@ function StateAdminDashboardContent() {
                 daysLeft,
                 scheduleStr,
                 isActiveToday: daysLeft === 0,
-                driver: sched?.driverName || 'Verified',
-                contact: sched?.driverContact || '9437XXXXXX'
+                driver: (sched?.driverName && sched.driverName !== '-') ? sched.driverName : 'Verified',
+                contact: (sched?.driverContact && sched.driverContact !== '-') ? sched.driverContact : '9437XXXXXX',
+                vehicle: sched?.vehicleType || 'TATA ACE',
+                startGp: route.startingGp,
+                endGp: route.finalGp || route.destination
             });
         });
     });
@@ -197,16 +200,56 @@ function StateAdminDashboardContent() {
     const hasData = allRecords.length > 0;
     const verifiedTotal = allRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0);
 
-    const lineData = districtSources.slice(0, 15).map(source => ({
-        name: source.district,
-        weekly: hasData ? allRecords.filter(r => r.district === source.district && new Date(r.date) > new Date(Date.now() - 7*24*60*60*1000)).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : Math.random() * 500 + 200,
-        monthly: hasData ? allRecords.filter(r => r.district === source.district).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : Math.random() * 2000 + 1000
-    }));
+    // Block-level Recovery Trend for ALL blocks
+    const lineData: any[] = [];
+    districtSources.forEach(source => {
+        source.blocks.forEach(blockName => {
+            const blockVerifiedWeekly = hasData ? allRecords.filter(r => r.district === source.district && r.block === blockName && new Date(r.date) > new Date(Date.now() - 7*24*60*60*1000)).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : Math.random() * 100 + 50;
+            const blockVerifiedMonthly = hasData ? allRecords.filter(r => r.district === source.district && r.block === blockName).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : Math.random() * 400 + 200;
+            lineData.push({
+                name: `${source.district}-${blockName}`,
+                weekly: blockVerifiedWeekly,
+                monthly: blockVerifiedMonthly
+            });
+        });
+    });
 
     const districtTonnage = districtSources.map(s => ({
         name: s.district,
         value: hasData ? allRecords.filter(r => r.district === s.district).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 1000 + Math.random() * 5000
     }));
+
+    // Infrastructure Audit: Top 5
+    const mrfMap = new Map();
+    mrfData.forEach(m => mrfMap.set(m.mrfId, 0));
+    if (hasData) {
+      allRecords.forEach(r => {
+        mrfMap.set(r.mrf, (mrfMap.get(r.mrf) || 0) + (r.driverSubmitted || 0));
+      });
+    } else {
+      mrfData.forEach(m => mrfMap.set(m.mrfId, 500 + Math.random() * 1000));
+    }
+    const top5Mrfs = Array.from(mrfMap.entries())
+      .map(([name, val]) => ({ name, val }))
+      .sort((a, b) => b.val - a.val)
+      .slice(0, 5);
+
+    const ulbMap = new Map();
+    const uniqueUlbs = Array.from(new Set(mrfData.map(m => m.ulbName)));
+    uniqueUlbs.forEach(u => ulbMap.set(u, 0));
+    if (hasData) {
+      allRecords.forEach(r => {
+        const mInfo = mrfData.find(m => m.mrfId === r.mrf);
+        const uName = mInfo ? mInfo.ulbName : r.mrf;
+        ulbMap.set(uName, (ulbMap.get(uName) || 0) + (r.driverSubmitted || 0));
+      });
+    } else {
+      uniqueUlbs.forEach(u => ulbMap.set(u, 1000 + Math.random() * 2000));
+    }
+    const top5Ulbs = Array.from(ulbMap.entries())
+      .map(([name, val]) => ({ name, val }))
+      .sort((a, b) => b.val - a.val)
+      .slice(0, 5);
 
     const streamData = hasData ? [
         { name: 'Plastic', value: allRecords.reduce((s, r) => s + (r.plastic || 0), 0) },
@@ -221,7 +264,7 @@ function StateAdminDashboardContent() {
 
     const discrepancies = [];
     const todayStr = new Date().toISOString().split('T')[0];
-    activeToday.forEach(c => {
+    allRoutes.filter(r => r.isActiveToday).forEach(c => {
         if (!allRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startingGp))) {
             discrepancies.push({ id: `miss-${c.routeId}`, msg: `[${c.district}] Circuit ${c.routeId} active - No receipt synced for ${c.startingGp}.` });
         }
@@ -229,7 +272,8 @@ function StateAdminDashboardContent() {
 
     return { 
         districtsList, blocksList, ulbsList, mrfsList, allGps, activeToday, lineData, districtTonnage, streamData, discrepancies,
-        surveyedTotal, verifiedTotal, efficiency: surveyedTotal > 0 ? (verifiedTotal / surveyedTotal) * 100 : 94.2
+        surveyedTotal, verifiedTotal, efficiency: surveyedTotal > 0 ? (verifiedTotal / surveyedTotal) * 100 : 94.2,
+        top5Mrfs, top5Ulbs
     };
   }, [mounted, allRecords]);
 
@@ -302,11 +346,19 @@ function StateAdminDashboardContent() {
 
         <Popover>
             <PopoverTrigger asChild>
-                <Card className="border-2 shadow-sm p-4 text-center cursor-pointer hover:bg-primary/5 transition-all"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p><p className="text-xl font-black text-primary underline">{stateData.allGps.reduce((s,g) => s + g.households, 0).toLocaleString()}</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center cursor-pointer hover:bg-primary/5 transition-all group">
+                    <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p>
+                    <p className="text-xl font-black text-primary underline">{stateData.allGps.reduce((s,g) => s + g.households, 0).toLocaleString()}</p>
+                </Card>
             </PopoverTrigger>
             <PopoverContent className="w-96 p-0 border-2 shadow-2xl overflow-hidden">
                 <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px]">Household Census (Nodal)</div>
-                <ScrollArea className="h-80"><Table><TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] uppercase font-black">GP Node</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Count</TableHead></TableRow></TableHeader><TableBody>{stateData.allGps.map((g, i) => (<TableRow key={i}><TableCell className="text-[10px] font-bold uppercase">{g.gpName}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>
+                <ScrollArea className="h-80">
+                  <Table>
+                    <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] uppercase font-black">GP Node</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Count</TableHead></TableRow></TableHeader>
+                    <TableBody>{stateData.allGps.map((g, i) => (<TableRow key={i}><TableCell className="text-[10px] font-bold uppercase">{g.gpName}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody>
+                  </Table>
+                </ScrollArea>
             </PopoverContent>
         </Popover>
 
@@ -341,7 +393,7 @@ function StateAdminDashboardContent() {
             <Card className="border-2 border-primary/30 bg-primary/[0.01]">
                 <CardHeader className="bg-primary/5 border-b pb-3 flex row items-center gap-2">
                     <Truck className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-base font-black uppercase">Circuits Active Today</CardTitle>
+                    <CardTitle className="text-base font-black uppercase">Active Circuits Today</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <ScrollArea className="h-[250px]">
@@ -360,10 +412,13 @@ function StateAdminDashboardContent() {
                                     <div className="flex-1 text-right space-y-0.5 pl-4">
                                         <p className="text-[10px] font-black uppercase leading-none">{log.driver}</p>
                                         <p className="text-[8px] font-mono font-bold text-muted-foreground">{log.vehicle}</p>
-                                        <p className="text-[9px] font-bold text-primary">{log.startingGp} → {log.finalGp || log.destination}</p>
+                                        <p className="text-[9px] font-bold text-primary">{log.startGp} → {log.endGp}</p>
                                     </div>
                                 </div>
                             ))}
+                            {stateData.activeToday.length === 0 && (
+                              <div className="p-12 text-center text-muted-foreground italic uppercase font-black text-[10px]">No active routes synchronized for today.</div>
+                            )}
                         </div>
                     </ScrollArea>
                 </CardContent>
@@ -377,14 +432,14 @@ function StateAdminDashboardContent() {
                 <TabsList className="h-8 bg-background border"><TabsTrigger value="weekly" className="text-[9px] font-black uppercase">Weekly</TabsTrigger><TabsTrigger value="monthly" className="text-[9px] font-black uppercase">Monthly</TabsTrigger></TabsList>
             </Tabs>
         </CardHeader>
-        <CardContent className="h-[300px] pt-8">
+        <CardContent className="h-[400px] pt-8">
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={stateData.lineData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                    <XAxis dataKey="name" fontSize={9} fontWeights="bold" angle={-45} textAnchor="end" height={60} />
+                    <XAxis dataKey="name" fontSize={8} fontWeights="bold" angle={-45} textAnchor="end" height={100} interval={0} />
                     <YAxis fontSize={10} tickFormatter={(v) => `${(v/1000).toFixed(1)}T`} />
                     <Tooltip />
-                    <Line type="monotone" dataKey={lineToggle === 'monthly' ? 'monthly' : 'weekly'} stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))" }} />
+                    <Line type="monotone" dataKey={lineToggle === 'monthly' ? 'monthly' : 'weekly'} stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 2, fill: "hsl(var(--primary))" }} />
                 </LineChart>
             </ResponsiveContainer>
         </CardContent>
@@ -428,16 +483,16 @@ function StateAdminDashboardContent() {
 
         <Card className="border-2 shadow-sm">
             <CardHeader className="bg-muted/10 border-b pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Warehouse className="h-4 w-4 text-primary" /> Infrastructure Audit</CardTitle>
+                <CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Warehouse className="h-4 w-4 text-primary" /> Infrastructure Audit (Top 5)</CardTitle>
                 <Tabs value={mrfUlbToggle} onValueChange={setMrfUlbToggle}>
                     <TabsList className="h-7"><TabsTrigger value="mrf" className="text-[8px] font-black px-2">MRFs</TabsTrigger><TabsTrigger value="ulb" className="text-[8px] font-black px-2">ULBs</TabsTrigger></TabsList>
                 </Tabs>
             </CardHeader>
             <CardContent className="h-[300px] pt-6">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={mrfUlbToggle === 'mrf' ? mrfData.slice(0,10).map(m=>({name: m.mrfId, val: 500+Math.random()*1000})) : mrfData.slice(0,10).map(m=>({name: m.ulbName, val: 1000+Math.random()*2000}))}>
+                    <BarChart data={mrfUlbToggle === 'mrf' ? stateData.top5Mrfs : stateData.top5Ulbs}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                        <XAxis dataKey="name" fontSize={8} fontWeights="black" angle={-45} textAnchor="end" height={80} />
+                        <XAxis dataKey="name" fontSize={8} fontWeights="black" angle={-45} textAnchor="end" height={80} interval={0} />
                         <YAxis fontSize={10} />
                         <Tooltip />
                         <Bar dataKey="val" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={30} />
