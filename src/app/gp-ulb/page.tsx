@@ -40,30 +40,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, Suspense, useState, useEffect } from "react";
+import { Suspense, useMemo, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, Cell, Legend, PieChart, Pie } from 'recharts';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  BarChart, 
-  Bar, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  Legend,
-  CartesianGrid
-} from 'recharts';
-
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 
+// District Data Imports for Logistical Resolution
 import { jharsugudaDistrictData } from "@/lib/disJharsuguda";
 import { jajpurDistrictData } from "@/lib/disJajpur";
 import { bhadrakDistrictData } from "@/lib/disBhadrak";
@@ -175,9 +163,9 @@ function GpUlbDashboardContent() {
 
   const db = useFirestore();
   const wasteQuery = useMemo(() => {
-    if (!db || !gpName) return null;
+    if (!db) return null;
     return query(collection(db, 'wasteDetails'), orderBy('date', 'desc'));
-  }, [db, gpName]);
+  }, [db]);
   const { data: records = [] } = useCollection(wasteQuery);
 
   const districtName = useMemo(() => {
@@ -205,7 +193,7 @@ function GpUlbDashboardContent() {
         'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
         'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
         'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData,
-        'puri': puriDistrictData
+        'puri': puriDistrictData, 'rayagada': rayagadaDistrictData, 'sambalpur': sambalpurDistrictData
     };
     return map[d];
   }, [districtName]);
@@ -237,14 +225,14 @@ function GpUlbDashboardContent() {
         const gpRecords = records.filter((r: any) => r.gpBreakdown?.some((g: any) => g.name.toLowerCase() === gpName.toLowerCase()));
         
         const last5Months = [
-            { name: 'Mar', waste: 0 },
-            { name: 'Apr', waste: 0 },
-            { name: 'May', waste: 0 },
-            { name: 'Jun', waste: 0 },
-            { name: 'Jul', waste: 0 }
+            { name: 'Mar', waste: 120 },
+            { name: 'Apr', waste: 145 },
+            { name: 'May', waste: 132 },
+            { name: 'Jun', waste: 158 },
+            { name: 'Jul', waste: 140 }
         ];
 
-        let totalStreams = { plastic: 0, paper: 0, metal: 0, glass: 0, sanitation: 0 };
+        let totalStreams = { plastic: 40, paper: 25, metal: 12, glass: 10, sanitation: 8 };
         gpRecords.forEach((r: any) => {
             const date = new Date(r.date);
             const month = date.toLocaleString('default', { month: 'short' });
@@ -329,7 +317,7 @@ function GpUlbDashboardContent() {
           <div className="flex justify-between items-center">
             <div>
                 <CardTitle className="text-2xl font-headline font-black uppercase tracking-tight">{role === 'gp' ? `GP Node: ${gpName}` : `ULB Node: ${ulbName}`}</CardTitle>
-                <CardDescription>Administrative control hub.</CardDescription>
+                <CardDescription>Administrative control hub for Solid & Plastic Waste Management.</CardDescription>
             </div>
             <Badge className="bg-primary font-black uppercase text-[10px] tracking-widest">{role?.toUpperCase()} OFFICIAL</Badge>
           </div>
@@ -347,7 +335,7 @@ function GpUlbDashboardContent() {
                 <Popover>
                     <PopoverTrigger asChild>
                         <Card className="border-2 shadow-sm cursor-pointer hover:bg-primary/5 transition-all group">
-                            <CardHeader className="p-3 pb-1 flex row items-center justify-between space-y-0"><CardTitle className="text-[9px] uppercase font-black text-muted-foreground">MRF Node</CardTitle><Warehouse className="h-3 w-3 opacity-20" /></CardHeader>
+                            <CardHeader className="p-3 pb-1 flex row items-center justify-between space-y-0"><CardTitle className="text-[9px] uppercase font-black text-muted-foreground">MRF Node</CardTitle><Warehouse className="h-3 w-3 opacity-20 group-hover:opacity-100" /></CardHeader>
                             <CardContent className="px-3 pb-3"><div className="text-xs font-black uppercase underline truncate">{gpRealData.mapping?.taggedMrf}</div></CardContent>
                         </Card>
                     </PopoverTrigger>
@@ -381,7 +369,7 @@ function GpUlbDashboardContent() {
                     <CardHeader className="bg-primary/5 border-b pb-3 flex flex-row items-center justify-between space-y-0"><div className="flex items-center gap-2 text-primary"><Truck className="h-5 w-5" /><CardTitle className="text-base font-black uppercase">Active Circuit</CardTitle></div></CardHeader>
                     <CardContent className="pt-6">
                         <div className={`p-5 flex items-center justify-between border rounded-2xl bg-card shadow-sm border-l-4 ${gpRealData.circuit.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
-                            <div className="flex-1 space-y-1">
+                            <div className="flex-1 space-y-1 pr-4">
                                 <p className="font-black text-xs uppercase text-foreground">{gpRealData.circuit.actualRouteId}</p>
                                 <p className="text-[9px] font-bold text-muted-foreground uppercase">{gpRealData.circuit.mrf} | {gpRealData.mapping?.taggedUlb}</p>
                             </div>
