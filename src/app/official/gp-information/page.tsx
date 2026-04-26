@@ -34,8 +34,6 @@ import { kalahandiDistrictData } from "@/lib/disKalahandi";
 import { kandhamalDistrictData } from "@/lib/disKandhamal";
 import { kendraparaDistrictData } from "@/lib/disKendrapara";
 import { kendujharDistrictData } from "@/lib/disKendujhar";
-import { balasoreDistrictData } from "@/lib/disBalasore";
-import { baleswarDistrictData } from "@/lib/disBaleswar";
 import { khordhaDistrictData } from "@/lib/disKhordha";
 import { koraputDistrictData } from "@/lib/disKoraput";
 import { malkangiriDistrictData } from "@/lib/disMalkangiri";
@@ -46,6 +44,8 @@ import { nayagarhDistrictData } from "@/lib/disNayagarh";
 import { nuapadaDistrictData } from "@/lib/disNuapada";
 import { puriDistrictData } from "@/lib/disPuri";
 import { sambalpurDistrictData } from "@/lib/disSambalpur";
+import { balasoreDistrictData } from "@/lib/disBalasore";
+import { baleswarDistrictData } from "@/lib/disBaleswar";
 
 function GPInformationContent() {
   const { toast } = useToast();
@@ -81,10 +81,10 @@ function GPInformationContent() {
         'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData,
         'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData,
         'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
-        'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'khordha': khordhaDistrictData,
-        'koraput': koraputDistrictData, 'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
+        'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
         'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
-        'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
+        'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData,
+        'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData
     };
     
     const source = districtsSourceMap[districtName.toLowerCase()];
@@ -134,7 +134,9 @@ function GPInformationContent() {
   const handleOpenEditDialog = (row: any) => {
     setEditingRow(row);
     setFormData({
-        ulbName: row.ulbName, mrfName: row.mrfName, gpName: row.gpName,
+        ulbName: row.ulbName,
+        mrfName: row.mrfName,
+        gpName: row.gpName,
         households: row.households.toString(),
         schools: row.schools.toString(),
         anganwadis: row.anganwadis.toString(),
@@ -185,7 +187,7 @@ function GPInformationContent() {
                 </div>
             </div>
             {isAuthorized && (
-                <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg">
+                <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
                     <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
                 </Button>
             )}
@@ -244,13 +246,44 @@ function GPInformationContent() {
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl border-2">
-            <DialogHeader><DialogTitle className="text-xl font-black uppercase text-primary">{editingRow ? 'Edit Record' : 'Add Entry'}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="text-xl font-black uppercase text-primary">{editingRow ? 'Edit GP Information' : 'Add GP Information'}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-6 py-6">
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">ULB Name</Label><Input value={formData.ulbName} onChange={(e) => setFormData({...formData, ulbName: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">MRF Name</Label><Input value={formData.mrfName} onChange={(e) => setFormData({...formData, mrfName: e.target.value})} /></div>
-                <div className="space-y-2 col-span-2"><Label className="text-[10px] font-black uppercase opacity-60">GP Name</Label><Input value={formData.gpName} onChange={(e) => setFormData({...formData, gpName: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">HH Count</Label><Input type="number" value={formData.households} onChange={(e) => setFormData({...formData, households: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Waste/Day</Label><Input type="number" value={formData.dailyWaste} onChange={(e) => setFormData({...formData, dailyWaste: e.target.value})} /></div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Facility (ULB Name)</Label>
+                    <Input value={formData.ulbName} onChange={(e) => setFormData({...formData, ulbName: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Facility (MRF Name)</Label>
+                    <Input value={formData.mrfName} onChange={(e) => setFormData({...formData, mrfName: e.target.value})} />
+                </div>
+                <div className="space-y-2 col-span-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">GP Node</Label>
+                    <Input value={formData.gpName} onChange={(e) => setFormData({...formData, gpName: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Households</Label>
+                    <Input type="number" value={formData.households} onChange={(e) => setFormData({...formData, households: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Schools</Label>
+                    <Input type="number" value={formData.schools} onChange={(e) => setFormData({...formData, schools: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Anganwadis</Label>
+                    <Input type="number" value={formData.anganwadis} onChange={(e) => setFormData({...formData, anganwadis: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Comm. Est.</Label>
+                    <Input value={formData.commercial} onChange={(e) => setFormData({...formData, commercial: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Waste/Day (Gm)</Label>
+                    <Input type="number" value={formData.dailyWaste} onChange={(e) => setFormData({...formData, dailyWaste: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Waste/Month (Gm)</Label>
+                    <Input type="number" value={formData.monthlyWaste} onChange={(e) => setFormData({...formData, monthlyWaste: e.target.value})} />
+                </div>
             </div>
             <DialogFooter><Button onClick={handleSubmit} className="font-black uppercase px-8">Save Details</Button></DialogFooter>
         </DialogContent>
