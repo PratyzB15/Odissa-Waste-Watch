@@ -84,10 +84,6 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444
 
 /**
  * High-Precision Temporal Arrival Engine
- * Correctly resolves:
- * - Simple Weekdays (Monday)
- * - Fixed Dates (1st, 15th)
- * - Nth Weekdays (1st Thursday, Friday of 2nd week, 3rd wednesday)
  */
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
@@ -116,17 +112,16 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     
     if (nthMatch) {
         let n, dayName;
-        if (weekdays.includes(nthMatch[1])) { // "[Weekday] of Nth"
+        if (weekdays.includes(nthMatch[1])) {
             dayName = nthMatch[1];
             n = ordinals[nthMatch[2]];
-        } else { // "Nth [Weekday]"
+        } else {
             n = ordinals[nthMatch[1]];
             dayName = nthMatch[2];
         }
         const dayIdx = weekdays.indexOf(dayName);
         
         let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
-        // If the target in current month is already past
         if (!target || target < today) {
             let nextMonth = today.getMonth() + 1;
             let nextYear = today.getFullYear();
@@ -136,7 +131,7 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // 2. Handle Fixed Dates (e.g., "1st & 15th")
+    // 2. Handle Fixed Dates
     const dayMatches = s.match(/(\d+)/g);
     if (dayMatches && !s.includes('week')) {
         const days = dayMatches.map(Number).sort((a, b) => a - b);
@@ -235,7 +230,7 @@ function BlockDashboardContent() {
                 startGp: route.startingGp,
                 endGp: route.finalGp || route.destination
             };
-        }).sort((a: any, b: any) => a.daysLeft - b.daysLeft); // Ascending order sort
+        }).sort((a: any, b: any) => a.daysLeft - b.daysLeft);
 
         const sortedGps = [...flatGpsList].sort((a, b) => b.collected - a.collected);
         
@@ -353,7 +348,7 @@ function BlockDashboardContent() {
                 <Card className="border-2 border-primary/30 bg-primary/[0.01]">
                     <CardHeader className="bg-primary/5 border-b pb-3 flex flex-row items-center justify-between space-y-0"><div className="flex items-center gap-2 text-primary"><Truck className="h-5 w-5" /><CardTitle className="text-base font-black uppercase">Active Circuits</CardTitle></div><Badge variant="outline" className="border-primary text-primary font-bold">{data.activeCircuits.filter(c => c.isActiveToday).length} DEPLOYED</Badge></CardHeader>
                     <CardContent className="p-0"><ScrollArea className="h-[290px]"><div className="grid gap-0 divide-y">{data.activeCircuits.map((log, i) => (<div key={i} className={`p-5 flex items-center justify-between group hover:bg-muted/5 transition-colors border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
-                        <div className="flex-1 space-y-1 pr-6"><p className="text-[9px] font-black uppercase text-primary flex items-center gap-1.5"><Anchor className="h-2.5 w-2.5 opacity-40"/> {log.mrf}</p><p className="font-black text-xs uppercase text-foreground">{log.actualRouteId}: {log.routeName}</p><div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase pt-1"><span className="text-green-700">{log.startGp}</span><ArrowRight className="h-2 w-2" /><span className="text-blue-700">{log.endGp}</span></div></div>
+                        <div className="flex-1 space-y-1 pr-6 border-r border-dashed"><p className="text-[9px] font-black uppercase text-primary flex items-center gap-1.5"><Anchor className="h-2.5 w-2.5 opacity-40"/> {log.mrf}</p><p className="font-black text-xs uppercase text-foreground">{log.actualRouteId}: {log.routeName}</p><div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase pt-1"><span className="text-green-700">{log.startGp}</span><ArrowRight className="h-2 w-2" /><span className="text-blue-700">{log.endGp}</span></div></div>
                         <div className="flex-1 border-x border-dashed px-6 text-center"><p className="text-[10px] font-black uppercase text-foreground truncate"><UserCircle className="h-3.5 w-3.5 inline mr-1 opacity-40"/> {log.driverName}</p><p className="text-[9px] font-bold text-muted-foreground uppercase truncate pt-1"><Truck className="h-3.5 w-3.5 inline mr-1 opacity-40"/> {log.vehicleDetails}</p></div>
                         <div className="flex-1 text-right pl-6"><div className={`text-lg font-black leading-none ${log.isActiveToday ? 'text-green-700 animate-pulse' : 'text-foreground'}`}>{log.countdown}</div><div className="text-[10px] font-black text-blue-700 uppercase mt-1.5">{log.scheduleStr}</div></div>
                     </div>))}</div></ScrollArea></CardContent>
@@ -374,8 +369,8 @@ function BlockDashboardContent() {
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
-                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 py-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><ListFilter className="h-4 w-4 text-primary" /> Nodal Activity Status</CardTitle></CardHeader><CardContent className="h-[350px] pt-8"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={data.activeSummary} margin={{ left: 20, right: 30 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} /><XAxis type="number" fontSize={10} /><YAxis dataKey="name" type="category" fontSize={10} fontWeights="black" width={80} /><Tooltip content={<CustomActiveTooltip />} /><Bar dataKey="value" name="Nodes" radius={[0, 4, 4, 0]} barSize={50} /></BarChart></ResponsiveContainer></CardContent>
-                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 pb-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><PieIcon className="h-5 w-5 text-primary" /> Waste Stream Composition (%)</CardTitle></CardHeader><CardContent className="h-[350px] pt-6"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data.compositionData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">{data.compositionData.map((entry, index) => <Cell key={index} fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} />)}</Pie><Tooltip /><RechartsLegend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 'bold'}} /></PieChart></ResponsiveContainer></CardContent>
+                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 py-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><ListFilter className="h-4 w-4 text-primary" /> Nodal Activity Status</CardTitle></CardHeader><CardContent className="h-[350px] pt-8"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={data.activeSummary} margin={{ left: 20, right: 30 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} /><XAxis type="number" fontSize={10} /><YAxis dataKey="name" type="category" fontSize={10} fontWeights="black" width={80} /><Tooltip content={<CustomActiveTooltip />} /><Bar dataKey="value" name="Nodes" radius={[0, 4, 4, 0]} barSize={50} /></BarChart></ResponsiveContainer></CardContent></Card>
+                <Card className="border-2 shadow-sm"><CardHeader className="border-b bg-muted/10 pb-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><PieIcon className="h-5 w-5 text-primary" /> Waste Stream Composition (%)</CardTitle></CardHeader><CardContent className="h-[350px] pt-6"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data.compositionData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">{data.compositionData.map((entry, index) => <Cell key={index} fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} />)}</Pie><Tooltip /><RechartsLegend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 'bold'}} /></PieChart></ResponsiveContainer></CardContent></Card>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
