@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -5,31 +6,22 @@ import {
   Truck, 
   ArrowRight,
   AlertCircle,
-  CheckCircle2,
   TrendingUp,
   PieChart as PieChartIcon,
   Activity,
-  Users,
-  User,
-  Phone,
   Layers,
-  Home as HomeIcon,
-  Check,
   Building,
   Warehouse,
-  ListFilter,
-  UserCircle,
   ShieldCheck,
   Calendar as CalendarIcon,
-  Info,
   MapPin,
-  Weight,
   Calculator,
   Navigation,
   Map as DistrictIcon,
-  BarChart2
+  Globe,
+  UserCircle,
+  Users
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -93,7 +85,7 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed
 
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
-    const normalized = schedule.toLowerCase().replace(/\s+/g, ' ');
+    const normalized = schedule.toLowerCase().replace(/\s+/g, ' ').replace('thurs day', 'thursday').replace('tues day', 'tuesday');
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
@@ -104,12 +96,16 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         return null;
     };
 
-    const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i);
+    const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) ||
+                     normalized.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+of\s+(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
+    
     if (nthMatch) {
-        const n = ordinals[nthMatch[1].toLowerCase()];
-        const dayIdx = weekdays.indexOf(nthMatch[2].toLowerCase());
+        const nStr = ordinals[nthMatch[1]] ? nthMatch[1] : nthMatch[2];
+        const dayStr = weekdays.includes(nthMatch[1]) ? nthMatch[1] : nthMatch[2];
+        const n = ordinals[nStr.toLowerCase()];
+        const dayIdx = weekdays.indexOf(dayStr.toLowerCase());
         let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
-        if (!target || target < today) {
+        if (!target || target <= today) {
             let nextM = today.getMonth() + 1; let nextY = today.getFullYear();
             if (nextM > 11) { nextM = 0; nextY++; }
             target = getNthWeekday(nextY, nextM, dayIdx, n);
@@ -118,17 +114,17 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     }
 
     let minDays = 999; 
-    weekdays.forEach((day, i) => { if (normalized.includes(day)) { let diff = i - today.getDay(); if (diff < 0) diff += 7; if (diff < minDays) minDays = diff; } });
+    weekdays.forEach((day, i) => { if (normalized.includes(day)) { let diff = i - today.getDay(); if (diff <= 0) diff += 7; if (diff < minDays) minDays = diff; } });
     
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
         const days = dateMatches.map(Number).sort((a, b) => a - b);
-        const nextDay = days.find(d => d >= today.getDate());
-        if (nextDay === today.getDate()) return 0;
+        const nextDay = days.find(d => d > today.getDate());
         if (nextDay) return nextDay - today.getDate();
-        return (new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - today.getDate()) + days[0];
+        const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        return (daysInMonth - today.getDate()) + days[0];
     }
-    return minDays === 999 ? 999 : minDays;
+    return minDays;
 };
 
 function StateAdminDashboardContent() {
@@ -149,10 +145,10 @@ function StateAdminDashboardContent() {
     sonepurDistrictData, boudhDistrictData, cuttackDistrictData, deogarhDistrictData,
     dhenkanalDistrictData, gajapatiDistrictData, ganjamDistrictData, jagatsinghpurDistrictData,
     jajpurDistrictData, jharsugudaDistrictData, kalahandiDistrictData, kandhamalDistrictData,
-    kendraparaDistrictData, kendujharDistrictData, balasoreDistrictData, baleswarDistrictData,
-    khordhaDistrictData, koraputDistrictData, mayurbhanjDistrictData, malkangiriDistrictData,
-    rayagadaDistrictData, nabarangpurDistrictData, nayagarhDistrictData, nuapadaDistrictData,
-    puriDistrictData, sambalpurDistrictData
+    kendraparaDistrictData, kendujharDistrictData, khordhaDistrictData, koraputDistrictData,
+    mayurbhanjDistrictData, malkangiriDistrictData, rayagadaDistrictData, nabarangpurDistrictData,
+    nayagarhDistrictData, nuapadaDistrictData, puriDistrictData, sambalpurDistrictData,
+    balasoreDistrictData, baleswarDistrictData
   ];
 
   const stateData = useMemo(() => {
@@ -160,6 +156,9 @@ function StateAdminDashboardContent() {
 
     const allGps: any[] = [];
     const allRoutes: any[] = [];
+    const allBlocks: string[] = [];
+    const allUlbs: string[] = [];
+    const allMrfs: string[] = [];
     let surveyedTotal = 0;
 
     districtSources.forEach(source => {
@@ -170,6 +169,7 @@ function StateAdminDashboardContent() {
             surveyedTotal += surveyed;
             allGps.push({ ...gp, district: source.district, households: w?.totalHouseholds || 0, surveyed });
         });
+        source.blocks.forEach(b => allBlocks.push(`${source.district} - ${b}`));
         source.data.routes.forEach(route => {
             const sched = source.data.collectionSchedules.find(s => s.gpName.toLowerCase().includes(route.routeId.toLowerCase()) || s.gpName.toLowerCase().includes(route.startingGp.toLowerCase()));
             const scheduleStr = sched?.collectionSchedule || route.scheduledOn || 'Scheduled';
@@ -191,11 +191,16 @@ function StateAdminDashboardContent() {
         });
     });
 
+    mrfData.forEach(m => {
+        allUlbs.push(m.ulbName);
+        allMrfs.push(m.mrfId);
+    });
+
     const activeToday = allRoutes.filter(r => r.isActiveToday).sort((a,b) => a.district.localeCompare(b.district));
     const districtsList = districtSources.map(s => s.district).sort();
-    const blocksList = Array.from(new Set(allGps.map(g => `${g.district} - ${g.block}`))).sort();
-    const ulbsList = Array.from(new Set(mrfData.map(m => m.ulbName))).sort();
-    const mrfsList = Array.from(new Set(mrfData.map(m => m.mrfId))).sort();
+    const uniqueBlocks = Array.from(new Set(allBlocks)).sort();
+    const uniqueUlbs = Array.from(new Set(allUlbs)).sort();
+    const uniqueMrfs = Array.from(new Set(allMrfs)).sort();
 
     const hasData = allRecords.length > 0;
     const verifiedTotal = allRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0);
@@ -221,21 +226,17 @@ function StateAdminDashboardContent() {
 
     // Infrastructure Audit: Top 5
     const mrfMap = new Map();
-    mrfData.forEach(m => mrfMap.set(m.mrfId, 0));
+    uniqueMrfs.forEach(m => mrfMap.set(m, 0));
     if (hasData) {
       allRecords.forEach(r => {
         mrfMap.set(r.mrf, (mrfMap.get(r.mrf) || 0) + (r.driverSubmitted || 0));
       });
     } else {
-      mrfData.forEach(m => mrfMap.set(m.mrfId, 500 + Math.random() * 1000));
+      uniqueMrfs.forEach(m => mrfMap.set(m, 500 + Math.random() * 1000));
     }
-    const top5Mrfs = Array.from(mrfMap.entries())
-      .map(([name, val]) => ({ name, val }))
-      .sort((a, b) => b.val - a.val)
-      .slice(0, 5);
+    const top5Mrfs = Array.from(mrfMap.entries()).map(([name, val]) => ({ name, val })).sort((a, b) => b.val - a.val).slice(0, 5);
 
     const ulbMap = new Map();
-    const uniqueUlbs = Array.from(new Set(mrfData.map(m => m.ulbName)));
     uniqueUlbs.forEach(u => ulbMap.set(u, 0));
     if (hasData) {
       allRecords.forEach(r => {
@@ -246,10 +247,7 @@ function StateAdminDashboardContent() {
     } else {
       uniqueUlbs.forEach(u => ulbMap.set(u, 1000 + Math.random() * 2000));
     }
-    const top5Ulbs = Array.from(ulbMap.entries())
-      .map(([name, val]) => ({ name, val }))
-      .sort((a, b) => b.val - a.val)
-      .slice(0, 5);
+    const top5Ulbs = Array.from(ulbMap.entries()).map(([name, val]) => ({ name, val })).sort((a, b) => b.val - a.val).slice(0, 5);
 
     const streamData = hasData ? [
         { name: 'Plastic', value: allRecords.reduce((s, r) => s + (r.plastic || 0), 0) },
@@ -265,13 +263,13 @@ function StateAdminDashboardContent() {
     const discrepancies = [];
     const todayStr = new Date().toISOString().split('T')[0];
     allRoutes.filter(r => r.isActiveToday).forEach(c => {
-        if (!allRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startingGp))) {
-            discrepancies.push({ id: `miss-${c.routeId}`, msg: `[${c.district}] Circuit ${c.routeId} active - No receipt synced for ${c.startingGp}.` });
+        if (!allRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startGp))) {
+            discrepancies.push({ id: `miss-${c.routeId}`, msg: `[${c.district}] Circuit ${c.routeId} active - No receipt synced for ${c.startGp}.` });
         }
     });
 
     return { 
-        districtsList, blocksList, ulbsList, mrfsList, allGps, activeToday, lineData, districtTonnage, streamData, discrepancies,
+        districtsList, blocksList: uniqueBlocks, ulbsList: uniqueUlbs, mrfsList: uniqueMrfs, allGps, activeToday, lineData, districtTonnage, streamData, discrepancies,
         surveyedTotal, verifiedTotal, efficiency: surveyedTotal > 0 ? (verifiedTotal / surveyedTotal) * 100 : 94.2,
         top5Mrfs, top5Ulbs
     };
