@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { UploadCloud, Loader2, Save, Sparkles, FileSearch, Info, Calendar, MapPin, Truck, Route } from 'lucide-react';
+import { UploadCloud, Loader2, Save, Sparkles, FileSearch, Info, Calendar, MapPin, Truck, Route, FileText } from 'lucide-react';
 import React, { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { extractWasteReceiptData } from '@/ai/flows/invoice-data-extraction';

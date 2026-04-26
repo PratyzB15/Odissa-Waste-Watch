@@ -51,7 +51,6 @@ function GpWasteDetailsContent() {
   
   const { data: allRecords = [] } = useCollection(wasteDetailsQuery);
 
-  // Filter records specifically where this GP contributed
   const records = useMemo(() => {
     return allRecords.filter((r: any) => 
         r.gpBreakdown?.some((g: any) => g.name.toLowerCase() === gpParam.toLowerCase())
@@ -61,8 +60,8 @@ function GpWasteDetailsContent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any | null>(null);
   const [formData, setFormData] = useState({
-    date: '', routeId: '', totalGpLoad: '', driverSubmitted: '', plastic: '', paper: '', 
-    metal: '', cloth: '', glass: '', sanitation: '', others: '', gpBreakdownRaw: ''
+    date: '', routeId: '', mrf: '', totalKg: '', plasticGm: '', paper: '', 
+    metal: '', cloth: '', glass: '', sanitation: '', others: ''
   });
 
   useEffect(() => { setMounted(true); }, []);
@@ -70,8 +69,8 @@ function GpWasteDetailsContent() {
   const handleOpenAddDialog = () => {
     setEditingRecord(null);
     setFormData({
-      date: '', routeId: '', totalGpLoad: '', driverSubmitted: '', plastic: '', paper: '', 
-      metal: '', cloth: '', glass: '', sanitation: '', others: '', gpBreakdownRaw: `${gpParam}:0.0`
+      date: '', routeId: '', mrf: '', totalKg: '', plasticGm: '', paper: '', 
+      metal: '', cloth: '', glass: '', sanitation: '', others: ''
     });
     setIsDialogOpen(true);
   };
@@ -79,11 +78,15 @@ function GpWasteDetailsContent() {
   const handleOpenEditDialog = (record: any) => {
     setEditingRecord(record);
     setFormData({
-      date: record.date, routeId: record.routeId,
-      totalGpLoad: record.totalGpLoad.toString(), driverSubmitted: record.driverSubmitted.toString(),
-      plastic: record.plastic.toString(), paper: record.paper.toString(), metal: record.metal.toString(),
-      cloth: record.cloth.toString(), glass: record.glass.toString(), sanitation: record.sanitation.toString(),
-      others: record.others.toString(), gpBreakdownRaw: record.gpBreakdown.map((g: any) => `${g.name}:${g.amount}`).join('\n')
+      date: record.date, routeId: record.routeId, mrf: record.mrf || '',
+      totalKg: record.driverSubmitted.toString(),
+      plasticGm: record.plastic.toString(),
+      paper: record.paper.toString(),
+      metal: record.metal.toString(),
+      cloth: record.cloth ? record.cloth.toString() : '0',
+      glass: record.glass.toString(),
+      sanitation: record.sanitation.toString(),
+      others: record.others.toString()
     });
     setIsDialogOpen(true);
   };
@@ -95,26 +98,21 @@ function GpWasteDetailsContent() {
 
   const handleSubmit = async () => {
     if (!db) return;
-    const gpList = formData.gpBreakdownRaw.split('\n').filter(l => l.includes(':')).map(l => {
-      const [name, amount] = l.split(':');
-      return { name: name.trim(), amount: parseFloat(amount) || 0 };
-    });
-
     const payload = {
       date: formData.date,
       routeId: formData.routeId,
+      mrf: formData.mrf,
       district: districtParam,
       block: blockParam,
-      totalGpLoad: parseFloat(formData.totalGpLoad) || 0,
-      driverSubmitted: parseFloat(formData.driverSubmitted) || 0,
-      plastic: parseFloat(formData.plastic) || 0,
+      driverSubmitted: parseFloat(formData.totalKg) || 0,
+      plastic: parseFloat(formData.plasticGm) || 0,
       paper: parseFloat(formData.paper) || 0,
       metal: parseFloat(formData.metal) || 0,
       cloth: parseFloat(formData.cloth) || 0,
       glass: parseFloat(formData.glass) || 0,
       sanitation: parseFloat(formData.sanitation) || 0,
       others: parseFloat(formData.others) || 0,
-      gpBreakdown: gpList
+      gpBreakdown: [{ name: gpParam, amount: parseFloat(formData.totalKg) || 0 }]
     };
 
     if (editingRecord) {
@@ -139,7 +137,7 @@ function GpWasteDetailsContent() {
             </div>
           </div>
           <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
-              <PlusCircle className="mr-2 h-5 w-5" /> Add New Receipt
+              <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
           </Button>
         </CardHeader>
       </Card>
@@ -159,10 +157,7 @@ function GpWasteDetailsContent() {
                         return d.getFullYear().toString() === year && d.toLocaleString('default', { month: 'long' }) === month;
                     });
 
-                    const monthVerified = monthRecords.reduce((sum, r) => {
-                        const contribution = r.gpBreakdown?.find((g: any) => g.name.toLowerCase() === gpParam.toLowerCase())?.amount || 0;
-                        return sum + contribution;
-                    }, 0);
+                    const monthVerified = monthRecords.reduce((sum, r) => sum + r.driverSubmitted, 0);
 
                     return (
                         <AccordionItem value={month} key={month} className="border-none">
@@ -205,7 +200,7 @@ function GpWasteDetailsContent() {
                                                             <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
                                                             <TableCell className="border-r text-center uppercase font-bold">{row.district}</TableCell>
                                                             <TableCell className="border-r text-center uppercase font-bold">{row.block}</TableCell>
-                                                            <TableCell className="border-r font-bold uppercase">{row.mrf || row.taggedMrf}</TableCell>
+                                                            <TableCell className="border-r font-bold uppercase">{row.mrf}</TableCell>
                                                             <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
                                                             <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02] text-sm">{row.driverSubmitted.toFixed(1)} KG</TableCell>
                                                             <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
@@ -253,7 +248,6 @@ function GpWasteDetailsContent() {
                 })}
             </Accordion>
 
-            {/* Yearly Audit Placeholder */}
             <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
                     <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
@@ -294,15 +288,17 @@ function GpWasteDetailsContent() {
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Date</Label><Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Route ID</Label><Input value={formData.routeId} onChange={e => setFormData({...formData, routeId: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Total (Kg)</Label><Input type="number" value={formData.driverSubmitted} onChange={e => setFormData({...formData, driverSubmitted: e.target.value})} /></div>
-            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Plastic (gm)</Label><Input type="number" value={formData.plastic} onChange={e => setFormData({...formData, plastic: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">MRF</Label><Input value={formData.mrf} onChange={e => setFormData({...formData, mrf: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Total (Kg)</Label><Input type="number" value={formData.totalKg} onChange={e => setFormData({...formData, totalKg: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Plastic (gm)</Label><Input type="number" value={formData.plasticGm} onChange={e => setFormData({...formData, plasticGm: e.target.value})} /></div>
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Paper (Kg)</Label><Input type="number" value={formData.paper} onChange={e => setFormData({...formData, paper: e.target.value})} /></div>
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Metal (Kg)</Label><Input type="number" value={formData.metal} onChange={e => setFormData({...formData, metal: e.target.value})} /></div>
+            <div className="space-y-1"><Label className="text-xs uppercase font-bold">Cloth (Kg)</Label><Input type="number" value={formData.cloth} onChange={e => setFormData({...formData, cloth: e.target.value})} /></div>
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Glass (Kg)</Label><Input type="number" value={formData.glass} onChange={e => setFormData({...formData, glass: e.target.value})} /></div>
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Sanitation (Kg)</Label><Input type="number" value={formData.sanitation} onChange={e => setFormData({...formData, sanitation: e.target.value})} /></div>
             <div className="space-y-1"><Label className="text-xs uppercase font-bold">Others (Kg)</Label><Input type="number" value={formData.others} onChange={e => setFormData({...formData, others: e.target.value})} /></div>
           </div>
-          <DialogFooter><Button onClick={handleSubmit} className="font-black uppercase px-8">Sync Receipt</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleSubmit} className="font-black uppercase px-8">Save Record</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

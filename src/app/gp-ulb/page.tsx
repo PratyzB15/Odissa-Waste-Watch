@@ -21,7 +21,9 @@ import {
   TrendingUp,
   ListFilter,
   UserCircle,
-  ChevronRight
+  ChevronRight,
+  Layers,
+  Phone
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -43,7 +45,7 @@ import {
   Pie, 
   CartesianGrid 
 } from 'recharts';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCollection, useFirestore } from '@/firebase';
@@ -217,7 +219,7 @@ function GpUlbDashboardContent() {
             scheduleStr: schedStr,
             daysLeft,
             isActiveToday: daysLeft === 0,
-            countdown: daysLeft === 0 ? "Active Today" : `Next in ${daysLeft} days`,
+            countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`,
             driverName: details.schedule?.driverName && details.schedule?.driverName !== '-' ? details.schedule?.driverName : 'Verified Personnel',
             driverContact: details.schedule?.driverContact || '-',
             vehicleDetails: `${details.schedule?.vehicleType || 'Fleet'} | ${details.schedule?.vehicleNo || '-'}`,
@@ -250,7 +252,6 @@ function GpUlbDashboardContent() {
     return null;
   }, [role, gpName, districtSource, mounted, records]);
 
-  // ULB Portal Logic - Frozen & Isolated
   const ulbRealData = useMemo(() => {
     if (!mounted || role !== 'ulb' || !ulbName || !districtSource) return null;
     const now = new Date();
@@ -286,48 +287,28 @@ function GpUlbDashboardContent() {
       
       {role === 'gp' && gpRealData && (
         <div className="space-y-8">
-            {/* Demographic Coverage - Individual Boxes */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="border-2 shadow-sm bg-muted/10 p-4">
-                    <p className="text-[9px] font-black text-muted-foreground uppercase">Associated District</p>
-                    <p className="text-xs font-black uppercase text-primary">{districtName}</p>
-                </Card>
-                <Card className="border-2 shadow-sm bg-muted/10 p-4">
-                    <p className="text-[9px] font-black text-muted-foreground uppercase">Associated Block</p>
-                    <p className="text-xs font-black uppercase text-primary">{blockName}</p>
-                </Card>
-                <Card className="border-2 shadow-sm bg-muted/10 p-4">
-                    <p className="text-[9px] font-black text-muted-foreground uppercase">Associated ULB</p>
-                    <p className="text-xs font-black uppercase text-primary truncate">{gpRealData.mapping?.taggedUlb}</p>
-                </Card>
+                <Card className="border-2 shadow-sm bg-muted/10 p-4"><p className="text-[9px] font-black text-muted-foreground uppercase">Associated District</p><p className="text-xs font-black uppercase text-primary">{districtName}</p></Card>
+                <Card className="border-2 shadow-sm bg-muted/10 p-4"><p className="text-[9px] font-black text-muted-foreground uppercase">Associated Block</p><p className="text-xs font-black uppercase text-primary">{blockName}</p></Card>
+                <Card className="border-2 shadow-sm bg-muted/10 p-4"><p className="text-[9px] font-black text-muted-foreground uppercase">Associated ULB</p><p className="text-xs font-black uppercase text-primary truncate">{gpRealData.mapping?.taggedUlb}</p></Card>
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Card className="border-2 shadow-sm bg-muted/10 p-4 cursor-pointer hover:bg-primary/5 transition-all group">
-                            <p className="text-[9px] font-black text-muted-foreground uppercase flex items-center gap-1">Associated MRF <ListFilter className="h-2 w-2 opacity-30"/></p>
-                            <p className="text-xs font-black uppercase text-primary underline truncate">{gpRealData.mapping?.taggedMrf}</p>
-                        </Card>
+                        <Card className="border-2 shadow-sm bg-muted/10 p-4 cursor-pointer hover:bg-primary/5 transition-all group"><p className="text-[9px] font-black text-muted-foreground uppercase flex items-center gap-1">Associated MRF <ListFilter className="h-2 w-2 opacity-30"/></p><p className="text-xs font-black uppercase text-primary underline truncate">{gpRealData.mapping?.taggedMrf}</p></Card>
                     </PopoverTrigger>
-                    <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden" align="end">
-                        <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">Facility Registry</h4>
-                        <Table>
-                            <TableBody>
-                                <TableRow className="h-10 border-b border-dashed last:border-0"><TableCell className="text-[10px] font-bold uppercase">{gpRealData.mapping?.taggedMrf}</TableCell><TableCell className="text-[10px] uppercase text-muted-foreground">Primary Node</TableCell></TableRow>
-                            </TableBody>
-                        </Table>
-                    </PopoverContent>
+                    <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden" align="end"><h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">Facility Registry</h4><Table><TableBody><TableRow className="h-10 border-b border-dashed last:border-0"><TableCell className="text-[10px] font-bold uppercase">{gpRealData.mapping?.taggedMrf}</TableCell><TableCell className="text-[10px] uppercase text-muted-foreground">Primary Node</TableCell></TableRow></TableBody></Table></PopoverContent>
                 </Popover>
+            </div>
 
+            <div className="grid grid-cols-2 lg:grid-cols-7 gap-4">
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase">Households</p><p className="text-xl font-black">{gpRealData.waste?.totalHouseholds?.toLocaleString()}</p></Card>
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase">Anganwadis</p><p className="text-xl font-black">{gpRealData.waste?.anganwadis || 0}</p></Card>
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase">Schools</p><p className="text-xl font-black">{gpRealData.waste?.schools || 0}</p></Card>
                 <Card className="border-2 shadow-sm p-4"><p className="text-[9px] font-black text-muted-foreground uppercase">Commercials</p><p className="text-xl font-black">{gpRealData.waste?.commercial || 0}</p></Card>
-
-                <Card className="border-2 shadow-sm bg-primary/5 border-primary/20 p-4"><p className="text-[9px] font-black uppercase text-primary">Waste / Week</p><p className="text-lg font-black text-primary">{( (gpRealData.waste?.monthlyWasteTotalGm || 0) / 4000).toFixed(1)} Kg</p></Card>
+                <Card className="border-2 shadow-sm bg-primary/5 border-primary/20 p-4"><p className="text-[9px] font-black uppercase text-primary">Waste / Week</p><p className="text-lg font-black text-primary">{((gpRealData.waste?.monthlyWasteTotalGm || 0) / 4000).toFixed(1)} Kg</p></Card>
                 <Card className="border-2 shadow-sm bg-primary/5 border-primary/20 p-4"><p className="text-[9px] font-black uppercase text-primary">Waste / Month</p><p className="text-lg font-black text-primary">{((gpRealData.waste?.monthlyWasteTotalGm || 0) / 1000).toFixed(1)} Kg</p></Card>
-                <Card className="border-2 shadow-sm bg-primary/5 border-primary/20 p-4 col-span-2"><p className="text-[9px] font-black uppercase text-primary">Nodal Efficiency</p><p className="text-lg font-black text-primary">94.8%</p></Card>
+                <Card className="border-2 shadow-sm bg-primary/5 border-primary/20 p-4"><p className="text-[9px] font-black uppercase text-primary">Efficiency</p><p className="text-lg font-black text-primary">94.8%</p></Card>
             </div>
 
-            {/* Critical Oversight Grid */}
             <div className="grid lg:grid-cols-2 gap-6">
                 <Card className="border-2 border-destructive/20 bg-destructive/[0.01]">
                     <CardHeader className="bg-destructive/5 border-b pb-3 flex row items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" /><CardTitle className="text-base font-black uppercase text-destructive">Critical Discrepancy</CardTitle></CardHeader>
@@ -335,7 +316,7 @@ function GpUlbDashboardContent() {
                 </Card>
 
                 <Card className="border-2 border-primary/30 bg-primary/[0.01]">
-                    <CardHeader className="bg-primary/5 border-b pb-3 flex row items-center gap-2"><Truck className="h-5 w-5 text-primary" /><CardTitle className="text-base font-black uppercase text-primary">Active Circuits</CardTitle></CardHeader>
+                    <CardHeader className="bg-primary/5 border-b pb-3 flex flex-row items-center gap-2"><Truck className="h-5 w-5 text-primary" /><CardTitle className="text-base font-black uppercase text-primary">Active Circuits</CardTitle></CardHeader>
                     <CardContent className="pt-4">
                         <div className={`p-4 flex items-center justify-between border rounded-2xl bg-card shadow-sm border-l-4 ${gpRealData.circuit.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
                             <div className="flex-1 space-y-1">
@@ -357,12 +338,11 @@ function GpUlbDashboardContent() {
                 </Card>
             </div>
 
-            {/* Waste Flow & Analytics */}
             <Card className="border-2 shadow-sm">
                 <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
-                    <CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary"/> Verified Waste Flow</CardTitle>
-                    <Tabs value={wasteToggle} onValueChange={(v: any) => setWasteToggle(v)} className="h-8">
-                        <TabsList className="bg-background border"><TabsTrigger value="weekly" className="text-[8px] font-black uppercase">Weekly</TabsTrigger><TabsTrigger value="monthly" className="text-[8px] font-black uppercase">Monthly</TabsTrigger></TabsList>
+                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary"/> Verified Waste Flow</CardTitle>
+                    <Tabs value={wasteToggle} onValueChange={(v: any) => setWasteToggle(v)}>
+                        <TabsList className="h-8"><TabsTrigger value="weekly" className="text-[9px] font-black uppercase">Weekly</TabsTrigger><TabsTrigger value="monthly" className="text-[9px] font-black uppercase">Monthly</TabsTrigger></TabsList>
                     </Tabs>
                 </CardHeader>
                 <CardContent className="h-[250px] pt-6">
@@ -385,7 +365,6 @@ function GpUlbDashboardContent() {
                 </Card>
             </div>
 
-            {/* Roster Directory */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
                     { id: 'workers', label: 'Sanitation Workers', icon: <Users />, count: (gpRealData.routes?.[0]?.workers || []).length, data: (gpRealData.routes?.[0]?.workers || []).map((w: any) => ({ name: w.name, phone: w.contact, target: gpName })) },
@@ -405,7 +384,7 @@ function GpUlbDashboardContent() {
                         <PopoverContent className="w-[450px] p-0 border-2 shadow-2xl overflow-hidden">
                             <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">{hub.label} Directory</h4>
                             <ScrollArea className="h-64"><Table><TableHeader className="bg-muted/50 sticky top-0 z-10 border-b"><TableRow><TableHead className="uppercase text-[9px] font-black">Name</TableHead><TableHead className="uppercase text-[9px] font-black">Phone</TableHead><TableHead className="uppercase text-[9px] font-black">Assoc.</TableHead></TableRow></TableHeader>
-                                <TableBody>{hub.data.map((p: any, i: number) => (<TableRow key={i} className="hover:bg-muted/30 border-b border-dashed h-12"><TableCell className="text-xs font-black uppercase">{p.name}</TableCell><TableCell className="text-xs font-mono font-black text-primary">{p.phone}</TableCell><TableCell className="text-[9px] font-bold uppercase text-muted-foreground">{p.target}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>
+                                <TableBody>{hub.data.map((p: any, i: number) => (<TableRow key={i} className="hover:bg-muted/30 border-b border-dashed h-12"><TableCell className="text-xs font-black uppercase">{p.name}</TableCell><TableCell className="text-xs font-mono font-black text-primary">{p.phone}</TableCell><TableCell className="text-[10px] font-bold uppercase text-muted-foreground">{p.target}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>
                         </PopoverContent>
                     </Popover>
                 ))}
@@ -413,7 +392,6 @@ function GpUlbDashboardContent() {
         </div>
       )}
 
-      {/* ULB Portal Logic - Frozen & Isolated */}
       {role === 'ulb' && ulbRealData && (
         <Card className="border-2 shadow-sm">
             <CardHeader className="border-b bg-muted/5 py-3"><CardTitle className="text-sm font-black uppercase flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Incoming Load Audit (Current Cycle)</CardTitle></CardHeader>
