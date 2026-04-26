@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -44,7 +45,7 @@ import { nuapadaDistrictData } from "@/lib/disNuapada";
 import { puriDistrictData } from "@/lib/disPuri";
 import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
-function WasteReceiptDetailsContent() {
+function WasteReceiptGenerationContent() {
   const searchParams = useSearchParams();
   const name = searchParams.get('name') || 'Personnel';
   const phone = searchParams.get('contact') || 'N/A';
@@ -234,7 +235,7 @@ function WasteReceiptDetailsContent() {
         <Card className="border-2 shadow-xl border-primary/20 overflow-hidden">
             <CardHeader className="bg-primary/5 border-b pb-6">
                 <CardTitle className="text-xl font-headline font-black uppercase tracking-tight text-primary flex items-center gap-2">
-                    <Truck className="h-6 w-6" /> Driver Waste Receipt Form
+                    <Truck className="h-6 w-6" /> Waste Receipt Generation
                 </CardTitle>
                 <CardDescription className="font-bold text-primary opacity-70">Authoritative transmission ledger for circuit: {routeData.routeName}</CardDescription>
             </CardHeader>
@@ -346,10 +347,10 @@ function WasteReceiptDetailsContent() {
   );
 }
 
-export default function WasteReceiptDetailsPage() {
+export default function WasteReceiptGenerationPage() {
   return (
     <Suspense fallback={<div className="p-12 text-center animate-pulse">Loading verified synchronization hub...</div>}>
-      <WasteReceiptDetailsContent />
+      <WasteReceiptGenerationContent />
     </Suspense>
   );
 }

@@ -7,7 +7,6 @@ import {
   FileText,
   HelpCircle,
   Home,
-  PieChart,
   User,
   Users,
   Database,
@@ -22,9 +21,8 @@ import { Separator } from './ui/separator';
 const navItems = [
   { href: '/civilian', icon: Home, label: 'Dashboard' },
   { href: '/civilian/schedule', icon: Clock, label: 'Route Schedule' },
-  { href: '/civilian/invoice-details', icon: FileText, label: 'Waste Receipt Details' },
+  { href: '/civilian/invoice-details', icon: FileText, label: 'Waste Receipt Generation' },
   { href: '/civilian/waste-details', icon: Database, label: 'Waste Details' },
-  { href: '/civilian/waste-collected', icon: PieChart, label: 'Collection Registry' },
   { href: '/civilian/request-query', icon: HelpCircle, label: 'Request/Query' },
   { href: '/civilian/history', icon: Calendar, label: 'Trip History' },
   { href: '/civilian/profile', icon: User, label: 'Driver Profile' },
