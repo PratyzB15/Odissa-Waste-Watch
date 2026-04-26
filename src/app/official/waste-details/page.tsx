@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,7 +11,6 @@ import {
   Calendar, 
   Calculator, 
   MapPin,
-  TrendingUp,
   BarChart3,
   Building,
   Info,
@@ -78,18 +78,17 @@ function DistrictWasteReconciliationContent() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const districtStats = useMemo(() => {
-    const districtRecords = mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase());
-    const totalAvg = districtRecords.reduce((sum, m) => sum + m.dryWasteKg, 0);
-    const totalVerified = records.reduce((sum, r) => sum + r.driverSubmitted, 0);
-    const efficiency = totalAvg > 0 ? (totalVerified / totalAvg) * 100 : 0;
-    return { totalAvg, totalVerified, efficiency };
-  }, [districtName, records]);
-
   const blockList = useMemo(() => {
     const blocksSet = new Set(mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase()).map(m => m.blockCovered));
     return Array.from(blocksSet).sort();
   }, [districtName]);
+
+  const districtStats = useMemo(() => {
+    const totalAvg = mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase()).reduce((sum, m) => sum + m.dryWasteKg, 0);
+    const totalVerified = records.reduce((sum, r) => sum + r.driverSubmitted, 0);
+    const efficiency = totalAvg > 0 ? (totalVerified / totalAvg) * 100 : 0;
+    return { totalAvg, totalVerified, efficiency };
+  }, [districtName, records]);
 
   const handleOpenAddDialog = () => {
     setEditingRecord(null);
@@ -161,7 +160,7 @@ function DistrictWasteReconciliationContent() {
             <Calculator className="h-10 w-10" />
             <div>
               <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">District Waste Reconciliation Hub</CardTitle>
-              <CardDescription className="font-bold italic text-muted-foreground">Comprehensive block-level oversight for {districtName}.</CardDescription>
+              <CardDescription className="font-bold italic text-muted-foreground">High-fidelity oversight for {districtName}.</CardDescription>
             </div>
           </div>
           <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
@@ -184,218 +183,219 @@ function DistrictWasteReconciliationContent() {
         </CardContent>
       </Card>
 
-      {blockList.map((block) => {
-        const blockAvgLoad = mrfData.filter(m => m.blockCovered === block && m.district.toLowerCase() === districtName.toLowerCase()).reduce((sum, m) => sum + m.dryWasteKg, 0);
+      {FISCAL_YEARS.map((year) => (
+        <div key={year} className="space-y-8">
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} FISCAL CYCLE</h2>
+            <div className="h-px flex-1 bg-primary/20"></div>
+          </div>
 
-        return (
-            <Card key={block} className="border-2 shadow-xl overflow-hidden">
-              <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Building className="h-7 w-7 text-primary" />
-                  <CardTitle className="text-xl font-black uppercase text-primary">Block Node: {block}</CardTitle>
-                </div>
-                <Badge variant="outline" className="border-primary/30 text-primary font-black uppercase text-[10px] bg-primary/5 px-4 py-1">
-                  Block Target: {blockAvgLoad.toLocaleString()} Kg (Avg)
-                </Badge>
-              </CardHeader>
-              <CardContent className="p-6 space-y-12">
-                {FISCAL_YEARS.map((year) => (
-                    <div key={year} className="space-y-6">
-                        <div className="flex items-center gap-4">
-                            <h2 className="text-2xl font-black text-primary opacity-20 tracking-tighter uppercase">{year} FISCAL</h2>
-                            <div className="h-px flex-1 bg-primary/10"></div>
-                        </div>
+          <Accordion type="single" collapsible className="w-full space-y-6">
+            {MONTHS.map((month) => {
+                const monthRecords = records.filter(r => {
+                    if (!r.date) return false;
+                    const d = new Date(r.date);
+                    return d.getFullYear().toString() === year && d.toLocaleString('default', { month: 'long' }) === month;
+                });
 
-                        <Accordion type="single" collapsible className="w-full space-y-4">
-                            {MONTHS.map((month) => {
-                                const monthRecords = records.filter(r => {
-                                    if (!r.date) return false;
-                                    const d = new Date(r.date);
-                                    return d.getFullYear().toString() === year && 
-                                           d.toLocaleString('default', { month: 'long' }) === month && 
-                                           r.block === block;
-                                });
+                const districtMonthAvg = mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase()).reduce((sum, m) => sum + m.dryWasteKg, 0);
+                const districtMonthVerified = monthRecords.reduce((sum, r) => sum + r.driverSubmitted, 0);
 
-                                const verifiedMonthTotal = monthRecords.reduce((sum, r) => sum + r.driverSubmitted, 0);
-
-                                return (
-                                    <AccordionItem value={month} key={month} className="border-none">
-                                        <Card className="overflow-hidden border-2 shadow-sm">
-                                            <AccordionTrigger className="p-6 hover:no-underline bg-muted/10 data-[state=open]:bg-primary/5 transition-all border-b border-dashed">
-                                                <div className="flex justify-between w-full pr-8 items-center">
-                                                    <div className="flex items-center gap-4">
-                                                        <Calendar className="h-5 w-5 text-primary" />
-                                                        <span className="font-black text-lg uppercase tracking-tighter text-foreground">{month}</span>
-                                                    </div>
-                                                    <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-3">
-                                                        {monthRecords.length} RECEIPTS LOGGED
-                                                    </Badge>
-                                                </div>
-                                            </AccordionTrigger>
-                                            <AccordionContent className="p-0">
-                                                <ScrollArea className="w-full">
-                                                    <div className="min-w-[1600px]">
-                                                        <Table className="border-collapse border text-[10px]">
-                                                            <TableHeader className="bg-muted/80">
-                                                                <TableRow>
-                                                                    <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
-                                                                    <TableHead className="w-[120px] uppercase font-black border text-center">Route ID</TableHead>
-                                                                    <TableHead className="w-[200px] uppercase font-black border text-right px-6 bg-blue-50/20">Total Waste from GPs (Click)</TableHead>
-                                                                    <TableHead className="w-[150px] text-right uppercase font-black border bg-primary/5 text-primary">Driver Submitted (Kg)</TableHead>
-                                                                    <TableHead className="w-[120px] text-right uppercase font-black border bg-destructive/5 text-destructive">Discrepancy</TableHead>
-                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Plastic</TableHead>
-                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Paper</TableHead>
-                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Metal</TableHead>
-                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Cloth</TableHead>
-                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Glass</TableHead>
-                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Sanitation</TableHead>
-                                                                    <TableHead className="w-[90px] text-right uppercase font-black border">Others</TableHead>
-                                                                    <TableHead className="w-[120px] uppercase font-black border text-center">Actions</TableHead>
-                                                                </TableRow>
-                                                            </TableHeader>
-                                                            <TableBody>
-                                                                {monthRecords.map((row) => (
-                                                                    <TableRow key={row.id} className="hover:bg-primary/[0.01] border-b last:border-0 h-14 transition-colors">
-                                                                        <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
-                                                                        <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
-                                                                        <TableCell className="border-r p-0">
-                                                                            <Popover>
-                                                                                <PopoverTrigger asChild>
-                                                                                    <button className="w-full h-14 flex flex-col items-end justify-center px-6 group hover:bg-blue-50 transition-all border-r border-dashed">
-                                                                                        <span className="font-mono font-black text-blue-700">{row.totalGpLoad.toFixed(1)} KG</span>
-                                                                                    </button>
-                                                                                </PopoverTrigger>
-                                                                                <PopoverContent className="w-72 p-0 border-2 shadow-2xl overflow-hidden" align="end">
-                                                                                    <div className="bg-blue-700 text-white p-3 font-black uppercase text-[9px] tracking-widest flex items-center gap-2">
-                                                                                        <MapPin className="h-3 w-3" /> GP Contribution Breakdown
-                                                                                    </div>
-                                                                                    <Table>
-                                                                                        <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[8px] uppercase font-black">GP Node</TableHead><TableHead className="text-[8px] uppercase font-black text-right">Load (Kg)</TableHead></TableRow></TableHeader>
-                                                                                        <TableBody>
-                                                                                            {row.gpBreakdown?.map((gp, i) => (
-                                                                                                <TableRow key={i} className="h-10 border-b border-dashed last:border-0"><TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell><TableCell className="text-right font-mono font-black text-blue-700">{gp.amount.toFixed(1)}</TableCell></TableRow>
-                                                                                            ))}
-                                                                                        </TableBody>
-                                                                                    </Table>
-                                                                                </PopoverContent>
-                                                                            </Popover>
-                                                                        </TableCell>
-                                                                        <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02]">{row.driverSubmitted.toFixed(1)} KG</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono font-black text-destructive">{(row.totalGpLoad - row.driverSubmitted).toFixed(1)} KG</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.paper}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.metal}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
-                                                                        <TableCell className="border-r text-right font-mono">{row.others}</TableCell>
-                                                                        <TableCell className="border text-center">
-                                                                            <div className="flex justify-center gap-1">
-                                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => handleOpenEditDialog(row)}><Edit className="h-3 w-3"/></Button>
-                                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3"/></Button>
-                                                                            </div>
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                ))}
-                                                            </TableBody>
-                                                        </Table>
-                                                    </div>
-                                                    <ScrollBar orientation="horizontal" />
-                                                </ScrollArea>
-
-                                                <div className="bg-muted/30 border-t p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
-                                                    <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                        <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Block Baseline (Avg)</p>
-                                                        <p className="text-xl font-black">{blockAvgLoad.toLocaleString()} KG</p>
-                                                    </div>
-                                                    <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                        <p className="text-[10px] font-black uppercase text-primary mb-1">Verified Total</p>
-                                                        <p className="text-xl font-black text-primary">{verifiedMonthTotal.toFixed(1)} KG</p>
-                                                    </div>
-                                                    <div className="bg-background border-2 border-dashed rounded-xl p-4 shadow-sm">
-                                                        <p className="text-[10px] font-black uppercase text-destructive mb-1">Monthly Variance</p>
-                                                        <p className="text-xl font-black text-destructive">{(blockAvgLoad - verifiedMonthTotal).toFixed(1)} KG</p>
-                                                    </div>
-                                                    <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-4 shadow-inner">
-                                                        <p className="text-[10px] font-black uppercase text-primary mb-1">Efficiency Score</p>
-                                                        <p className="text-xl font-black text-primary">{(blockAvgLoad > 0 ? (verifiedMonthTotal / blockAvgLoad) * 100 : 0).toFixed(1)}%</p>
-                                                    </div>
-                                                </div>
-                                            </AccordionContent>
-                                        </Card>
-                                    </AccordionItem>
-                                );
-                            })}
-                        </Accordion>
-
-                        <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
-                            <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
-                                <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
-                                    <BarChart3 className="h-10 w-10" /> Yearly Block Audit Summary: {year}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <ScrollArea className="w-full">
-                                    <div className="min-w-[1600px]">
-                                        <Table className="text-muted-foreground">
-                                            <TableHeader className="bg-muted/50">
-                                                <TableRow>
-                                                    <TableHead className="w-[150px] uppercase font-black border text-center">Collection Freq (Year)</TableHead>
-                                                    <TableHead className="w-[180px] text-right uppercase font-black border">Total Verified (Kg)</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Paper</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Plastic</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Metal</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Glass</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Total Sanitation</TableHead>
-                                                    <TableHead className="w-[100px] text-right uppercase font-black border">Others</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {(() => {
-                                                  const yearly = records.filter(r => new Date(r.date).getFullYear().toString() === year && r.block === block);
-                                                  const isYearDone = yearly.length > 0 && yearly.some(r => new Date(r.date).getMonth() === 11);
-                                                  
-                                                  if (!isYearDone) {
-                                                    return <TableRow><TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">Yearly Aggregate Audit Data will generate post-December {year}.</TableCell></TableRow>;
-                                                  }
-
-                                                  const totals = yearly.reduce((acc, curr) => ({
-                                                    freq: acc.freq + 1,
-                                                    verified: acc.verified + curr.driverSubmitted,
-                                                    paper: acc.paper + curr.paper,
-                                                    plastic: acc.plastic + curr.plastic,
-                                                    metal: acc.metal + curr.metal,
-                                                    glass: acc.glass + curr.glass,
-                                                    sani: acc.sani + curr.sanitation,
-                                                    others: acc.others + curr.others
-                                                  }), { freq: 0, verified: 0, paper: 0, plastic: 0, metal: 0, glass: 0, sani: 0, others: 0 });
-
-                                                  return (
-                                                    <TableRow className="bg-primary/5 font-black text-primary">
-                                                        <TableCell className="border text-center">{totals.freq} Circuits</TableCell>
-                                                        <TableCell className="border text-right">{totals.verified.toFixed(1)} KG</TableCell>
-                                                        <TableCell className="border text-right">{totals.paper.toFixed(1)}</TableCell>
-                                                        <TableCell className="border text-right">{totals.plastic.toFixed(1)}</TableCell>
-                                                        <TableCell className="border text-right">{totals.metal.toFixed(1)}</TableCell>
-                                                        <TableCell className="border text-right">{totals.glass.toFixed(1)}</TableCell>
-                                                        <TableCell className="border text-right">{totals.sani.toFixed(1)}</TableCell>
-                                                        <TableCell className="border text-right">{totals.others.toFixed(1)}</TableCell>
-                                                    </TableRow>
-                                                  );
-                                                })()}
-                                            </TableBody>
-                                        </Table>
+                return (
+                    <AccordionItem value={month} key={month} className="border-none">
+                        <Card className="overflow-hidden border-2 shadow-xl">
+                            <AccordionTrigger className="p-6 hover:no-underline bg-muted/10 data-[state=open]:bg-primary/5 transition-all border-b border-dashed">
+                                <div className="flex justify-between w-full pr-8 items-center">
+                                    <div className="flex items-center gap-4">
+                                        <Calendar className="h-5 w-5 text-primary" />
+                                        <span className="font-black text-lg uppercase tracking-tighter text-foreground">{month}</span>
                                     </div>
-                                    <ScrollBar orientation="horizontal" />
-                                </ScrollArea>
-                            </CardContent>
+                                    <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-3">
+                                        {monthRecords.length} RECEIPTS LOGGED IN DISTRICT
+                                    </Badge>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="p-6 space-y-10 bg-background">
+                                <Accordion type="multiple" className="w-full space-y-4">
+                                    {blockList.map((block) => {
+                                        const blockMonthRecords = monthRecords.filter(r => r.block === block);
+                                        
+                                        return (
+                                            <AccordionItem value={`${month}-${block}`} key={block} className="border rounded-xl overflow-hidden shadow-sm">
+                                                <AccordionTrigger className="px-5 py-3 bg-muted/30 hover:no-underline hover:bg-primary/5 transition-all">
+                                                    <div className="flex items-center gap-3">
+                                                        <Building className="h-4 w-4 text-primary" />
+                                                        <span className="font-bold text-xs uppercase">Block: {block}</span>
+                                                    </div>
+                                                </AccordionTrigger>
+                                                <AccordionContent className="p-0">
+                                                    <ScrollArea className="w-full">
+                                                        <div className="min-w-[1600px]">
+                                                            <Table className="border-collapse border text-[10px]">
+                                                                <TableHeader className="bg-muted/80">
+                                                                    <TableRow>
+                                                                        <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
+                                                                        <TableHead className="w-[120px] uppercase font-black border text-center">Route ID</TableHead>
+                                                                        <TableHead className="w-[180px] uppercase font-black border">Facility (MRF)</TableHead>
+                                                                        <TableHead className="w-[200px] uppercase font-black border text-right px-6 bg-blue-50/20">Total Waste from GPs (Click)</TableHead>
+                                                                        <TableHead className="w-[150px] text-right uppercase font-black border bg-primary/5 text-primary">Driver Submitted (Kg)</TableHead>
+                                                                        <TableHead className="w-[120px] text-right uppercase font-black border bg-destructive/5 text-destructive">Discrepancy</TableHead>
+                                                                        <TableHead className="w-[90px] text-right uppercase font-black border">Plastic</TableHead>
+                                                                        <TableHead className="w-[90px] text-right uppercase font-black border">Paper</TableHead>
+                                                                        <TableHead className="w-[90px] text-right uppercase font-black border">Metal</TableHead>
+                                                                        <TableHead className="w-[90px] text-right uppercase font-black border">Cloth</TableHead>
+                                                                        <TableHead className="w-[90px] text-right uppercase font-black border">Glass</TableHead>
+                                                                        <TableHead className="w-[90px] text-right uppercase font-black border">Sanitation</TableHead>
+                                                                        <TableHead className="w-[120px] uppercase font-black border text-center">Actions</TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {blockMonthRecords.map((row) => (
+                                                                        <TableRow key={row.id} className="hover:bg-primary/[0.01] border-b last:border-0 h-14 transition-colors">
+                                                                            <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
+                                                                            <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
+                                                                            <TableCell className="border-r font-bold uppercase">{row.mrf}</TableCell>
+                                                                            <TableCell className="border-r p-0">
+                                                                                <Popover>
+                                                                                    <PopoverTrigger asChild>
+                                                                                        <button className="w-full h-14 flex items-center justify-end px-6 font-bold text-blue-700 hover:bg-blue-50 transition-all underline decoration-dotted underline-offset-4">
+                                                                                            {row.totalGpLoad.toFixed(1)} KG
+                                                                                        </button>
+                                                                                    </PopoverTrigger>
+                                                                                    <PopoverContent className="w-72 p-0 border-2 shadow-2xl overflow-hidden" align="end">
+                                                                                        <div className="bg-blue-700 text-white p-3 font-black uppercase text-[9px] tracking-widest flex items-center gap-2">
+                                                                                            <MapPin className="h-3 w-3" /> GP Contribution Breakdown
+                                                                                        </div>
+                                                                                        <Table>
+                                                                                            <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[8px] uppercase font-black">GP Node</TableHead><TableHead className="text-[8px] uppercase font-black text-right">Load (Kg)</TableHead></TableRow></TableHeader>
+                                                                                            <TableBody>
+                                                                                                {row.gpBreakdown?.map((gp, i) => (
+                                                                                                    <TableRow key={i} className="h-10 border-b border-dashed last:border-0"><TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell><TableCell className="text-right font-mono font-black text-blue-700">{gp.amount.toFixed(1)}</TableCell></TableRow>                                                                                                ))}
+                                                                                            </TableBody>
+                                                                                        </Table>
+                                                                                    </PopoverContent>
+                                                                                </Popover>
+                                                                            </TableCell>
+                                                                            <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02]">{row.driverSubmitted.toFixed(1)} KG</TableCell>
+                                                                            <TableCell className="border-r text-right font-mono font-black text-destructive">{(row.totalGpLoad - row.driverSubmitted).toFixed(1)} KG</TableCell>
+                                                                            <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
+                                                                            <TableCell className="border-r text-right font-mono">{row.paper}</TableCell>
+                                                                            <TableCell className="border-r text-right font-mono">{row.metal}</TableCell>
+                                                                            <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
+                                                                            <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
+                                                                            <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
+                                                                            <TableCell className="border text-center">
+                                                                                <div className="flex justify-center gap-1">
+                                                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => handleOpenEditDialog(row)}><Edit className="h-3 w-3"/></Button>
+                                                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3"/></Button>
+                                                                                </div>
+                                                                            </TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                    {blockMonthRecords.length === 0 && (
+                                                                        <TableRow><TableCell colSpan={13} className="h-14 text-center italic text-muted-foreground opacity-40">No entries synced for this block in {month}.</TableCell></TableRow>
+                                                                    )}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                        <ScrollBar orientation="horizontal" />
+                                                    </ScrollArea>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        );
+                                    })}
+                                </Accordion>
+
+                                {/* District Monthly Performance Summary Box Row */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4">
+                                    <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Dist. Load on Avg (Month)</p>
+                                        <p className="text-xl font-black">{districtMonthAvg.toLocaleString()} KG</p>
+                                    </div>
+                                    <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
+                                        <p className="text-[10px] font-black uppercase text-primary mb-1">Total District Verified</p>
+                                        <p className="text-xl font-black text-primary">{districtMonthVerified.toLocaleString()} KG</p>
+                                    </div>
+                                    <div className="bg-background border-2 border-dashed rounded-xl p-5 shadow-sm">
+                                        <p className="text-[10px] font-black uppercase text-destructive mb-1">District Discrepancy</p>
+                                        <p className="text-xl font-black text-destructive">{(districtMonthAvg - districtMonthVerified).toLocaleString()} KG</p>
+                                    </div>
+                                    <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-5 shadow-inner">
+                                        <p className="text-[10px] font-black uppercase text-primary mb-1">District Efficiency Score</p>
+                                        <p className="text-xl font-black text-primary">{(districtMonthAvg > 0 ? (districtMonthVerified / districtMonthAvg) * 100 : 0).toFixed(1)}%</p>
+                                    </div>
+                                </div>
+                            </AccordionContent>
                         </Card>
+                    </AccordionItem>
+                );
+            })}
+          </Accordion>
+
+          <Card className="mt-12 border-4 border-dashed border-primary/30 bg-muted/5 overflow-hidden">
+            <CardHeader className="bg-primary/5 border-b border-dashed border-primary/20 pb-6">
+                <CardTitle className="text-3xl font-black font-headline uppercase tracking-tight text-primary/40 flex items-center gap-3">
+                    <BarChart3 className="h-10 w-10" /> Yearly District Audit Summary: {year}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                <ScrollArea className="w-full">
+                    <div className="min-w-[1600px]">
+                        <Table className="text-muted-foreground">
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="w-[150px] uppercase font-black border text-center">Collection Freq (Year)</TableHead>
+                                    <TableHead className="w-[180px] text-right uppercase font-black border">Total Verified (Kg)</TableHead>
+                                    <TableHead className="w-[120px] text-right uppercase font-black border">Total Paper</TableHead>
+                                    <TableHead className="w-[120px] text-right uppercase font-black border">Total Plastic</TableHead>
+                                    <TableHead className="w-[120px] text-right uppercase font-black border">Total Metal</TableHead>
+                                    <TableHead className="w-[120px] text-right uppercase font-black border">Total Glass</TableHead>
+                                    <TableHead className="w-[120px] text-right uppercase font-black border">Total Sanitation</TableHead>
+                                    <TableHead className="w-[120px] text-right uppercase font-black border">Others</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {(() => {
+                                  const yearly = records.filter(r => new Date(r.date).getFullYear().toString() === year);
+                                  const isYearDone = yearly.length > 0 && yearly.some(r => new Date(r.date).getMonth() === 11);
+                                  
+                                  if (!isYearDone) {
+                                    return <TableRow><TableCell colSpan={8} className="h-32 text-center italic font-black uppercase tracking-widest opacity-20">Yearly District Audit Data will populate post-December {year}.</TableCell></TableRow>;
+                                  }
+
+                                  const totals = yearly.reduce((acc, curr) => ({
+                                    freq: acc.freq + 1,
+                                    verified: acc.verified + curr.driverSubmitted,
+                                    paper: acc.paper + curr.paper,
+                                    plastic: acc.plastic + curr.plastic,
+                                    metal: acc.metal + curr.metal,
+                                    glass: acc.glass + curr.glass,
+                                    sani: acc.sani + curr.sanitation,
+                                    others: acc.others + curr.others
+                                  }), { freq: 0, verified: 0, paper: 0, plastic: 0, metal: 0, glass: 0, sani: 0, others: 0 });
+
+                                  return (
+                                    <TableRow className="bg-primary/5 font-black text-primary">
+                                        <TableCell className="border text-center">{totals.freq} Circuits Sync'd</TableCell>
+                                        <TableCell className="border text-right">{totals.verified.toFixed(1)} KG</TableCell>
+                                        <TableCell className="border text-right">{totals.paper.toFixed(1)}</TableCell>
+                                        <TableCell className="border text-right">{totals.plastic.toFixed(1)}</TableCell>
+                                        <TableCell className="border text-right">{totals.metal.toFixed(1)}</TableCell>
+                                        <TableCell className="border text-right">{totals.glass.toFixed(1)}</TableCell>
+                                        <TableCell className="border text-right">{totals.sani.toFixed(1)}</TableCell>
+                                        <TableCell className="border text-right">{totals.others.toFixed(1)}</TableCell>
+                                    </TableRow>
+                                  );
+                                })()}
+                            </TableBody>
+                        </Table>
                     </div>
-                ))}
-              </CardContent>
-            </Card>
-        );
-      })}
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+      ))}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-2">
