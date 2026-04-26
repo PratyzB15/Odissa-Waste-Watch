@@ -28,6 +28,7 @@ const navItems = [
   { href: '/gp-ulb', icon: Home, label: 'Dashboard' },
   { href: '/gp-ulb/waste-details', icon: Calculator, label: 'Waste Details' },
   { id: 'gp-data', href: '/gp-ulb/household-collection', icon: HomeIcon, label: 'Household Data', role: 'gp' },
+  { id: 'gp-route', href: '/gp-ulb/vehicle-route', icon: Map, label: 'Vehicle Route', role: 'gp' },
   { id: 'ulb-gp-info', href: '/gp-ulb/gp-information', icon: TableProperties, label: 'Information about GPs', role: 'ulb' },
   { id: 'ulb-drivers', href: '/gp-ulb/driver-details', icon: Truck, label: 'Driver & Worker Details', role: 'ulb' },
   { id: 'ulb-roster', href: '/gp-ulb/personnel-details', icon: Navigation, label: 'Route & Worker Roster', role: 'ulb' },

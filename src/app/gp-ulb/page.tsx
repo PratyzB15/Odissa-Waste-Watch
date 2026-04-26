@@ -28,7 +28,8 @@ import {
   Navigation,
   ClipboardList,
   ChevronRight,
-  Weight
+  Weight,
+  MessageSquareWarning
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -36,16 +37,30 @@ import { Suspense, useMemo, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, Cell, Legend, PieChart, Pie } from 'recharts';
+import { 
+  ResponsiveContainer, 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  BarChart, 
+  Bar, 
+  Cell, 
+  Legend, 
+  PieChart, 
+  Pie, 
+  CartesianGrid 
+} from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 
-// District Data Imports for Logistical Resolution
-import { jharsugudaDistrictData } from "@/lib/disJharsuguda";
-import { jajpurDistrictData } from "@/lib/disJajpur";
+// District Data Imports correctly mapped
+import { angulDistrictData } from "@/lib/disAngul";
+import { balangirDistrictData } from "@/lib/disBalangir";
 import { bhadrakDistrictData } from "@/lib/disBhadrak";
 import { bargarhDistrictData } from "@/lib/disBargarh";
 import { sonepurDistrictData } from "@/lib/disSonepur";
@@ -66,8 +81,6 @@ import { mayurbhanjDistrictData } from "@/lib/disMayurbhanj";
 import { malkangiriDistrictData } from "@/lib/disMalkangiri";
 import { balasoreDistrictData } from "@/lib/disBalasore";
 import { baleswarDistrictData } from "@/lib/disBaleswar";
-import { angulDistrictData } from "@/lib/disAngul";
-import { balangirDistrictData } from "@/lib/disBalangir";
 import { puriDistrictData } from "@/lib/disPuri";
 import { rayagadaDistrictData } from "@/lib/disRayagada";
 import { nabarangpurDistrictData } from "@/lib/disNabarangpur";
@@ -79,6 +92,7 @@ import { mrfData } from "@/lib/mrf-data";
 
 const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#7c3aed', '#64748b'];
 
+// Temporal Engine for Arrival Countdown Logic
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
@@ -86,7 +100,10 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     const s = schedule.toLowerCase().replace(/\s+/g, ' ');
 
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
+    const ordinals: Record<string, number> = { 
+      '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 
+      'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 
+    };
 
     const getNthWeekday = (year: number, month: number, weekdayIdx: number, n: number) => {
         let count = 0;
@@ -101,6 +118,7 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         return null;
     };
 
+    // Complex Schedule: "1st Thursday", "Friday of 2nd week"
     const nthMatch = s.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) ||
                      s.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+(?:of\s+)?(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+week/i);
 
@@ -121,6 +139,7 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     }
 
+    // Weekly/Specific Day logic: "Monday", "1, 15"
     let minDays = 999;
     let foundWeekly = false;
     weekdays.forEach((day, i) => {
@@ -239,11 +258,12 @@ function GpUlbDashboardContent() {
             const gpLoad = r.gpBreakdown?.find((g: any) => g.name.toLowerCase() === gpName.toLowerCase())?.amount || 0;
             if (item) item.waste += gpLoad;
             
-            totalStreams.plastic += r.plastic * (gpLoad / (r.totalGpLoad || 1));
-            totalStreams.paper += r.paper * (gpLoad / (r.totalGpLoad || 1));
-            totalStreams.metal += r.metal * (gpLoad / (r.totalGpLoad || 1));
-            totalStreams.glass += r.glass * (gpLoad / (r.totalGpLoad || 1));
-            totalStreams.sanitation += r.sanitation * (gpLoad / (r.totalGpLoad || 1));
+            const ratio = gpLoad / (r.totalGpLoad || 1);
+            totalStreams.plastic += r.plastic * ratio;
+            totalStreams.paper += r.paper * ratio;
+            totalStreams.metal += r.metal * ratio;
+            totalStreams.glass += r.glass * ratio;
+            totalStreams.sanitation += r.sanitation * ratio;
         });
 
         const composition = [
@@ -322,11 +342,21 @@ function GpUlbDashboardContent() {
       
       {role === 'gp' && gpRealData && (
         <div className="space-y-6">
+            {/* Demographic Coverage Bar */}
             <Card className="border-2 shadow-sm bg-muted/10">
                 <CardContent className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-6">
-                    <div className="space-y-1"><p className="text-[9px] font-black text-muted-foreground uppercase">District</p><p className="text-xs font-black uppercase">{districtName}</p></div>
-                    <div className="space-y-1"><p className="text-[9px] font-black text-muted-foreground uppercase">Block</p><p className="text-xs font-black uppercase">{blockName}</p></div>
-                    <div className="space-y-1"><p className="text-[9px] font-black text-muted-foreground uppercase">Associated ULB</p><p className="text-xs font-black uppercase truncate">{gpRealData.mapping?.taggedUlb}</p></div>
+                    <div className="space-y-1">
+                        <p className="text-[9px] font-black text-muted-foreground uppercase">District</p>
+                        <p className="text-xs font-black uppercase">{districtName}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[9px] font-black text-muted-foreground uppercase">Block</p>
+                        <p className="text-xs font-black uppercase">{blockName}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[9px] font-black text-muted-foreground uppercase">Associated ULB</p>
+                        <p className="text-xs font-black uppercase truncate">{gpRealData.mapping?.taggedUlb}</p>
+                    </div>
                     
                     <Popover>
                         <PopoverTrigger asChild>
@@ -338,16 +368,38 @@ function GpUlbDashboardContent() {
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">Facility Registry</h4>
                             <Table>
-                                <TableHeader className="bg-muted/50"><TableRow><TableHead className="uppercase text-[9px] font-black">Facility Name</TableHead><TableHead className="uppercase text-[9px] font-black">Type</TableHead></TableRow></TableHeader>
-                                <TableBody><TableRow className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{gpRealData.mapping?.taggedMrf}</TableCell><TableCell className="text-[10px] uppercase text-muted-foreground">Mapped Node</TableCell></TableRow></TableBody>
+                                <TableHeader className="bg-muted/50">
+                                    <TableRow>
+                                        <TableHead className="uppercase text-[9px] font-black">Facility Name</TableHead>
+                                        <TableHead className="uppercase text-[9px] font-black">Type</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    <TableRow className="h-10 border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase">{gpRealData.mapping?.taggedMrf}</TableCell>
+                                        <TableCell className="text-[10px] uppercase text-muted-foreground">Mapped Node</TableCell>
+                                    </TableRow>
+                                </TableBody>
                             </Table>
                         </PopoverContent>
                     </Popover>
 
-                    <div className="space-y-1 pt-4 border-t border-dashed col-span-2 lg:col-span-1"><p className="text-[9px] font-black text-muted-foreground uppercase">Households</p><p className="text-xl font-black">{gpRealData.waste?.totalHouseholds?.toLocaleString()}</p></div>
-                    <div className="space-y-1 pt-4 border-t border-dashed col-span-2 lg:col-span-1"><p className="text-[9px] font-black text-muted-foreground uppercase">Anganwadis</p><p className="text-xl font-black">{gpRealData.waste?.anganwadis || 0}</p></div>
-                    <div className="space-y-1 pt-4 border-t border-dashed col-span-2 lg:col-span-1"><p className="text-[9px] font-black text-muted-foreground uppercase">Schools</p><p className="text-xl font-black">{gpRealData.waste?.schools || 0}</p></div>
-                    <div className="space-y-1 pt-4 border-t border-dashed col-span-2 lg:col-span-1"><p className="text-[9px] font-black text-muted-foreground uppercase">Commercials</p><p className="text-xl font-black">{gpRealData.waste?.commercial || 0}</p></div>
+                    <div className="space-y-1 pt-4 border-t border-dashed col-span-2 lg:col-span-1">
+                        <p className="text-[9px] font-black text-muted-foreground uppercase">Households</p>
+                        <p className="text-xl font-black">{gpRealData.waste?.totalHouseholds?.toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1 pt-4 border-t border-dashed col-span-2 lg:col-span-1">
+                        <p className="text-[9px] font-black text-muted-foreground uppercase">Anganwadis</p>
+                        <p className="text-xl font-black">{gpRealData.waste?.anganwadis || 0}</p>
+                    </div>
+                    <div className="space-y-1 pt-4 border-t border-dashed col-span-2 lg:col-span-1">
+                        <p className="text-[9px] font-black text-muted-foreground uppercase">Schools</p>
+                        <p className="text-xl font-black">{gpRealData.waste?.schools || 0}</p>
+                    </div>
+                    <div className="space-y-1 pt-4 border-t border-dashed col-span-2 lg:col-span-1">
+                        <p className="text-[9px] font-black text-muted-foreground uppercase">Commercials</p>
+                        <p className="text-xl font-black">{gpRealData.waste?.commercial || 0}</p>
+                    </div>
 
                     <Card className="border-2 shadow-sm bg-primary/5 border-primary/20 p-4 col-span-2 lg:col-span-1">
                         <p className="text-[9px] font-black uppercase text-primary mb-1">Waste / Week</p>
@@ -364,26 +416,39 @@ function GpUlbDashboardContent() {
                 </CardContent>
             </Card>
 
+            {/* Critical Discrepancy & Active Circuit Grid */}
             <div className="grid lg:grid-cols-2 gap-6">
                 <Card className="border-2 border-destructive/20 bg-destructive/[0.01]">
                     <CardHeader className="bg-destructive/5 border-b pb-3 flex row items-center justify-between space-y-0">
-                        <div className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /><CardTitle className="text-base font-black uppercase">Critical Discrepancy</CardTitle></div>
+                        <div className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="h-5 w-5" />
+                            <CardTitle className="text-base font-black uppercase">Critical Discrepancy</CardTitle>
+                        </div>
                     </CardHeader>
-                    <CardContent className="pt-8 flex items-center justify-center italic text-muted-foreground text-xs h-[150px]">No active discrepancies reported for this node.</CardContent>
+                    <CardContent className="pt-8 flex items-center justify-center italic text-muted-foreground text-xs h-[150px]">
+                        No active discrepancies reported for this node.
+                    </CardContent>
                 </Card>
 
                 <Card className="border-2 border-primary/30 bg-primary/[0.01]">
                     <CardHeader className="bg-primary/5 border-b pb-3 flex flex-row items-center justify-between space-y-0">
-                        <div className="flex items-center gap-2 text-primary"><Truck className="h-5 w-5" /><CardTitle className="text-base font-black uppercase">Active Circuit</CardTitle></div>
+                        <div className="flex items-center gap-2 text-primary">
+                            <Truck className="h-5 w-5" />
+                            <CardTitle className="text-base font-black uppercase">Active Circuit</CardTitle>
+                        </div>
                     </CardHeader>
                     <CardContent className="pt-6">
                         <div className={`p-5 flex items-center justify-between border rounded-2xl bg-card shadow-sm border-l-4 ${gpRealData.circuit.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
                             <div className="flex-1 space-y-1 pr-4">
                                 <p className="font-black text-xs uppercase text-foreground">{gpRealData.circuit.actualRouteId}</p>
-                                <p className="text-[9px] font-bold text-muted-foreground uppercase">{gpRealData.circuit.mrf} | {gpRealData.mapping?.taggedUlb}</p>
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">
+                                    {gpRealData.circuit.mrf} | {gpRealData.mapping?.taggedUlb}
+                                </p>
                             </div>
                             <div className="flex-1 text-center">
-                                <div className={`text-xl font-black leading-none ${gpRealData.circuit.isActiveToday ? 'text-green-700 animate-pulse' : 'text-foreground'}`}>{gpRealData.circuit.countdown}</div>
+                                <div className={`text-xl font-black leading-none ${gpRealData.circuit.isActiveToday ? 'text-green-700 animate-pulse' : 'text-foreground'}`}>
+                                    {gpRealData.circuit.countdown}
+                                </div>
                                 <div className="text-[9px] font-black text-blue-700 uppercase mt-1.5">{gpRealData.circuit.scheduleStr}</div>
                             </div>
                             <div className="flex-1 text-right">
@@ -396,11 +461,17 @@ function GpUlbDashboardContent() {
                 </Card>
             </div>
 
+            {/* Waste Flow Chart with Toggle */}
             <Card className="border-2 shadow-sm overflow-hidden">
                 <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
-                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary"/> Verified Waste Flow</CardTitle>
+                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-primary"/> Verified Waste Flow
+                    </CardTitle>
                     <Tabs value={wasteToggle} onValueChange={(v: any) => setWasteToggle(v)}>
-                        <TabsList className="h-8"><TabsTrigger value="weekly" className="text-[9px] font-black uppercase">Weekly</TabsTrigger><TabsTrigger value="monthly" className="text-[9px] font-black uppercase">Monthly</TabsTrigger></TabsList>
+                        <TabsList className="h-8">
+                            <TabsTrigger value="weekly" className="text-[9px] font-black uppercase">Weekly</TabsTrigger>
+                            <TabsTrigger value="monthly" className="text-[9px] font-black uppercase">Monthly</TabsTrigger>
+                        </TabsList>
                     </Tabs>
                 </CardHeader>
                 <CardContent className="h-[300px] pt-8">
@@ -416,9 +487,14 @@ function GpUlbDashboardContent() {
                 </CardContent>
             </Card>
 
+            {/* Historical Bar Chart & Stream Composition Pie Chart */}
             <div className="grid lg:grid-cols-2 gap-6">
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="border-b bg-muted/10 pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Last 5 Months Collection (Kg)</CardTitle></CardHeader>
+                    <CardHeader className="border-b bg-muted/10 pb-3">
+                        <CardTitle className="text-xs font-black uppercase flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-primary" /> Last 5 Months Collection (Kg)
+                        </CardTitle>
+                    </CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={gpRealData.last5Months}>
@@ -433,7 +509,11 @@ function GpUlbDashboardContent() {
                 </Card>
 
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="border-b bg-muted/10 pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> Stream Composition (Cumulative %)</CardTitle></CardHeader>
+                    <CardHeader className="border-b bg-muted/10 pb-3">
+                        <CardTitle className="text-xs font-black uppercase flex items-center gap-2">
+                            <PieChartIcon className="h-4 w-4 text-primary" /> Stream Composition (Cumulative %)
+                        </CardTitle>
+                    </CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -448,6 +528,7 @@ function GpUlbDashboardContent() {
                 </Card>
             </div>
 
+            {/* Worker Roster Hub */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
                     { id: 'workers', label: 'Sanitation Workers', icon: <Users />, count: (gpRealData.routes?.[0]?.workers || []).length, data: (gpRealData.routes?.[0]?.workers || []).map((w: any) => ({ name: w.name, phone: w.contact, target: gpName })) },
@@ -468,8 +549,22 @@ function GpUlbDashboardContent() {
                             <h4 className="font-black uppercase text-[10px] p-3 bg-muted border-b text-center tracking-widest">{hub.label} Directory</h4>
                             <ScrollArea className="h-64">
                                 <Table>
-                                    <TableHeader className="bg-muted/50 sticky top-0 z-10 border-b"><TableRow><TableHead className="uppercase text-[10px] font-black">Name</TableHead><TableHead className="uppercase text-[10px] font-black">Phone</TableHead><TableHead className="uppercase text-[10px] font-black">Assoc.</TableHead></TableRow></TableHeader>
-                                    <TableBody>{hub.data.map((p: any, i: number) => (<TableRow key={i} className="hover:bg-muted/30 border-b border-dashed h-14"><TableCell className="text-xs font-black uppercase">{p.name}</TableCell><TableCell className="text-xs font-mono font-black text-primary">{p.phone}</TableCell><TableCell className="text-[10px] font-bold uppercase text-muted-foreground">{p.target}</TableCell></TableRow>))}</TableBody>
+                                    <TableHeader className="bg-muted/50 sticky top-0 z-10 border-b">
+                                        <TableRow>
+                                            <TableHead className="uppercase text-[10px] font-black">Name</TableHead>
+                                            <TableHead className="uppercase text-[10px] font-black">Phone</TableHead>
+                                            <TableHead className="uppercase text-[10px] font-black">Assoc.</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {hub.data.map((p: any, i: number) => (
+                                            <TableRow key={i} className="hover:bg-muted/30 border-b border-dashed h-14">
+                                                <TableCell className="text-xs font-black uppercase">{p.name}</TableCell>
+                                                <TableCell className="text-xs font-mono font-black text-primary">{p.phone}</TableCell>
+                                                <TableCell className="text-[10px] font-bold uppercase text-muted-foreground">{p.target}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
                                 </Table>
                             </ScrollArea>
                         </PopoverContent>
@@ -519,5 +614,5 @@ function GpUlbDashboardContent() {
 }
 
 export default function GpUlbDashboard() {
-    return (<Suspense fallback={<div className="p-12 text-center">Loading operational hub...</div>}><GpUlbDashboardContent /></Suspense>);
+    return (<Suspense fallback={<div className="p-12 text-center text-muted-foreground animate-pulse">Loading operational hub...</div>}><GpUlbDashboardContent /></Suspense>);
 }
