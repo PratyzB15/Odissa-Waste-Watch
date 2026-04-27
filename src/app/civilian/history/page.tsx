@@ -9,26 +9,34 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Calendar, Route, Anchor, CheckCircle2, XCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense } from "react";
+import { useCollection, useFirestore } from '@/firebase';
+import { collection, query, orderBy, where } from 'firebase/firestore';
+import { format, parseISO } from 'date-fns';
 
 function TripHistoryContent() {
     const searchParams = useSearchParams();
     const name = searchParams.get('name') || '';
+    const ulb = searchParams.get('ulb') || '';
     
-    // Mock History Logic with Verification Sync
-    // In a real app, 'isCollected' would be true if a record exists for that date in the Registry
+    const db = useFirestore();
+    const wasteQuery = useMemo(() => {
+        if (!db || !ulb) return null;
+        return query(collection(db, 'wasteDetails'), where('mrf', '==', ulb), orderBy('date', 'desc'));
+    }, [db, ulb]);
+    
+    const { data: records = [] } = useCollection(wasteQuery);
+
     const historyData = useMemo(() => {
-        return {
-            "May 2026": [
-                { date: '2026-05-18', routeId: 'BBOUBKLMPT-1', routeName: 'Path A', mrf: 'Boudh MRF', startGp: 'Mursundhi', endGp: 'Telibandh', isCollected: true },
-                { date: '2026-05-11', routeId: 'BBOUBKLMPT-1', routeName: 'Path A', mrf: 'Boudh MRF', startGp: 'Mursundhi', endGp: 'Telibandh', isCollected: false },
-                { date: '2026-05-04', routeId: 'BBOUBKLMPT-1', routeName: 'Path A', mrf: 'Boudh MRF', startGp: 'Mursundhi', endGp: 'Telibandh', isCollected: true },
-            ],
-            "April 2026": [
-                { date: '2026-04-27', routeId: 'BBOUBKLMPT-1', routeName: 'Path A', mrf: 'Boudh MRF', startGp: 'Mursundhi', endGp: 'Telibandh', isCollected: true },
-                { date: '2026-04-20', routeId: 'BBOUBKLMPT-1', routeName: 'Path A', mrf: 'Boudh MRF', startGp: 'Mursundhi', endGp: 'Telibandh', isCollected: true },
-            ]
-        };
-    }, []);
+        const groups: Record<string, any[]> = {};
+        
+        records.forEach((r: any) => {
+            const monthYear = format(parseISO(r.date), 'MMMM yyyy');
+            if (!groups[monthYear]) groups[monthYear] = [];
+            groups[monthYear].push(r);
+        });
+
+        return groups;
+    }, [records]);
 
     return (
         <div className="space-y-6">
@@ -44,7 +52,7 @@ function TripHistoryContent() {
                 </CardHeader>
             </Card>
 
-            <Accordion type="single" collapsible defaultValue="May 2026" className="w-full space-y-4">
+            <Accordion type="single" collapsible className="w-full space-y-4">
                 {Object.entries(historyData).map(([month, trips], idx) => (
                     <AccordionItem value={month} key={idx} className="border-none">
                         <Card className="overflow-hidden border-2 shadow-md">
@@ -52,7 +60,7 @@ function TripHistoryContent() {
                                 <div className="flex items-center gap-4">
                                     <Calendar className="h-5 w-5 text-primary" />
                                     <span className="font-black text-xl uppercase tracking-tighter text-foreground">{month}</span>
-                                    <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[8px]">{trips.length} TRIPS</Badge>
+                                    <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[8px]">{trips.length} TRIPS VERIFIED</Badge>
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="p-0">
@@ -61,43 +69,29 @@ function TripHistoryContent() {
                                         <TableHeader className="bg-muted/80">
                                             <TableRow>
                                                 <TableHead className="w-[120px] uppercase text-[9px] font-black border-r">Trip Date</TableHead>
-                                                <TableHead className="w-[150px] uppercase text-[9px] font-black border-r">Route ID & Name</TableHead>
-                                                <TableHead className="w-[150px] uppercase text-[9px] font-black border-r">Target MRF</TableHead>
-                                                <TableHead className="uppercase text-[9px] font-black border-r px-6">Terminal Path (Start → End)</TableHead>
+                                                <TableHead className="w-[150px] uppercase text-[9px] font-black border-r">Route ID</TableHead>
+                                                <TableHead className="w-[200px] uppercase text-[9px] font-black border-r">Facility (MRF)</TableHead>
+                                                <TableHead className="w-[150px] text-right uppercase text-[9px] font-black border-r bg-primary/5 text-primary">Load (Kg)</TableHead>
                                                 <TableHead className="w-[150px] text-center uppercase text-[9px] font-black">Status</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {trips.map((trip, tIdx) => (
-                                                <TableRow key={tIdx} className="hover:bg-muted/20 border-b border-dashed last:border-0 h-20">
-                                                    <TableCell className="font-mono text-xs font-bold border-r">{trip.date}</TableCell>
+                                                <TableRow key={tIdx} className="hover:bg-muted/20 border-b border-dashed last:border-0 h-16">
+                                                    <TableCell className="font-mono text-xs font-bold border-r text-center">{trip.date}</TableCell>
+                                                    <TableCell className="border-r font-black text-[10px] text-primary uppercase text-center">{trip.routeId}</TableCell>
                                                     <TableCell className="border-r">
-                                                        <div className="space-y-0.5">
-                                                            <p className="font-black text-[10px] text-primary uppercase">{trip.routeId}</p>
-                                                            <p className="text-[9px] font-medium text-muted-foreground italic">{trip.routeName}</p>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="border-r">
-                                                        <div className="flex items-center gap-1 text-[10px] font-bold text-foreground uppercase">
+                                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-foreground uppercase">
                                                             <Anchor className="h-3 w-3 opacity-40"/> {trip.mrf}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="border-r px-6">
-                                                        <div className="text-[10px] font-bold uppercase space-y-0.5">
-                                                            <p className="text-green-700">START: {trip.startGp}</p>
-                                                            <p className="text-blue-700">END: {trip.endGp}</p>
-                                                        </div>
+                                                    <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02] text-sm px-6">
+                                                        {trip.driverSubmitted.toFixed(1)}
                                                     </TableCell>
                                                     <TableCell className="text-center">
-                                                        {trip.isCollected ? (
-                                                            <Badge className="bg-green-600 font-black uppercase text-[9px] flex items-center gap-1 w-fit mx-auto">
-                                                                <CheckCircle2 className="h-2 w-2"/> Collected
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge variant="destructive" className="font-black uppercase text-[9px] flex items-center gap-1 w-fit mx-auto">
-                                                                <XCircle className="h-2 w-2"/> Not Collected
-                                                            </Badge>
-                                                        )}
+                                                        <Badge className="bg-green-600 font-black uppercase text-[9px] flex items-center gap-1 w-fit mx-auto">
+                                                            <CheckCircle2 className="h-2 w-2"/> Completed
+                                                        </Badge>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -108,6 +102,11 @@ function TripHistoryContent() {
                         </Card>
                     </AccordionItem>
                 ))}
+                {records.length === 0 && (
+                    <Card className="border-2 border-dashed p-12 text-center text-muted-foreground opacity-30 italic uppercase font-black tracking-widest text-sm">
+                        No trip records resolved for current fiscal cycle.
+                    </Card>
+                )}
             </Accordion>
         </div>
     );

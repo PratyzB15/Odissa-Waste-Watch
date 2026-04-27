@@ -2,220 +2,284 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { User, Calendar, Database, FileText, Truck, Anchor, LayoutGrid, ClipboardList } from 'lucide-react';
+import { 
+  Calendar, 
+  Truck, 
+  LayoutGrid, 
+  ClipboardList,
+  MapPin,
+} from 'lucide-react';
 import React, { useMemo, Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { useCollection, useFirestore } from '@/firebase';
+import { collection, query, orderBy, where } from 'firebase/firestore';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-// District Data Imports
-import { angulDistrictData } from "@/lib/disAngul";
-import { balangirDistrictData } from "@/lib/disBalangir";
-import { bhadrakDistrictData } from "@/lib/disBhadrak";
-import { bargarhDistrictData } from "@/lib/disBargarh";
-import { sonepurDistrictData } from "@/lib/disSonepur";
-import { boudhDistrictData } from "@/lib/disBoudh";
-import { cuttackDistrictData } from "@/lib/disCuttack";
-import { deogarhDistrictData } from "@/lib/disDeogarh";
-import { dhenkanalDistrictData } from "@/lib/disDhenkanal";
-import { gajapatiDistrictData } from "@/lib/disGajapati";
-import { ganjamDistrictData } from "@/lib/disGanjam";
-import { jagatsinghpurDistrictData } from "@/lib/disJagatsinghpur";
-import { jajpurDistrictData } from "@/lib/disJajpur";
-import { jharsugudaDistrictData } from "@/lib/disJharsuguda";
-import { kalahandiDistrictData } from "@/lib/disKalahandi";
-import { kandhamalDistrictData } from "@/lib/disKandhamal";
-import { kendraparaDistrictData } from "@/lib/disKendrapara";
-import { kendujharDistrictData } from "@/lib/disKendujhar";
-import { balasoreDistrictData } from "@/lib/disBalasore";
-import { baleswarDistrictData } from "@/lib/disBaleswar";
-import { khordhaDistrictData } from "@/lib/disKhordha";
-import { koraputDistrictData } from "@/lib/disKoraput";
-import { mayurbhanjDistrictData } from "@/lib/disMayurbhanj";
-import { malkangiriDistrictData } from "@/lib/disMalkangiri";
-import { rayagadaDistrictData } from "@/lib/disRayagada";
-import { nabarangpurDistrictData } from "@/lib/disNabarangpur";
-import { nayagarhDistrictData } from "@/lib/disNayagarh";
-import { nuapadaDistrictData } from "@/lib/disNuapada";
-import { puriDistrictData } from "@/lib/disPuri";
-import { sambalpurDistrictData } from "@/lib/disSambalpur";
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June", 
+  "July", "August", "September", "October", "November", "December"
+];
 
-function GpUlbWasteReceiptDetailsContent() {
+const FISCAL_YEARS = ["2026", "2027"];
+
+function WasteReceiptSubmissionContent() {
   const searchParams = useSearchParams();
   const ulbParam = searchParams.get('ulb') || '';
-  const districtParam = searchParams.get('district') || '';
-  
   const [mounted, setMounted] = useState(false);
+  const db = useFirestore();
+
   useEffect(() => { setMounted(true); }, []);
 
-  const data = useMemo(() => {
-    if (!mounted || !districtParam) return { driverReceipts: [], gpReceipts: [] };
-    
-    const sourceMap: Record<string, any> = {
-      'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData,
-      'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData,
-      'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData,
-      'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData,
-      'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData,
-      'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData,
-      'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'khordha': khordhaDistrictData,
-      'koraput': koraputDistrictData, 'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
-      'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
-      'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
-    };
+  const wasteQuery = useMemo(() => {
+    if (!db || !ulbParam) return null;
+    return query(collection(db, 'wasteDetails'), where('mrf', '==', ulbParam), orderBy('date', 'desc'));
+  }, [db, ulbParam]);
+  
+  const { data: records = [] } = useCollection(wasteQuery);
 
-    const source = sourceMap[districtParam.toLowerCase()];
-    if (!source) return { driverReceipts: [], gpReceipts: [] };
+  const calculateTotals = (items: any[]) => {
+    return items.reduce((acc, curr) => ({
+      total: acc.total + (curr.driverSubmitted || 0),
+      plastic: acc.plastic + (curr.plastic || 0),
+      paper: acc.paper + (curr.paper || 0),
+      metal: acc.metal + (curr.metal || 0),
+      cloth: acc.cloth + (curr.cloth || 0),
+      glass: acc.glass + (curr.glass || 0),
+      sanitation: acc.sanitation + (curr.sanitation || 0),
+      others: acc.others + (curr.others || 0)
+    }), { total: 0, plastic: 0, paper: 0, metal: 0, cloth: 0, glass: 0, sanitation: 0, others: 0 });
+  };
 
-    const filteredSchedules = (source.data.collectionSchedules || []).filter((s: any) => 
-      s.ulb.toLowerCase().trim().includes(ulbParam.toLowerCase().trim()) || 
-      ulbParam.toLowerCase().trim().includes(s.ulb.toLowerCase().trim())
-    );
-
-    const drRecs = filteredSchedules.map((s: any) => ({
-      date: "01/07/2024",
-      routeId: s.routeId || "CIRCUIT",
-      vehicleNo: s.vehicleNo || "-",
-      totalWeight: s.wasteGeneratedKg || 0,
-      plastic: (s.wasteGeneratedKg || 0) * 0.40,
-      paper: (s.wasteGeneratedKg || 0) * 0.25,
-      metal: (s.wasteGeneratedKg || 0) * 0.10,
-      cloth: (s.wasteGeneratedKg || 0) * 0.10,
-      glass: (s.wasteGeneratedKg || 0) * 0.05,
-      sanitation: (s.wasteGeneratedKg || 0) * 0.05,
-      others: (s.wasteGeneratedKg || 0) * 0.05,
-    }));
-
-    const gpRecs = filteredSchedules.map((s: any) => ({
-      date: "01/07/2024",
-      gpName: s.gpName.split('(')[0].trim(),
-      block: s.block,
-      generatedWeight: s.wasteGeneratedKg || 0
-    }));
-
-    return { driverReceipts: drRecs, gpReceipts: gpRecs };
-  }, [mounted, ulbParam, districtParam]);
-
-  if (!mounted) return <div className="p-12 text-center animate-pulse">Syncing verification ledgers...</div>;
+  if (!mounted) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-12">
       <Card className="border-2 border-primary/20 bg-primary/[0.01] shadow-md">
-        <CardHeader>
+        <CardHeader className="bg-primary/5 border-b">
           <div className="flex items-center gap-3">
             <ClipboardList className="h-8 w-8 text-primary" />
             <div>
-              <CardTitle className="text-2xl font-headline font-black uppercase tracking-tight text-primary">Waste Receipt Verification Hub</CardTitle>
-              <CardDescription className="font-bold">Authoritative digital paper trail for {ulbParam} facility node.</CardDescription>
+              <CardTitle className="text-2xl font-headline font-black uppercase tracking-tight text-primary">Waste Receipt Submission Hub</CardTitle>
+              <CardDescription className="font-bold italic">Authoritative repository for verified circuit submissions.</CardDescription>
             </div>
           </div>
         </CardHeader>
       </Card>
 
-      <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="drivers">
-        <AccordionItem value="drivers" className="border-none">
-          <Card className="border-2 shadow-lg overflow-hidden">
-            <AccordionTrigger className="p-6 hover:no-underline bg-muted/30 data-[state=open]:bg-primary/5 transition-all border-b border-dashed">
-              <div className="flex items-center gap-4">
-                <Truck className="h-6 w-6 text-primary" />
-                <span className="font-black text-xl uppercase tracking-tighter text-foreground">Receipts from Drivers</span>
-                <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[10px] bg-primary/5 px-3">
-                  {data.driverReceipts.length} SYNCED
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="p-0">
-              <ScrollArea className="w-full">
-                <div className="min-w-[1400px]">
-                  <Table className="border-collapse border text-[10px]">
-                    <TableHeader className="bg-muted/80">
-                      <TableRow>
-                        <TableHead className="w-[120px] uppercase font-black border text-center">Date</TableHead>
-                        <TableHead className="w-[150px] uppercase font-black border">Route ID</TableHead>
-                        <TableHead className="w-[120px] uppercase font-black border text-center">Vehicle No.</TableHead>
-                        <TableHead className="w-[120px] uppercase font-black border text-right">Total (Kg)</TableHead>
-                        <TableHead className="w-[100px] uppercase font-black border text-right">Plastic</TableHead>
-                        <TableHead className="w-[100px] uppercase font-black border text-right">Paper</TableHead>
-                        <TableHead className="w-[100px] uppercase font-black border text-right">Metal</TableHead>
-                        <TableHead className="w-[100px] uppercase font-black border text-right">Cloth</TableHead>
-                        <TableHead className="w-[100px] uppercase font-black border text-right">Glass</TableHead>
-                        <TableHead className="w-[100px] uppercase font-black border text-right">Sanitation</TableHead>
-                        <TableHead className="w-[100px] uppercase font-black border text-right">Others</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data.driverReceipts.map((row, i) => (
-                        <TableRow key={i} className="hover:bg-primary/[0.01] border-b h-12">
-                          <TableCell className="border-r font-mono text-center">{row.date}</TableCell>
-                          <TableCell className="border-r font-black text-primary uppercase">{row.routeId}</TableCell>
-                          <TableCell className="border-r text-center font-bold">{row.vehicleNo}</TableCell>
-                          <TableCell className="border-r text-right font-mono font-black text-primary text-sm bg-primary/[0.02]">{row.totalWeight.toLocaleString()}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.plastic.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.paper.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.metal.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.cloth.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.glass.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.sanitation.toFixed(1)}</TableCell>
-                          <TableCell className="border-r text-right font-mono text-muted-foreground">{row.others.toFixed(1)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-                <ScrollBar orientation="horizontal" />
-              </ScrollArea>
-            </AccordionContent>
-          </Card>
-        </AccordionItem>
+      {FISCAL_YEARS.map(year => (
+        <div key={year} className="space-y-8">
+          <div className="flex items-center gap-4">
+             <h2 className="text-3xl font-black text-primary opacity-20 uppercase tracking-tighter">{year} FISCAL CYCLE</h2>
+             <div className="h-px flex-1 bg-primary/10"></div>
+          </div>
+          
+          <Accordion type="single" collapsible className="w-full space-y-6">
+            {MONTHS.map((month, mIdx) => {
+              const monthItems = records.filter(r => {
+                if (!r.date) return false;
+                const d = new Date(r.date);
+                return d.getFullYear().toString() === year && d.toLocaleString('default', { month: 'long' }) === month;
+              });
 
-        <AccordionItem value="gps" className="border-none">
-          <Card className="border-2 shadow-lg overflow-hidden">
-            <AccordionTrigger className="p-6 hover:no-underline bg-muted/30 data-[state=open]:bg-primary/5 transition-all border-b border-dashed">
-              <div className="flex items-center gap-4">
-                <LayoutGrid className="h-6 w-6 text-primary" />
-                <span className="font-black text-xl uppercase tracking-tighter text-foreground">Receipts from GP Portal</span>
-                <Badge variant="outline" className="font-bold border-primary/30 text-primary uppercase text-[10px] bg-primary/5 px-3">
-                  {data.gpReceipts.length} SYNCED
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="p-0">
-              <ScrollArea className="w-full">
-                <Table className="border-collapse border text-[10px]">
-                  <TableHeader className="bg-muted/80">
-                    <TableRow>
-                      <TableHead className="w-[150px] uppercase font-black border text-center">Collection Date</TableHead>
-                      <TableHead className="w-[200px] uppercase font-black border">GP Node</TableHead>
-                      <TableHead className="w-[180px] uppercase font-black border text-center">Block</TableHead>
-                      <TableHead className="w-[150px] uppercase font-black border text-right pr-8">Generated Weight (Kg)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.gpReceipts.map((row, i) => (
-                      <TableRow key={i} className="hover:bg-primary/[0.01] border-b h-12">
-                        <TableCell className="border-r font-mono text-center">{row.date}</TableCell>
-                        <TableCell className="border-r font-black text-primary uppercase">{row.gpName}</TableCell>
-                        <TableCell className="border-r text-center font-bold uppercase">{row.block}</TableCell>
-                        <TableCell className="border-r text-right font-mono font-black text-primary text-sm bg-primary/[0.02] pr-8">{row.generatedWeight.toLocaleString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            </AccordionContent>
-          </Card>
-        </AccordionItem>
-      </Accordion>
+              if (year === '2026' && mIdx < 3) return null;
+
+              const driverReceipts = monthItems.filter((r: any) => r.submittedByRole === 'driver');
+              const gpReceipts = monthItems.filter((r: any) => r.submittedByRole === 'gp');
+              
+              const driverTotals = calculateTotals(driverReceipts);
+              const gpTotals = calculateTotals(gpReceipts);
+
+              return (
+                <AccordionItem value={`${year}-${month}`} key={`${year}-${month}`} className="border-none">
+                   <Card className="overflow-hidden border-2 shadow-xl">
+                      <AccordionTrigger className="p-6 hover:no-underline bg-muted/20 data-[state=open]:bg-primary/5 transition-all border-b border-dashed">
+                         <div className="flex justify-between w-full pr-8 items-center">
+                            <div className="flex items-center gap-4">
+                               <Calendar className="h-6 w-6 text-primary" />
+                               <span className="font-black text-xl uppercase tracking-tighter text-foreground">{month}</span>
+                            </div>
+                            <Badge variant="outline" className="font-bold border-primary/20 text-primary uppercase text-[8px] bg-primary/5 px-4 py-1">
+                                {monthItems.length} TOTAL RECEIPTS SYNCED
+                            </Badge>
+                         </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="p-6 space-y-12 bg-background">
+                         
+                         <Card className="border-2 shadow-sm overflow-hidden">
+                            <CardHeader className="bg-primary/5 border-b py-3 flex flex-row items-center justify-between">
+                               <div className="flex items-center gap-2">
+                                  <Truck className="h-4 w-4 text-primary" />
+                                  <h3 className="font-black uppercase text-xs tracking-widest text-primary">Submissions from Driver Portal</h3>
+                               </div>
+                               <Badge className="bg-primary font-black text-[9px] uppercase">{driverReceipts.length} LOGGED</Badge>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                               <ScrollArea className="w-full">
+                                  <div className="min-w-[1400px]">
+                                     <Table className="text-[10px]">
+                                        <TableHeader className="bg-muted/50">
+                                           <TableRow>
+                                              <TableHead className="w-[120px] font-black uppercase border-r text-center">Date</TableHead>
+                                              <TableHead className="w-[150px] font-black uppercase border-r text-center">Route ID</TableHead>
+                                              <TableHead className="w-[200px] font-black uppercase border-r text-right px-6">GP-wise Breakdown (Click)</TableHead>
+                                              <TableHead className="w-[120px] font-black uppercase border-r text-right bg-primary/5 text-primary">Total (Kg)</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Plastic</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Paper</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Metal</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Cloth</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Glass</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Sanitation</TableHead>
+                                              <TableHead className="w-[100px] font-black uppercase text-center">Actions</TableHead>
+                                           </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                           {driverReceipts.map((row: any, i: number) => (
+                                             <TableRow key={i} className="h-14 border-b border-dashed last:border-0 hover:bg-muted/30">
+                                                <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
+                                                <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
+                                                <TableCell className="border-r p-0">
+                                                   <Popover>
+                                                      <PopoverTrigger asChild>
+                                                         <button className="w-full h-14 flex items-center justify-end px-6 font-bold text-blue-700 hover:bg-blue-50 underline decoration-dotted underline-offset-4 uppercase">
+                                                            VIEW BREAKDOWN
+                                                         </button>
+                                                      </PopoverTrigger>
+                                                      <PopoverContent className="w-72 p-0 border-2 shadow-2xl overflow-hidden" align="end">
+                                                         <div className="bg-blue-700 text-white p-3 font-black uppercase text-[9px] flex items-center gap-2">
+                                                            <MapPin className="h-3 w-3" /> GP Contribution
+                                                         </div>
+                                                         <Table>
+                                                            <TableBody>
+                                                               {row.gpBreakdown?.map((gp: any, idx: number) => (
+                                                                 <TableRow key={idx} className="h-10 border-b border-dashed">
+                                                                    <TableCell className="text-[9px] font-bold uppercase">{gp.name}</TableCell>
+                                                                    <TableCell className="text-right font-mono font-black text-blue-700">{gp.amount?.toFixed(1)}</TableCell>
+                                                                 </TableRow>
+                                                               ))}
+                                                            </TableBody>
+                                                         </Table>
+                                                      </PopoverContent>
+                                                   </Popover>
+                                                </TableCell>
+                                                <TableCell className="border-r text-right font-mono font-black text-primary bg-primary/[0.02]">{row.driverSubmitted?.toFixed(1)}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.paper}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.metal}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.cloth}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
+                                                <TableCell className="text-center font-black text-muted-foreground opacity-30 italic">SYNC'D</TableCell>
+                                             </TableRow>
+                                           ))}
+                                        </TableBody>
+                                        <TableFooter className="bg-primary/5 font-black uppercase text-[9px]">
+                                             <TableRow>
+                                                <TableCell colSpan={3} className="text-right border-r">Monthly Total (Driver):</TableCell>
+                                                <TableCell className="text-right border-r text-primary text-xs">{driverTotals.total.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{driverTotals.plastic.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{driverTotals.paper.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{driverTotals.metal.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{driverTotals.cloth.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{driverTotals.glass.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{driverTotals.sanitation.toFixed(1)}</TableCell>
+                                                <TableCell></TableCell>
+                                             </TableRow>
+                                          </TableFooter>
+                                     </Table>
+                                  </div>
+                                  <ScrollBar orientation="horizontal" />
+                               </ScrollArea>
+                            </CardContent>
+                         </Card>
+
+                         <Card className="border-2 shadow-sm overflow-hidden">
+                            <CardHeader className="bg-blue-50 border-b py-3 flex flex-row items-center justify-between">
+                               <div className="flex items-center gap-2">
+                                  <LayoutGrid className="h-4 w-4 text-blue-700" />
+                                  <h3 className="font-black uppercase text-xs tracking-widest text-blue-700">Submissions from GP Portal</h3>
+                               </div>
+                               <Badge className="bg-blue-700 font-black text-[9px] uppercase">{gpReceipts.length} SYNC'D</Badge>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                               <ScrollArea className="w-full">
+                                  <div className="min-w-[1600px]">
+                                     <Table className="text-[10px]">
+                                        <TableHeader className="bg-muted/50">
+                                           <TableRow>
+                                              <TableHead className="w-[120px] font-black uppercase border-r text-center">Date</TableHead>
+                                              <TableHead className="w-[120px] font-black uppercase border-r text-center">District</TableHead>
+                                              <TableHead className="w-[120px] font-black uppercase border-r text-center">Block</TableHead>
+                                              <TableHead className="w-[180px] font-black uppercase border-r">Tagged MRF</TableHead>
+                                              <TableHead className="w-[120px] font-black uppercase border-r text-center">Route ID</TableHead>
+                                              <TableHead className="w-[120px] font-black uppercase border-r text-right bg-blue-50 text-blue-800">Total (Kg)</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Plastic (gm)</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Paper</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Metal</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Glass</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Sanitation</TableHead>
+                                              <TableHead className="w-[90px] font-black uppercase border-r text-right">Others</TableHead>
+                                              <TableHead className="w-[100px] font-black uppercase text-center">Actions</TableHead>
+                                           </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                           {gpReceipts.map((row: any, i: number) => (
+                                             <TableRow key={i} className="h-14 border-b border-dashed last:border-0 hover:bg-muted/30">
+                                                <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
+                                                <TableCell className="border-r text-center uppercase font-bold text-muted-foreground">{row.district}</TableCell>
+                                                <TableCell className="border-r text-center uppercase font-bold text-muted-foreground">{row.block}</TableCell>
+                                                <TableCell className="border-r font-bold uppercase">{row.mrf}</TableCell>
+                                                <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
+                                                <TableCell className="border-r text-right font-mono font-black text-blue-800 bg-blue-50/50">{row.driverSubmitted?.toFixed(1)}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.plastic}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.paper}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.metal}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.glass}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.sanitation}</TableCell>
+                                                <TableCell className="border-r text-right font-mono">{row.others || 0}</TableCell>
+                                                <TableCell className="text-center font-black text-muted-foreground opacity-30 italic">VERIFIED</TableCell>
+                                             </TableRow>
+                                           ))}
+                                        </TableBody>
+                                        <TableFooter className="bg-blue-50 font-black uppercase text-[9px] text-blue-800">
+                                             <TableRow>
+                                                <TableCell colSpan={5} className="text-right border-r">Monthly Total (GP):</TableCell>
+                                                <TableCell className="text-right border-r text-xs">{gpTotals.total.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{gpTotals.plastic.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{gpTotals.paper.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{gpTotals.metal.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{gpTotals.glass.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{gpTotals.sanitation.toFixed(1)}</TableCell>
+                                                <TableCell className="text-right border-r">{gpTotals.others.toFixed(1)}</TableCell>
+                                                <TableCell></TableCell>
+                                             </TableRow>
+                                          </TableFooter>
+                                     </Table>
+                                  </div>
+                                  <ScrollBar orientation="horizontal" />
+                               </ScrollArea>
+                            </CardContent>
+                         </Card>
+
+                      </AccordionContent>
+                   </Card>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+        </div>
+      ))}
     </div>
   );
 }
 
-export default function GpUlbWasteReceiptDetailsPage() {
+export default function WasteReceiptSubmissionPage() {
   return (
-    <Suspense fallback={<div className="p-12 text-center">Loading verification ledger...</div>}>
-      <GpUlbWasteReceiptDetailsContent />
+    <Suspense fallback={<div className="p-12 text-center animate-pulse">Loading verified submission hub...</div>}>
+      <WasteReceiptSubmissionContent />
     </Suspense>
   );
 }

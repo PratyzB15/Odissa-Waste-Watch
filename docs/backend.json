@@ -1,28 +1,37 @@
 
 {
   "entities": {
-    "Admin": {
-      "title": "Admin",
-      "description": "State-level administrative user with pre-approved access.",
+    "WasteDetail": {
+      "title": "WasteDetail",
+      "description": "Authoritative reconciliation record for a waste collection circuit.",
       "type": "object",
       "properties": {
-        "email": {
-          "type": "string",
-          "format": "email",
-          "description": "Pre-approved administrative email."
-        },
-        "hashedPassword": {
-          "type": "string",
-          "description": "Securely hashed password stored after the first login."
-        },
-        "name": {
-          "type": "string",
-          "description": "Full name of the administrator."
+        "date": { "type": "string", "format": "date" },
+        "routeId": { "type": "string" },
+        "district": { "type": "string" },
+        "block": { "type": "string" },
+        "mrf": { "type": "string" },
+        "totalGpLoad": { "type": "number" },
+        "driverSubmitted": { "type": "number" },
+        "plastic": { "type": "number" },
+        "paper": { "type": "number" },
+        "metal": { "type": "number" },
+        "cloth": { "type": "number" },
+        "glass": { "type": "number" },
+        "sanitation": { "type": "number" },
+        "others": { "type": "number" },
+        "gpBreakdown": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "amount": { "type": "number" }
+            }
+          }
         }
       },
-      "required": [
-        "email"
-      ]
+      "required": ["date", "routeId", "district", "block", "mrf", "totalGpLoad", "driverSubmitted"]
     }
   },
   "auth": {
@@ -31,9 +40,9 @@
     ]
   },
   "firestore": {
-    "/admins/{email}": {
-      "schema": "#/backend/entities/Admin",
-      "description": "Collection of authorized administrators. Pre-populated with yogendra1yogi@gmail.com."
+    "/wasteDetails/{detailId}": {
+      "schema": "#/backend/entities/WasteDetail",
+      "description": "Collection of verified waste reconciliation records."
     }
   }
 }

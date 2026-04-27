@@ -6,12 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { UploadCloud, Loader2, Save, Calendar, Truck, Anchor, MapPin, Building, Route, ListPlus } from 'lucide-react';
+import { UploadCloud, Loader2, Save, Calendar, Truck, Anchor, MapPin, Building, Route, ListPlus, Phone, LayoutGrid, FileSearch, Sparkles, Info } from 'lucide-react';
 import React, { useState, useMemo, Suspense, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { extractWasteReceiptData } from "@/ai/flows/invoice-data-extraction";
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { extractWasteReceiptData } from '@/ai/flows/invoice-data-extraction';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 // District Data Imports for Logistical Resolution
 import { angulDistrictData } from "@/lib/disAngul";
@@ -38,18 +40,26 @@ import { khordhaDistrictData } from "@/lib/disKhordha";
 import { koraputDistrictData } from "@/lib/disKoraput";
 import { mayurbhanjDistrictData } from "@/lib/disMayurbhanj";
 import { malkangiriDistrictData } from "@/lib/disMalkangiri";
+import { rayagadaDistrictData } from "@/lib/disRayagada";
+import { nabarangpurDistrictData } from "@/lib/disNabarangpur";
+import { nayagarhDistrictData } from "@/lib/disNayagarh";
+import { nuapadaDistrictData } from "@/lib/disNuapada";
+import { puriDistrictData } from "@/lib/disPuri";
+import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
-function WasteReceiptDetailsContent() {
+function WasteReceiptGenerationContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const name = searchParams.get('name') || '';
+  const name = searchParams.get('name') || 'Personnel';
+  const phone = searchParams.get('contact') || 'N/A';
   const district = searchParams.get('district') || '';
   const block = searchParams.get('block') || '';
 
   const { toast } = useToast();
+  const db = useFirestore();
   const [mounted, setMounted] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     dateOfCollection: new Date().toISOString().split('T')[0],
@@ -57,14 +67,13 @@ function WasteReceiptDetailsContent() {
     paper: '',
     metal: '',
     glass: '',
+    sanitation: '',
     others: '',
   });
 
   const [gpWeights, setGpWeights] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   const routeData = useMemo(() => {
     if (!mounted || !district || !block) return null;
@@ -77,7 +86,9 @@ function WasteReceiptDetailsContent() {
         'koraput': koraputDistrictData, 'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
         'bargarh': bargarhDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData,
         'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData,
-        'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'sonepur': sonepurDistrictData
+        'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'sonepur': sonepurDistrictData,
+        'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
+        'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
     };
 
     const source = districtsMap[district.toLowerCase()];
@@ -111,38 +122,9 @@ function WasteReceiptDetailsContent() {
     };
   }, [mounted, district, block, name]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
-      reader.readAsDataURL(selectedFile);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!file || !preview) {
-        toast({ title: "No file selected", description: "Please select an image to upload.", variant: "destructive"});
-        return;
-    }
-    setIsLoading(true);
-    try {
-      const data = await extractWasteReceiptData({ receiptImage: preview });
-      // Partial mapping of AI data to form
-      setFormData(prev => ({
-        ...prev,
-        plastic: data.wasteQuantities.toLowerCase().includes('plastic') ? "50" : prev.plastic, // Placeholder mock logic for AI split
-        paper: data.wasteQuantities.toLowerCase().includes('paper') ? "30" : prev.paper,
-      }));
-      toast({ title: "Extraction Successful", description: "Nodal data partially extracted. Please finalize weights manually." });
-    } catch (error) {
-      console.error("Extraction failed:", error);
-      toast({ title: "Extraction Failed", description: "AI could not parse receipt. Please fill manually.", variant: "destructive"});
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const totalCollected = useMemo(() => {
+    return Object.values(gpWeights).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+  }, [gpWeights]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -152,200 +134,216 @@ function WasteReceiptDetailsContent() {
     setGpWeights({ ...gpWeights, [gp]: value });
   };
 
-  const totalCollected = useMemo(() => {
-    return Object.values(gpWeights).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-  }, [gpWeights]);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const handleSubmit = () => {
-    console.log("Submitting Verified Data:", { ...formData, gpWeights, totalCollected, route: routeData });
-    toast({ title: "Data Synchronized", description: "The collection metrics have been successfully transmitted to the ULB Hub." });
-    setFormData({ dateOfCollection: new Date().toISOString().split('T')[0], plastic: '', paper: '', metal: '', glass: '', others: '' });
-    setGpWeights({});
-    setFile(null);
-    setPreview(null);
+    setIsExtracting(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      try {
+        const result = await extractWasteReceiptData({ receiptImage: base64 });
+        if (result) {
+          if (result.dateOfCollection) setFormData(prev => ({ ...prev, dateOfCollection: result.dateOfCollection! }));
+          if (result.plastic) setFormData(prev => ({ ...prev, plastic: result.plastic! }));
+          if (result.paper) setFormData(prev => ({ ...prev, paper: result.paper! }));
+          if (result.metal) setFormData(prev => ({ ...prev, metal: result.metal! }));
+          if (result.glass) setFormData(prev => ({ ...prev, glass: result.glass! }));
+          if (result.sanitation) setFormData(prev => ({ ...prev, sanitation: result.sanitation! }));
+          if (result.others) setFormData(prev => ({ ...prev, others: result.others! }));
+          
+          if (result.gpWeights) {
+            const newGpWeights = { ...gpWeights };
+            Object.entries(result.gpWeights).forEach(([gp, weight]) => {
+              const matchedGp = routeData?.gps.find(g => g.toLowerCase().includes(gp.toLowerCase()));
+              if (matchedGp) newGpWeights[matchedGp] = weight;
+            });
+            setGpWeights(newGpWeights);
+          }
+          
+          toast({ title: "Extraction Complete", description: "Form fields populated from receipt photo." });
+        }
+      } catch (err) {
+        toast({ title: "Extraction Failed", description: "Could not read the receipt photo. Please enter data manually.", variant: "destructive" });
+      } finally {
+        setIsExtracting(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
-  if (!mounted || !routeData) return <div className="p-12 text-center animate-pulse">Syncing logistical context...</div>;
+  const handleSubmit = async () => {
+    if (!db || !routeData) return;
+    setIsSubmitting(true);
+
+    const gpList = Object.entries(gpWeights).map(([gpName, amount]) => ({
+      name: gpName,
+      amount: parseFloat(amount) || 0
+    }));
+
+    const payload = {
+      date: formData.dateOfCollection,
+      routeId: routeData.routeId,
+      mrf: routeData.mrf,
+      block: routeData.block,
+      district: routeData.district,
+      submittedByRole: 'driver',
+      driverName: name,
+      driverContact: phone,
+      totalGpLoad: totalCollected,
+      driverSubmitted: totalCollected, 
+      plastic: parseFloat(formData.plastic) || 0,
+      paper: parseFloat(formData.paper) || 0,
+      metal: parseFloat(formData.metal) || 0,
+      glass: parseFloat(formData.glass) || 0,
+      sanitation: parseFloat(formData.sanitation) || 0,
+      others: parseFloat(formData.others) || 0,
+      gpBreakdown: gpList,
+      submittedAt: new Date().toISOString()
+    };
+
+    try {
+      await addDoc(collection(db, 'wasteDetails'), payload);
+      toast({ title: "Receipt Generated", description: "Logistical circuit marked as COMPLETED and synced with ULB Hub." });
+      router.push(`/civilian?${searchParams.toString()}`);
+    } catch (err) {
+      toast({ title: "Submission Failed", description: "Error syncing with master ledger.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!mounted) return <div className="p-12 text-center animate-pulse">Initializing Hub...</div>;
+  if (!routeData) return <div className="p-12 text-center text-muted-foreground">Logistical circuit not resolved.</div>;
 
   return (
-    <div className="grid lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
-      {/* Receipt Preview & AI Card */}
-      <div className="space-y-6">
-        <Card className="border-2 shadow-sm">
-            <CardHeader className="bg-muted/30 border-b">
-                <CardTitle className="flex items-center gap-2 font-headline uppercase tracking-tight">
-                    <UploadCloud className="text-primary h-5 w-5" /> Upload Physical Receipt
+    <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-8">
+      <div className="lg:col-span-4 space-y-6">
+        <Card className="border-2 border-primary/20 shadow-lg bg-primary/[0.02]">
+            <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-black uppercase flex items-center gap-2 text-primary">
+                    <Sparkles className="h-4 w-4" /> AI Receipt Assistant
                 </CardTitle>
-                <CardDescription>Digitize the official paper receipt for automated nodal auditing.</CardDescription>
+                <CardDescription className="text-[10px] font-bold">Upload a photo to automatically fill the form.</CardDescription>
             </CardHeader>
-            <CardContent className="pt-6">
-                <div className="space-y-4">
-                    <div className="relative flex justify-center w-full h-64 border-2 border-dashed rounded-2xl bg-muted/5 group hover:bg-muted/10 transition-all cursor-pointer">
-                        <input
-                            id="receipt-upload"
-                            type="file"
-                            accept="image/*"
-                            className="absolute inset-0 z-10 w-full h-full opacity-0 cursor-pointer"
-                            onChange={handleFileChange}
-                        />
-                        {preview ? (
-                            <img src={preview} alt="Waste Receipt preview" className="object-contain w-full h-full p-2 rounded-lg" />
-                        ) : (
-                            <div className="flex flex-col items-center justify-center text-muted-foreground">
-                                <UploadCloud className="w-16 h-16 mb-2 opacity-20 group-hover:opacity-40 transition-opacity" />
-                                <span className="text-xs font-black uppercase tracking-widest">Tap to Capture / Upload</span>
-                            </div>
-                        )}
+            <CardContent className="space-y-4">
+                <div className="border-2 border-dashed border-primary/20 rounded-2xl p-8 text-center space-y-4 hover:bg-primary/5 transition-colors cursor-pointer relative group">
+                    <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleFileUpload} 
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                        disabled={isExtracting || isSubmitting}
+                    />
+                    <div className="p-4 rounded-full bg-primary/10 w-fit mx-auto group-hover:scale-110 transition-transform">
+                        {isExtracting ? <Loader2 className="h-8 w-8 text-primary animate-spin" /> : <UploadCloud className="h-8 w-8 text-primary" />}
                     </div>
-                    <Button onClick={handleUpload} disabled={isLoading || !file} className="w-full h-12 font-black uppercase tracking-widest shadow-lg">
-                        {isLoading ? <Loader2 className="animate-spin mr-2" /> : <UploadCloud className="mr-2" />}
-                        {isLoading ? 'Extracting Metrics...' : 'Run AI Nodal Extraction'}
-                    </Button>
+                    <div>
+                        <p className="text-xs font-black uppercase text-primary">{isExtracting ? 'Extracting Data...' : 'Upload Receipt Photo'}</p>
+                        <p className="text-[9px] text-muted-foreground mt-1">PNG, JPG up to 10MB</p>
+                    </div>
                 </div>
-            </CardContent>
-        </Card>
-
-        {/* Operational Guidance */}
-        <Card className="border-2 border-primary/20 bg-primary/[0.01]">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2 text-primary">
-                    <Info className="h-4 w-4" /> Administrative Guidance
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-[11px] font-bold text-muted-foreground leading-relaxed italic">
-                    Ensure all GP-wise weights are verified against the physical segregation shed logs. Total material stream weights (Plastic, Paper, etc.) should ideally match the aggregate GP collection load for accurate reconciliation at the {routeData.mrf} node.
-                </p>
             </CardContent>
         </Card>
       </div>
 
-      {/* Main Verified Sync Form */}
-      <Card className="border-2 shadow-xl border-primary/20 overflow-hidden">
-        <CardHeader className="bg-primary/5 border-b pb-6">
-            <CardTitle className="text-xl font-headline font-black uppercase tracking-tight text-primary flex items-center gap-2">
-                <Save className="h-6 w-6" /> Verified Sync Form
-            </CardTitle>
-            <CardDescription className="font-bold text-primary opacity-70">Authoritative transmission ledger to ULB Hub.</CardDescription>
-        </CardHeader>
-        
-        <ScrollArea className="h-[75vh]">
-            <CardContent className="p-8 space-y-10">
-                {/* Section 1: Circuit Context (Metadata) */}
-                <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
-                        <Route className="h-3 w-3 text-primary" /> Logistical Circuit Context
-                    </h3>
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Date of Collection</Label>
-                            <div className="relative">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
-                                <Input id="dateOfCollection" type="date" value={formData.dateOfCollection} onChange={handleInputChange} className="pl-9 font-bold bg-muted/20" />
+      <div className="lg:col-span-8">
+        <Card className="border-2 shadow-xl border-primary/20 overflow-hidden">
+            <CardHeader className="bg-primary/5 border-b pb-6">
+                <CardTitle className="text-xl font-headline font-black uppercase tracking-tight text-primary flex items-center gap-2">
+                    <Truck className="h-6 w-6" /> Waste Receipt Generation
+                </CardTitle>
+                <CardDescription className="font-bold text-primary opacity-70">Authoritative transmission ledger for circuit: {routeData.routeName}</CardDescription>
+            </CardHeader>
+            
+            <ScrollArea className="h-[75vh]">
+                <CardContent className="p-8 space-y-10">
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
+                            <Route className="h-3 w-3 text-primary" /> Logistical Circuit Context
+                        </h3>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Driver Name</Label>
+                                <Input value={name.toUpperCase()} disabled className="font-bold bg-muted/20" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Phone No.</Label>
+                                <Input value={phone} disabled className="font-mono font-bold bg-muted/20" />
                             </div>
                         </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Circuit ID</Label>
-                            <Input value={routeData.routeId} disabled className="font-mono font-black text-primary border-primary/10" />
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Route ID</Label>
+                                <Input value={routeData.routeId} disabled className="font-mono font-black text-primary border-primary/10" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Date of Collection</Label>
+                                <Input id="dateOfCollection" type="date" value={formData.dateOfCollection} onChange={handleInputChange} className="font-bold" />
+                            </div>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-6">
-                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">District Node</Label>
-                            <Input value={routeData.district.toUpperCase()} disabled className="font-bold bg-muted/20 uppercase" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase opacity-60">Administrative Block</Label>
-                            <Input value={routeData.block.toUpperCase()} disabled className="font-bold bg-muted/20 uppercase" />
-                        </div>
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase opacity-60">Target Processing Facility (MRF)</Label>
-                        <div className="relative">
-                            <Anchor className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-30" />
-                            <Input value={routeData.mrf.toUpperCase()} disabled className="pl-9 font-black text-primary border-primary/20" />
-                        </div>
-                    </div>
-                </div>
 
-                {/* Section 2: GP-wise Collection Entries */}
-                <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
-                        <MapPin className="h-3 w-3 text-primary" /> GP-wise Collection (Kg)
-                    </h3>
-                    <div className="bg-muted/10 border-2 border-dashed rounded-2xl p-6 space-y-4">
-                        {routeData.gps.map((gp) => (
-                            <div key={gp} className="flex items-center justify-between gap-6 group">
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className="h-2 w-2 rounded-full bg-primary/20 group-hover:bg-primary transition-colors" />
-                                    <Label className="text-[10px] font-black uppercase truncate">{gp}</Label>
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
+                            <MapPin className="h-3 w-3 text-primary" /> GP-wise Collection Breakdown (Kg)
+                        </h3>
+                        <div className="bg-muted/10 border-2 border-dashed rounded-2xl p-6 space-y-4">
+                            {routeData.gps.map((gp) => (
+                                <div key={gp} className="flex items-center justify-between gap-6 group">
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                        <div className="h-2 w-2 rounded-full bg-primary/20 group-hover:bg-primary transition-colors" />
+                                        <Label className="text-[10px] font-black uppercase truncate">{gp}</Label>
+                                    </div>
+                                    <Input 
+                                        type="number" 
+                                        placeholder="0.0" 
+                                        value={gpWeights[gp] || ''} 
+                                        onChange={(e) => handleGpWeightChange(gp, e.target.value)}
+                                        className="w-32 h-9 font-mono font-black text-right"
+                                    />
                                 </div>
-                                <Input 
-                                    type="number" 
-                                    placeholder="0.0" 
-                                    value={gpWeights[gp] || ''} 
-                                    onChange={(e) => handleGpWeightChange(gp, e.target.value)}
-                                    className="w-32 h-9 font-mono font-black text-right border-primary/10 focus:border-primary transition-all"
-                                />
+                            ))}
+                            <Separator className="my-4 border-dashed" />
+                            <div className="flex justify-between items-center px-2">
+                                <span className="text-[10px] font-black uppercase text-primary">Aggregate Load</span>
+                                <span className="text-xl font-black font-mono text-foreground">{totalCollected.toFixed(2)} KG</span>
                             </div>
-                        ))}
-                        <Separator className="my-4 border-dashed" />
-                        <div className="flex justify-between items-center px-2">
-                            <span className="text-[10px] font-black uppercase text-primary">Aggregate Load</span>
-                            <span className="text-xl font-black font-mono text-foreground">{totalCollected.toFixed(1)} KG</span>
                         </div>
                     </div>
-                </div>
 
-                {/* Section 3: Material Stream Breakdown */}
-                <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
-                        <ListPlus className="h-3 w-3 text-primary" /> Material Stream Breakdown (Kg)
-                    </h3>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="plastic" className="text-[9px] font-black uppercase opacity-60">Plastic</Label>
-                            <Input id="plastic" type="number" placeholder="0.0" value={formData.plastic} onChange={handleInputChange} className="font-mono font-bold" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="paper" className="text-[9px] font-black uppercase opacity-60">Paper</Label>
-                            <Input id="paper" type="number" placeholder="0.0" value={formData.paper} onChange={handleInputChange} className="font-mono font-bold" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="metal" className="text-[9px] font-black uppercase opacity-60">Metal</Label>
-                            <Input id="metal" type="number" placeholder="0.0" value={formData.metal} onChange={handleInputChange} className="font-mono font-bold" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="glass" className="text-[9px] font-black uppercase opacity-60">Glass</Label>
-                            <Input id="glass" type="number" placeholder="0.0" value={formData.glass} onChange={handleInputChange} className="font-mono font-bold" />
-                        </div>
-                        <div className="space-y-1.5 col-span-2 lg:col-span-1">
-                            <Label htmlFor="others" className="text-[9px] font-black uppercase opacity-60">Others</Label>
-                            <Input id="others" type="number" placeholder="0.0" value={formData.others} onChange={handleInputChange} className="font-mono font-bold" />
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
+                            <ListPlus className="h-3 w-3 text-primary" /> Material Stream Distribution (Kg)
+                        </h3>
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            {['plastic', 'paper', 'metal', 'glass', 'sanitation', 'others'].map(item => (
+                                <div key={item} className="space-y-1.5">
+                                    <Label htmlFor={item} className="text-[9px] font-black uppercase opacity-60">{item}</Label>
+                                    <Input id={item} type="number" placeholder="0.0" value={formData[item as keyof typeof formData]} onChange={handleInputChange} className="font-mono font-bold" />
+                                </div>
+                            ))}
                         </div>
                     </div>
-                </div>
-            </CardContent>
-        </ScrollArea>
-
-        <CardFooter className="bg-primary/5 border-t p-6">
-            <Button 
-                onClick={handleSubmit} 
-                disabled={totalCollected === 0} 
-                className="w-full h-14 text-lg font-black uppercase tracking-[0.1em] shadow-xl hover:scale-[1.01] transition-all"
-            >
-                <Save className="mr-2 h-6 w-6" /> Finalize & Sync with Hub
-            </Button>
-        </CardFooter>
-      </Card>
+                </CardContent>
+            </ScrollArea>
+            <CardFooter className="bg-primary/5 border-t p-6">
+                <Button onClick={handleSubmit} disabled={totalCollected === 0 || isExtracting || isSubmitting} className="w-full h-14 text-lg font-black uppercase tracking-widest shadow-xl">
+                    {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2 h-6 w-6" />}
+                    Finalize & Submit Verified Receipt
+                </Button>
+            </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }
 
-export default function WasteReceiptDetailsPage() {
+export default function WasteReceiptGenerationPage() {
   return (
     <Suspense fallback={<div className="p-12 text-center animate-pulse">Loading verified synchronization hub...</div>}>
-      <WasteReceiptDetailsContent />
+      <WasteReceiptGenerationContent />
     </Suspense>
   );
 }

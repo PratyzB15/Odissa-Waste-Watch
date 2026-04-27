@@ -1,141 +1,92 @@
 
+'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Download, FileText, MapPin, Truck, User, Droplet, Anchor } from "lucide-react";
+import { Download, FileText, MapPin, Truck, User, Droplet, Anchor, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, query, where, orderBy } from "firebase/firestore";
+import { useMemo, Suspense } from "react";
 
-const reportData = {
-  district: "Cuttack",
-  block: "Salipur",
-  collectionPoint: "Salipur GP Segregation Shed",
-  gpName: "Gobindpur",
-  receiptNo: "INV-202407-001",
-  receiptDate: "2024-07-31",
-  sender: {
-    name: "Sunita Sharma",
-    designation: "GP Official",
-    contact: "9123456780",
-  },
-  receiver: {
-    name: "Amit Patel",
-    designation: "ULB Supervisor",
-    contact: "9098765432",
-  },
-  droppingPoint: {
-    ulbName: "Cuttack Municipal Corporation",
-    mrfName: "Central MRF Cuttack",
-  },
-  vehicle: {
-    number: "OD-02-AB-1234",
-    type: "Tata Ace",
-    driverName: "Ramesh Kumar",
-    driverContact: "9876543210",
-  },
-  waste: [
-    { type: "Plastic", quantity: "550 kg" },
-    { type: "Paper", quantity: "320 kg" },
-    { type: "Metal", quantity: "80 kg" },
-    { type: "Glass", quantity: "120 kg" },
-    { type: "Special care (Domestic hazardous)", quantity: "30 kg" },
-    { type: "Cloth", quantity: "75 kg" },
-    { type: "Sanitary waste", quantity: "40 kg" },
-  ],
-  receiptPdf: "/receipts/INV-202407-001.pdf",
-};
+function ApprovedReportsContent() {
+  const db = useFirestore();
+  const reportsQuery = useMemo(() => db ? query(collection(db, 'monthlyReports'), where('status', '==', 'Approved'), orderBy('submittedAt', 'desc')) : null, [db]);
+  const { data: reports = [] } = useCollection(reportsQuery);
 
+  return (
+    <div className="space-y-8">
+      <Card className="border-2 border-primary/20 bg-primary/[0.01]">
+        <CardHeader className="bg-primary/5 border-b">
+            <CardTitle className="text-3xl font-black uppercase tracking-tight text-primary flex items-center gap-3">
+                <ShieldCheck className="h-10 w-10" /> Verified Monthly Reports (State Ledger)
+            </CardTitle>
+            <CardDescription className="text-lg font-bold">Consolidated directory of all monthly submissions approved by Block representatives.</CardDescription>
+        </CardHeader>
+      </Card>
+
+      <div className="grid gap-8">
+        {reports.map((report: any) => (
+            <Card key={report.id} className="border-2 shadow-lg">
+                <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/30">
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase text-primary">Node: {report.gpName} ({report.block})</CardTitle>
+                        <CardDescription>Approved on: {new Date(report.submittedAt).toLocaleDateString()}</CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm" className="font-black text-[10px] uppercase">
+                        <Download className="mr-2 h-3 w-3"/> Export Receipt
+                    </Button>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                    <div className="grid grid-cols-3 gap-6">
+                        <div className="p-3 border rounded-lg bg-card">
+                            <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Administrative Context</p>
+                            <p className="text-xs font-bold uppercase">{report.district} District</p>
+                            <p className="text-[10px] text-primary font-bold uppercase">{report.ulbName}</p>
+                        </div>
+                        <div className="p-3 border rounded-lg bg-card text-center">
+                             <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Receipt Reference</p>
+                             <p className="text-xs font-mono font-bold">{report.receiptNo}</p>
+                        </div>
+                        <div className="p-3 border rounded-lg bg-card text-right">
+                             <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Total Tonnage</p>
+                             <p className="text-lg font-black text-primary">{parseFloat(report.plastic || 0) + parseFloat(report.paper || 0) + parseFloat(report.metal || 0)} Kg</p>
+                        </div>
+                    </div>
+                    <Separator className="border-dashed" />
+                    <Table>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow>
+                                {['Plastic', 'Paper', 'Metal', 'Glass', 'Special', 'Cloth', 'Sanitary'].map(h => <TableHead key={h} className="text-center font-black uppercase text-[9px]">{h}</TableHead>)}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell className="text-center font-mono font-bold text-xs">{report.plastic}</TableCell>
+                                <TableCell className="text-center font-mono font-bold text-xs">{report.paper}</TableCell>
+                                <TableCell className="text-center font-mono font-bold text-xs">{report.metal}</TableCell>
+                                <TableCell className="text-center font-mono font-bold text-xs">{report.glass}</TableCell>
+                                <TableCell className="text-center font-mono font-bold text-xs">{report.special}</TableCell>
+                                <TableCell className="text-center font-mono font-bold text-xs">{report.cloth}</TableCell>
+                                <TableCell className="text-center font-mono font-bold text-xs">{report.sanitary}</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        ))}
+
+        {reports.length === 0 && (
+            <Card className="border-2 border-dashed p-32 text-center text-muted-foreground flex flex-col items-center gap-4 opacity-30">
+                <FileText className="h-20 w-20" />
+                <p className="text-xl font-black uppercase tracking-[0.2em]">No Approved Reports Resolved</p>
+            </Card>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function MonthlyDetailsPage() {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-start">
-            <div>
-                <CardTitle>Monthly Report Details</CardTitle>
-                <CardDescription>Viewing submitted report for {reportData.gpName}, {reportData.block} - {reportData.district}.</CardDescription>
-            </div>
-            <Button variant="outline"><Download className="mr-2"/> Download Waste Receipt PDF</Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-8">
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card>
-                 <CardHeader><CardTitle className="text-base flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" />Location Details</CardTitle></CardHeader>
-                 <CardContent className="text-sm space-y-2">
-                    <p><span className="font-semibold">District:</span> {reportData.district}</p>
-                    <p><span className="font-semibold">Block:</span> {reportData.block}</p>
-                    <p><span className="font-semibold">GP Name:</span> {reportData.gpName}</p>
-                    <p><span className="font-semibold">Collection Point:</span> {reportData.collectionPoint}</p>
-                 </CardContent>
-            </Card>
-            <Card>
-                 <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Waste Receipt Details</CardTitle></CardHeader>
-                 <CardContent className="text-sm space-y-2">
-                    <p><span className="font-semibold">Receipt No:</span> {reportData.receiptNo}</p>
-                    <p><span className="font-semibold">Receipt Date:</span> {reportData.receiptDate}</p>
-                 </CardContent>
-            </Card>
-             <Card>
-                 <CardHeader><CardTitle className="text-base flex items-center gap-2"><Anchor className="h-5 w-5 text-primary" />Dropping Point</CardTitle></CardHeader>
-                 <CardContent className="text-sm space-y-2">
-                    <p><span className="font-semibold">ULB Name:</span> {reportData.droppingPoint.ulbName}</p>
-                    <p><span className="font-semibold">SWM Unit (MRF):</span> {reportData.droppingPoint.mrfName}</p>
-                 </CardContent>
-            </Card>
-        </div>
-
-        <Separator />
-
-        <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2"><User className="h-5 w-5 text-primary"/>Personnel Details</h3>
-                <div className="p-4 border rounded-lg space-y-3 text-sm">
-                    <div>
-                        <h4 className="font-medium text-muted-foreground">Sender Details</h4>
-                        <p>Name: {reportData.sender.name} ({reportData.sender.designation})</p>
-                        <p>Contact: {reportData.sender.contact}</p>
-                    </div>
-                    <Separator/>
-                     <div>
-                        <h4 className="font-medium text-muted-foreground">Receiver Details</h4>
-                        <p>Name: {reportData.receiver.name} ({reportData.receiver.designation})</p>
-                        <p>Contact: {reportData.receiver.contact}</p>
-                    </div>
-                </div>
-            </div>
-             <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2"><Truck className="h-5 w-5 text-primary"/>Vehicle Details</h3>
-                <div className="p-4 border rounded-lg space-y-3 text-sm">
-                    <p><span className="font-semibold">Vehicle Number:</span> {reportData.vehicle.number}</p>
-                    <p><span className="font-semibold">Vehicle Type:</span> {reportData.vehicle.type}</p>
-                    <p><span className="font-semibold">Driver Name:</span> {reportData.vehicle.driverName}</p>
-                    <p><span className="font-semibold">Driver Contact:</span> {reportData.vehicle.driverContact}</p>
-                </div>
-            </div>
-        </div>
-
-        <div>
-            <h3 className="font-semibold text-lg flex items-center gap-2 mb-4"><Droplet className="h-5 w-5 text-primary"/>Waste Quantity Details</h3>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Waste Type</TableHead>
-                        <TableHead className="text-right">Quantity (kg)</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {reportData.waste.map(item => (
-                        <TableRow key={item.type}>
-                            <TableCell>{item.type}</TableCell>
-                            <TableCell className="text-right">{item.quantity}</TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </div>
-
-      </CardContent>
-    </Card>
-  );
+    return (<Suspense fallback={<div>Loading state ledger...</div>}><ApprovedReportsContent /></Suspense>);
 }

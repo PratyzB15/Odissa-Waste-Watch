@@ -14,7 +14,6 @@ import {
   XCircle, 
   AlertCircle, 
   TrendingUp, 
-  Filter, 
   ArrowRight,
   Building,
   Home,
@@ -35,6 +34,8 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useCollection, useFirestore } from '@/firebase';
+import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 
 // District Data Imports for Logistical Resolution
 import { angulDistrictData } from "@/lib/disAngul";
@@ -61,6 +62,12 @@ import { khordhaDistrictData } from "@/lib/disKhordha";
 import { koraputDistrictData } from "@/lib/disKoraput";
 import { mayurbhanjDistrictData } from "@/lib/disMayurbhanj";
 import { malkangiriDistrictData } from "@/lib/disMalkangiri";
+import { rayagadaDistrictData } from "@/lib/disRayagada";
+import { nabarangpurDistrictData } from "@/lib/disNabarangpur";
+import { nayagarhDistrictData } from "@/lib/disNayagarh";
+import { nuapadaDistrictData } from "@/lib/disNuapada";
+import { puriDistrictData } from "@/lib/disPuri";
+import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
 // Temporal Engine for Countdown Calculation
 const calculateDaysUntilNext = (schedule: string, checkDate: Date) => {
@@ -101,12 +108,19 @@ function CivilianDashboardContent() {
   const [mounted, setMounted] = useState(false);
   const [chartMode, setChartToggle] = useState('monthly');
 
+  const db = useFirestore();
+  const recentReceiptsQuery = useMemo(() => {
+    if (!db || !name) return null;
+    return query(collection(db, 'wasteDetails'), orderBy('date', 'desc'), limit(5));
+  }, [db, name]);
+  const { data: verifiedRecords = [] } = useCollection(recentReceiptsQuery);
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const personnelData = useMemo(() => {
-    if (!mounted || !district) return null;
+    if (!mounted || !district || !block) return null;
 
     const districtsMap: Record<string, any> = {
         'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData,
@@ -116,7 +130,9 @@ function CivilianDashboardContent() {
         'koraput': koraputDistrictData, 'malkangiri': malkangiriDistrictData, 'mayurbhanj': mayurbhanjDistrictData,
         'bargarh': bargarhDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData,
         'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData,
-        'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'sonepur': sonepurDistrictData
+        'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'sonepur': sonepurDistrictData,
+        'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData,
+        'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData
     };
 
     const source = districtsMap[district.toLowerCase()];
@@ -175,12 +191,6 @@ function CivilianDashboardContent() {
         { month: 'Jul', waste: 2200 },
     ];
 
-    const history = [
-        { date: '2026-05-18', gps: route?.startingGp || 'Node A', drop: route?.destination || 'Facility', status: 'Completed' },
-        { date: '2026-05-11', gps: route?.startingGp || 'Node A', drop: route?.destination || 'Facility', status: 'Missed' },
-        { date: '2026-05-04', gps: route?.startingGp || 'Node A', drop: route?.destination || 'Facility', status: 'Completed' },
-    ];
-
     const gpList = [route?.startingGp, ...(route?.intermediateGps || []), route?.finalGp || route?.destination].filter(Boolean);
 
     return { 
@@ -198,12 +208,12 @@ function CivilianDashboardContent() {
         monthlyEfficiency,
         yearlyEfficiency,
         streamData,
-        last5MonthsWaste,
-        history
+        last5MonthsWaste
     };
   }, [mounted, district, block, name]);
 
-  if (!mounted || !personnelData) return <div className="p-12 text-center animate-pulse">Syncing logistical circuits...</div>;
+  if (!mounted) return <div className="p-12 text-center animate-pulse">Initializing Portal...</div>;
+  if (!personnelData) return <div className="p-12 text-center text-muted-foreground italic">Logistical context not resolved. Please ensure your login parameters are correct.</div>;
 
   return (
     <div className="grid gap-6">
@@ -228,7 +238,7 @@ function CivilianDashboardContent() {
         
         <Popover>
             <PopoverTrigger asChild>
-                <Card className="border-2 border-primary/10 bg-card shadow-sm cursor-pointer hover:bg-primary/5 transition-all">
+                <Card className="border-2 border-primary/10 bg-card shadow-sm cursor-pointer hover:bg-primary/5 transition-all group">
                     <CardHeader className="p-3 pb-1 flex row items-center justify-between space-y-0">
                         <CardTitle className="text-[9px] uppercase font-black text-muted-foreground">GPs Scheduled</CardTitle>
                         <ListFilter className="h-3 w-3 opacity-20" />
@@ -355,15 +365,15 @@ function CivilianDashboardContent() {
             </Card>
         </div>
 
-      {/* Recent Schedule Hub */}
+      {/* Recent Schedule Hub - Now using real verified data */}
       <Card className="border-2">
         <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
             <div>
                 <CardTitle className="text-lg font-bold flex items-center gap-2"><Calendar className="h-5 w-5 text-primary"/> Recent Schedule Hub</CardTitle>
-                <CardDescription>Last 5 collection sequences resolved from your circuit.</CardDescription>
+                <CardDescription>Last 3 collection sequences resolved from your circuit.</CardDescription>
             </div>
             <Button variant="outline" size="sm" asChild>
-                <Link href="/civilian/history" className="text-xs font-black uppercase">Full History &rarr;</Link>
+                <Link href={`/civilian/history?${searchParams.toString()}`} className="text-xs font-black uppercase">Full History &rarr;</Link>
             </Button>
         </CardHeader>
         <CardContent className="p-0">
@@ -377,20 +387,25 @@ function CivilianDashboardContent() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {personnelData.history.map((row, i) => (
-                        <TableRow key={i} className="hover:bg-muted/20">
+                    {verifiedRecords.slice(0, 3).map((row: any, i: number) => (
+                        <TableRow key={row.id} className="hover:bg-muted/20">
                             <TableCell className="font-mono text-xs font-bold">{row.date}</TableCell>
-                            <TableCell className="text-xs font-black uppercase text-foreground">{row.gps}</TableCell>
+                            <TableCell className="text-xs font-black uppercase text-foreground">{personnelData.route?.startingGp || 'Circuit Node'}</TableCell>
                             <TableCell className="text-xs font-bold text-primary flex items-center gap-1 pt-4">
-                                <Anchor className="h-3 w-3" /> {row.drop}
+                                <Anchor className="h-3 w-3" /> {row.mrf}
                             </TableCell>
                             <TableCell className="text-center">
-                                <Badge variant={row.status === 'Completed' ? 'default' : 'destructive'} className="text-[10px] font-black uppercase">
-                                    {row.status}
+                                <Badge className="bg-green-600 font-black uppercase text-[9px] flex items-center gap-1 w-fit mx-auto">
+                                    <CheckCircle2 className="h-2 w-2"/> Completed
                                 </Badge>
                             </TableCell>
                         </TableRow>
                     ))}
+                    {verifiedRecords.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={4} className="h-24 text-center text-muted-foreground italic opacity-40 uppercase font-black text-[10px]">No completed trips synced for current cycle.</TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
             </Table>
         </CardContent>

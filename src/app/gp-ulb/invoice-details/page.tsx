@@ -1,145 +1,154 @@
 
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { User, Calendar, Database, FileText, Truck, Anchor } from 'lucide-react';
-import React, { useMemo, Suspense } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { UploadCloud, Loader2, Save, Sparkles, FileSearch, Info, FileText } from 'lucide-react';
+import React, { useState, Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { extractWasteReceiptData } from '@/ai/flows/invoice-data-extraction';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
-function GpUlbWasteReceiptDetailsContent() {
-  const verifiedReceipts = useMemo(() => {
-    // Initializing with zero-state examples awaiting sync from Driver Portal
-    return [
-      {
-        personnelName: "Ramesh Kumar",
-        role: "Logistical Driver",
-        date: "2024-07-28",
-        total: 155,
-        plastic: 50,
-        paper: 40,
-        glass: 30,
-        other: 35,
-        status: "Verified"
-      },
-      {
-        personnelName: "Sita Majhi",
-        role: "Sanitation Worker",
-        date: "2024-07-28",
-        total: 88,
-        plastic: 20,
-        paper: 30,
-        glass: 15,
-        other: 23,
-        status: "Verified"
+function WasteReceiptGenerationContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const db = useFirestore();
+  const [mounted, setMounted] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    district: searchParams.get('district') || '',
+    block: searchParams.get('block') || '',
+    taggedMrf: '',
+    routeId: '',
+    totalKg: '',
+    plasticGm: '',
+    paper: '',
+    metal: '',
+    glass: '',
+    sanitation: '',
+    others: ''
+  });
+
+  useEffect(() => { setMounted(true); }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsExtracting(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      try {
+        const result = await extractWasteReceiptData({ receiptImage: base64 });
+        if (result) {
+          setFormData(prev => ({
+            ...prev,
+            date: result.dateOfCollection || prev.date,
+            taggedMrf: result.taggedMrf || prev.taggedMrf,
+            routeId: result.routeId || prev.routeId,
+            totalKg: result.totalWaste?.replace(/[^0-9.]/g, '') || '',
+            plasticGm: result.plastic?.replace(/[^0-9.]/g, '') || '',
+            paper: result.paper?.replace(/[^0-9.]/g, '') || '',
+            metal: result.metal?.replace(/[^0-9.]/g, '') || '',
+            glass: result.glass?.replace(/[^0-9.]/g, '') || '',
+            sanitation: result.sanitation?.replace(/[^0-9.]/g, '') || '',
+            others: result.others?.replace(/[^0-9.]/g, '') || ''
+          }));
+          toast({ title: "Extraction Complete", description: "Fields populated from photo." });
+        }
+      } catch (err) {
+        toast({ title: "Extraction Failed", description: "AI could not read the photo. Please enter manually.", variant: "destructive" });
+      } finally {
+        setIsExtracting(false);
       }
-    ];
-  }, []);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async () => {
+    if (!db) return;
+    setIsSubmitting(true);
+
+    try {
+      await addDoc(collection(db, 'wasteDetails'), {
+        date: formData.date,
+        district: formData.district,
+        block: formData.block,
+        mrf: formData.taggedMrf,
+        routeId: formData.routeId,
+        submittedByRole: 'gp',
+        gpName: searchParams.get('gp') || 'Nodal GP',
+        driverSubmitted: parseFloat(formData.totalKg) || 0,
+        totalGpLoad: parseFloat(formData.totalKg) || 0,
+        plastic: parseFloat(formData.plasticGm) || 0,
+        paper: parseFloat(formData.paper) || 0,
+        metal: parseFloat(formData.metal) || 0,
+        glass: parseFloat(formData.glass) || 0,
+        sanitation: parseFloat(formData.sanitation) || 0,
+        others: parseFloat(formData.others) || 0,
+        gpBreakdown: [{ name: searchParams.get('gp') || 'Nodal GP', amount: parseFloat(formData.totalKg) || 0 }],
+        submittedAt: new Date().toISOString()
+      });
+      toast({ title: "Receipt Generated", description: "Data synced with master ledger." });
+      router.push(`/gp-ulb?${searchParams.toString()}`);
+    } catch (err) {
+      toast({ title: "Error", description: "Submission failed.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!mounted) return null;
 
   return (
-    <div className="space-y-6">
-      <Card className="border-2 border-primary/20 bg-primary/[0.01] shadow-md">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <FileText className="h-8 w-8 text-primary" />
-            <div>
-              <CardTitle className="text-2xl font-headline font-black uppercase tracking-tight text-primary">Waste Receipt Verification Hub</CardTitle>
-              <CardDescription className="font-bold">Real-time oversight of collections synchronized from individual personnel portals.</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      <Card className="border-2 shadow-lg overflow-hidden">
-        <CardHeader className="bg-muted/30 border-b pb-4">
-            <div className="flex justify-between items-center">
-                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                    <Database className="h-4 w-4 text-primary" /> Logged Receipt Directory
-                </CardTitle>
-                <Badge className="bg-green-600 font-black uppercase text-[10px]">{verifiedReceipts.length} SYNCED TODAY</Badge>
-            </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <ScrollArea className="w-full">
-            <Table>
-              <TableHeader className="bg-muted/80">
-                <TableRow>
-                  <TableHead className="w-[200px] uppercase text-[10px] font-black tracking-widest border-r">Personnel (Name & Role)</TableHead>
-                  <TableHead className="w-[120px] uppercase text-[10px] font-black tracking-widest border-r text-center">Collection Date</TableHead>
-                  <TableHead className="w-[120px] text-right uppercase text-[10px] font-black tracking-widest border-r bg-primary/5 text-primary">Total Waste (Kg)</TableHead>
-                  <TableHead className="w-[80px] text-right uppercase text-[10px] font-black border-r">Plastic</TableHead>
-                  <TableHead className="w-[80px] text-right uppercase text-[10px] font-black border-r">Paper</TableHead>
-                  <TableHead className="w-[80px] text-right uppercase text-[10px] font-black border-r">Glass</TableHead>
-                  <TableHead className="w-[80px] text-right uppercase text-[10px] font-black">Other</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {verifiedReceipts.map((row, idx) => (
-                  <TableRow key={idx} className="hover:bg-muted/20 border-b border-dashed last:border-0 transition-colors">
-                    <TableCell className="border-r">
-                      <div className="space-y-1">
-                        <p className="font-black text-xs uppercase text-foreground leading-tight">{row.personnelName}</p>
-                        <Badge variant="secondary" className="text-[8px] font-bold py-0">{row.role}</Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell className="border-r text-center">
-                      <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-muted-foreground">
-                        <Calendar className="h-3 w-3 opacity-40" /> {row.date}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right border-r font-mono font-black text-primary text-sm bg-primary/[0.02]">
-                      {row.total.toLocaleString()} KG
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-xs border-r text-muted-foreground">{row.plastic}</TableCell>
-                    <TableCell className="text-right font-mono text-xs border-r text-muted-foreground">{row.paper}</TableCell>
-                    <TableCell className="text-right font-mono text-xs border-r text-muted-foreground">{row.glass}</TableCell>
-                    <TableCell className="text-right font-mono text-xs text-muted-foreground">{row.other}</TableCell>
-                  </TableRow>
-                ))}
-                {verifiedReceipts.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground italic">No synchronized receipts resolved for the current cycle.</TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        </CardContent>
-      </Card>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card className="border-2 border-dashed bg-muted/20">
-            <CardContent className="py-6 flex items-start gap-4">
-                <Truck className="h-6 w-6 text-primary mt-1 shrink-0" />
-                <div className="space-y-1">
-                    <p className="text-sm font-black uppercase tracking-tight">Logistical Verification Guidelines</p>
-                    <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-                        Data in this directory is synchronized in real-time from the "Verified Sync Form" submitted by Drivers and Sanitation workers. Facility managers should perform visual inspections of incoming loads to confirm alignment with these digital records.
-                    </p>
+    <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-8">
+      <div className="lg:col-span-4 space-y-6">
+        <Card className="border-2 border-primary/20 shadow-lg bg-primary/[0.02]">
+            <CardHeader><CardTitle className="text-sm font-black uppercase flex items-center gap-2 text-primary"><Sparkles className="h-4 w-4" /> AI Receipt Assistant</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+                <div className="border-2 border-dashed border-primary/20 rounded-2xl p-8 text-center space-y-4 hover:bg-primary/5 transition-colors cursor-pointer relative group">
+                    <input type="file" accept="image/*" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    <div className="p-4 rounded-full bg-primary/10 w-fit mx-auto group-hover:scale-110 transition-transform">
+                      {isExtracting ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <UploadCloud className="h-8 w-8 text-primary" />}
+                    </div>
+                    <p className="text-xs font-black uppercase text-primary">{isExtracting ? 'Extracting...' : 'Upload Receipt Photo'}</p>
                 </div>
             </CardContent>
         </Card>
-        <Card className="border-2 border-dashed bg-muted/20">
-            <CardContent className="py-6 flex items-start gap-4">
-                <Anchor className="h-6 w-6 text-primary mt-1 shrink-0" />
-                <div className="space-y-1">
-                    <p className="text-sm font-black uppercase tracking-tight">Audit Integration</p>
-                    <p className="text-xs text-muted-foreground font-medium italic leading-relaxed">
-                        Confirmed receipts automatically populate the monthly reconciliation ledger. Any significant variance between GP-declared load and ULB-received load will trigger an automatic audit flag in the District portal.
-                    </p>
-                </div>
+      </div>
+
+      <div className="lg:col-span-8">
+        <Card className="border-2 shadow-xl border-primary/20">
+            <CardHeader className="bg-primary/5 border-b pb-6"><CardTitle className="text-xl font-black uppercase flex items-center gap-2"><FileText className="h-6 w-6" /> Waste Receipt Generation</CardTitle></CardHeader>
+            <CardContent className="p-8 grid grid-cols-2 gap-6">
+                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Date</Label><Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
+                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">District</Label><Input value={formData.district} disabled className="bg-muted/20 font-bold" /></div>
+                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Block</Label><Input value={formData.block} disabled className="bg-muted/20 font-bold" /></div>
+                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Tagged MRF</Label><Input value={formData.taggedMrf} onChange={e => setFormData({...formData, taggedMrf: e.target.value})} className="font-bold" /></div>
+                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Route ID</Label><Input value={formData.routeId} onChange={e => setFormData({...formData, routeId: e.target.value})} className="font-mono font-bold" /></div>
+                <div className="space-y-2"><Label className="text-[9px] font-black uppercase opacity-60">Total (Kg)</Label><Input type="number" value={formData.totalKg} onChange={e => setFormData({...formData, totalKg: e.target.value})} className="font-mono font-bold" /></div>
             </CardContent>
+            <CardFooter className="bg-primary/5 border-t p-6">
+                <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full h-12 font-black uppercase tracking-widest shadow-lg">
+                    {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2 h-5 w-5" />} 
+                    Finalize & Submit Verified Receipt
+                </Button>
+            </CardFooter>
         </Card>
       </div>
     </div>
   );
 }
 
-export default function GpUlbWasteReceiptDetailsPage() {
-  return (
-    <Suspense fallback={<div className="p-12 text-center animate-pulse">Syncing verification hub...</div>}>
-      <GpUlbWasteReceiptDetailsContent />
-    </Suspense>
-  );
+export default function WasteReceiptGenerationPage() {
+  return (<Suspense fallback={<div>Loading...</div>}><WasteReceiptGenerationContent /></Suspense>);
 }

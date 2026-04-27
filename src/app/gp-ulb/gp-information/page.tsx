@@ -58,7 +58,8 @@ function GpInformationContent() {
   const [editingRow, setEditingRow] = useState<any | null>(null);
 
   const [formData, setFormData] = useState({
-    blockName: '',
+    ulbName: '',
+    mrfName: '',
     gpName: '',
     households: '',
     schools: '',
@@ -95,8 +96,8 @@ function GpInformationContent() {
         const wasteInfo = source.data.wasteGeneration.find((w: any) => w.gpName.toLowerCase().trim() === gp.gpName.toLowerCase().trim());
         return {
             id: idx,
-            districtName: districtName,
-            blockName: gp.block,
+            ulbName: gp.taggedUlb,
+            mrfName: gp.taggedMrf,
             gpName: gp.gpName,
             households: wasteInfo?.totalHouseholds || 0,
             schools: wasteInfo?.schools || 0,
@@ -112,7 +113,7 @@ function GpInformationContent() {
   const handleOpenAddDialog = () => {
     setEditingRow(null);
     setFormData({ 
-      blockName: '', gpName: '', households: '', schools: '', 
+      ulbName: ulbParam, mrfName: '', gpName: '', households: '', schools: '', 
       anganwadis: '', commercial: '', dailyWaste: '', monthlyWaste: '' 
     });
     setIsDialogOpen(true);
@@ -121,7 +122,8 @@ function GpInformationContent() {
   const handleOpenEditDialog = (row: any) => {
     setEditingRow(row);
     setFormData({
-        blockName: row.blockName,
+        ulbName: row.ulbName,
+        mrfName: row.mrfName,
         gpName: row.gpName,
         households: row.households.toString(),
         schools: row.schools.toString(),
@@ -142,7 +144,6 @@ function GpInformationContent() {
     const row = {
         ...formData,
         id: editingRow ? editingRow.id : Date.now(),
-        districtName: districtName,
         households: parseFloat(formData.households) || 0,
         schools: parseFloat(formData.schools) || 0,
         anganwadis: parseFloat(formData.anganwadis) || 0,
@@ -185,7 +186,7 @@ function GpInformationContent() {
                     <TableHeader className="bg-muted/80">
                     <TableRow>
                         <TableHead className="w-[60px] text-center border font-black uppercase">S.No.</TableHead>
-                        <TableHead className="border font-black uppercase">District & block name</TableHead>
+                        <TableHead className="border font-black uppercase">Facility (ULB/MRF)</TableHead>
                         <TableHead className="border font-black uppercase">GP Node</TableHead>
                         <TableHead className="border font-black uppercase text-center">Households</TableHead>
                         <TableHead className="border font-black uppercase text-center">Schools</TableHead>
@@ -201,8 +202,8 @@ function GpInformationContent() {
                         <TableRow key={idx} className="hover:bg-primary/[0.02] border-b h-12">
                         <TableCell className="text-center border-r font-mono">{idx + 1}</TableCell>
                         <TableCell className="border-r font-bold uppercase leading-tight">
-                            <p className="text-primary">{row.districtName}</p>
-                            <p className="text-[8px] text-muted-foreground italic">{row.blockName}</p>
+                            <p className="text-primary">{row.mrfName}</p>
+                            <p className="text-[8px] text-muted-foreground italic">{row.ulbName}</p>
                         </TableCell>
                         <TableCell className="border-r font-black uppercase text-foreground">{row.gpName}</TableCell>
                         <TableCell className="text-center border-r font-mono font-bold text-sm">{row.households.toLocaleString()}</TableCell>
@@ -229,12 +230,44 @@ function GpInformationContent() {
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl border-2">
-            <DialogHeader><DialogTitle className="text-xl font-black uppercase text-primary">{editingRow ? 'Edit Record' : 'Add Entry'}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="text-xl font-black uppercase text-primary">{editingRow ? 'Edit GP Information' : 'Add GP Information'}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-6 py-6">
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Block Name</Label><Input value={formData.blockName} onChange={(e) => setFormData({...formData, blockName: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">GP Name</Label><Input value={formData.gpName} onChange={(e) => setFormData({...formData, gpName: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">HH Count</Label><Input type="number" value={formData.households} onChange={(e) => setFormData({...formData, households: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Waste/Day</Label><Input type="number" value={formData.dailyWaste} onChange={(e) => setFormData({...formData, dailyWaste: e.target.value})} /></div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Facility (ULB Name)</Label>
+                    <Input value={formData.ulbName} onChange={(e) => setFormData({...formData, ulbName: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Facility (MRF Name)</Label>
+                    <Input value={formData.mrfName} onChange={(e) => setFormData({...formData, mrfName: e.target.value})} />
+                </div>
+                <div className="space-y-2 col-span-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">GP Node</Label>
+                    <Input value={formData.gpName} onChange={(e) => setFormData({...formData, gpName: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Households</Label>
+                    <Input type="number" value={formData.households} onChange={(e) => setFormData({...formData, households: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Schools</Label>
+                    <Input type="number" value={formData.schools} onChange={(e) => setFormData({...formData, schools: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Anganwadis</Label>
+                    <Input type="number" value={formData.anganwadis} onChange={(e) => setFormData({...formData, anganwadis: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Comm. Est.</Label>
+                    <Input value={formData.commercial} onChange={(e) => setFormData({...formData, commercial: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Waste/Day (Gm)</Label>
+                    <Input type="number" value={formData.dailyWaste} onChange={(e) => setFormData({...formData, dailyWaste: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Waste/Month (Gm)</Label>
+                    <Input type="number" value={formData.monthlyWaste} onChange={(e) => setFormData({...formData, monthlyWaste: e.target.value})} />
+                </div>
             </div>
             <DialogFooter><Button onClick={handleSubmit} className="font-black uppercase px-8">Save Details</Button></DialogFooter>
         </DialogContent>

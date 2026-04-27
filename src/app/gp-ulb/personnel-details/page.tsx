@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -46,6 +45,8 @@ import { puriDistrictData } from "@/lib/disPuri";
 import { sambalpurDistrictData } from "@/lib/disSambalpur";
 import { balasoreDistrictData } from "@/lib/disBalasore";
 import { baleswarDistrictData } from "@/lib/disBaleswar";
+
+import { mrfData } from "@/lib/mrf-data";
 
 interface Route {
   id: string | number;
@@ -104,10 +105,14 @@ function UlbPersonnelDetailsContent() {
         const source = districtsSourceMap[districtName.toLowerCase()];
         if (!source) return;
 
+        // Get MRFs assigned to this ULB from master registry
+        const ulbMrfs = mrfData.filter(m => m.ulbName.toLowerCase().trim() === ulbParam.toLowerCase().trim()).map(m => m.mrfId.toLowerCase());
+
         const allRoutes = source.data.routes || [];
         const filtered = allRoutes.filter((r: any) => 
-            r.destination.toLowerCase().trim().includes(ulbParam.toLowerCase().trim()) ||
-            ulbParam.toLowerCase().trim().includes(r.destination.toLowerCase().trim())
+            // Match by destination (MRF) or by direct ULB name mapping
+            ulbMrfs.some(mId => (r.destination || "").toLowerCase().includes(mId) || (r.mrfName || "").toLowerCase().includes(mId)) ||
+            (r.destination || "").toLowerCase().trim().includes(ulbParam.toLowerCase().trim())
         ).map((r: any) => ({
             ...r,
             block: r.block || districtName,
@@ -119,8 +124,8 @@ function UlbPersonnelDetailsContent() {
     const handleOpenAddDialog = () => {
         setEditingRoute(null);
         setFormData({
-            block: '', mrfName: ulbParam, routeId: '', routeAbbreviation: '',
-            startingGp: '', intermediateGps: '', finalGp: '', destination: ulbParam,
+            block: '', mrfName: '', routeId: '', routeAbbreviation: '',
+            startingGp: '', intermediateGps: '', finalGp: '', destination: '',
             totalDistance: '', workersText: '', scheduledOn: ''
         });
         setIsDialogOpen(true);
@@ -190,9 +195,9 @@ function UlbPersonnelDetailsContent() {
                     <div>
                         <CardTitle className="text-2xl flex items-center gap-2 font-headline uppercase tracking-tight">
                         <Navigation className="text-primary h-8 w-8" /> 
-                        Route & Worker Roster: {ulbParam}
+                        Route Planning Directory: {ulbParam}
                         </CardTitle>
-                        <CardDescription className="text-lg">Verified collection circuits and sanitation worker assignments for this ULB.</CardDescription>
+                        <CardDescription className="text-lg">Verified collection circuits and sanitation worker assignments for all associated MRF facilities.</CardDescription>
                     </div>
                     <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
                         <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
@@ -254,6 +259,11 @@ function UlbPersonnelDetailsContent() {
                                         </TableCell>
                                     </TableRow>
                                 ))}
+                                {routes.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={11} className="h-48 text-center text-muted-foreground italic uppercase font-black opacity-30">No logistical circuits resolved for this ULB.</TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
                       </div>

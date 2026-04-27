@@ -6,18 +6,16 @@ import {
   FileText,
   User,
   Users,
-  Video,
   HomeIcon,
   Map,
-  Calendar,
   Truck,
+  Calculator,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 import { OdishaLogo } from '@/components/odisha-logo';
 import { cn } from '@/lib/utils';
-import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
 
 export function GpUlbSidebar({ isMobile = false }: { isMobile?: boolean }) {
@@ -29,12 +27,11 @@ export function GpUlbSidebar({ isMobile = false }: { isMobile?: boolean }) {
 
   const navItems = [
     { href: '/gp-ulb', icon: Home, label: 'Dashboard' },
-    { href: '/gp-ulb/waste-details', icon: Trash2, label: 'Waste Details' },
+    { href: '/gp-ulb/waste-details', icon: Calculator, label: 'Waste Details' },
     ...(role === 'gp'
       ? [
           { href: '/gp-ulb/household-collection', icon: HomeIcon, label: 'Household Data' },
           { href: '/gp-ulb/vehicle-route', icon: Map, label: 'Vehicle Route' },
-          { href: '/gp-ulb/history', icon: Calendar, label: 'Collection History' },
         ]
       : []),
     ...(role === 'ulb' ? [
@@ -74,6 +71,16 @@ export function GpUlbSidebar({ isMobile = false }: { isMobile?: boolean }) {
               {label}
             </Link>
           ))}
+          <Separator className="my-2" />
+          <Link
+            href="/roles"
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary'
+            )}
+          >
+            <Users className="h-4 w-4" />
+            Back to Role Selection
+          </Link>
         </nav>
       </div>
     </div>
@@ -89,3 +96,5 @@ export function GpUlbSidebar({ isMobile = false }: { isMobile?: boolean }) {
     </aside>
   );
 }
+
+import { Separator } from '../ui/separator';

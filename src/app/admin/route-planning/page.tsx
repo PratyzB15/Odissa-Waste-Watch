@@ -1,12 +1,14 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Navigation, Anchor, MapPin, Download } from "lucide-react";
-import { useMemo } from "react";
+import { Navigation, Anchor, MapPin, Download, Search } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, query } from "firebase/firestore";
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -31,46 +33,36 @@ import { balasoreDistrictData } from "@/lib/disBalasore";
 import { baleswarDistrictData } from "@/lib/disBaleswar";
 
 export default function AdminRoutePlanningPage() {
+  const [mounted, setMounted] = useState(false);
+  const [search, setSearch] = useState("");
+  const db = useFirestore();
+  const { data: firestoreRoutes = [] } = useCollection(db ? query(collection(db, 'routePlans')) : null);
+
+  useEffect(() => { setMounted(true); }, []);
+
   const masterRouteDirectory = useMemo(() => {
+    if (!mounted) return [];
     const districtSources = [
-      angulDistrictData,
-      balangirDistrictData,
-      balasoreDistrictData,
-      baleswarDistrictData,
-      bargarhDistrictData,
-      bhadrakDistrictData,
-      boudhDistrictData,
-      cuttackDistrictData,
-      deogarhDistrictData,
-      dhenkanalDistrictData,
-      gajapatiDistrictData,
-      ganjamDistrictData,
-      jagatsinghpurDistrictData,
-      jajpurDistrictData,
-      jharsugudaDistrictData,
-      kalahandiDistrictData,
-      kandhamalDistrictData,
-      kendraparaDistrictData,
-      kendujharDistrictData,
-      sonepurDistrictData
+      angulDistrictData, balangirDistrictData, balasoreDistrictData, baleswarDistrictData,
+      bargarhDistrictData, bhadrakDistrictData, boudhDistrictData, cuttackDistrictData,
+      deogarhDistrictData, dhenkanalDistrictData, gajapatiDistrictData, ganjamDistrictData,
+      jagatsinghpurDistrictData, jajpurDistrictData, jharsugudaDistrictData, kalahandiDistrictData,
+      kandhamalDistrictData, kendraparaDistrictData, kendujharDistrictData, sonepurDistrictData
     ];
 
     return districtSources.map(source => {
       const routes = source.data.routes || [];
-      const schedules = source.data.collectionSchedules || [];
-
+      const overrides = firestoreRoutes.filter((f: any) => f.district === source.district);
+      
       const enrichedRoutes = routes.map(route => {
-        // Try to find exact schedule for date/frequency
-        const schedule = schedules.find(s => 
-          s.gpName.toLowerCase().includes(route.routeId.toLowerCase()) ||
-          s.gpName.toLowerCase().includes(route.startingGp.toLowerCase()) ||
-          (route as any).routeName?.toLowerCase().includes(s.gpName.toLowerCase())
-        );
-
+        const override = overrides.find((o: any) => o.routeId === route.routeId);
         return {
           ...route,
-          block: (route as any).block || schedule?.block || "District Circuit",
-          schedule: schedule?.collectionSchedule || (route as any).scheduledOn || (route as any).scheduledDate || "Scheduled"
+          startingGp: override?.startingGp || route.startingGp,
+          finalGp: override?.finalGp || route.finalGp,
+          destination: override?.destination || route.destination,
+          totalDistance: override?.totalDistance || route.totalDistance,
+          schedule: override?.scheduledOn || (route as any).scheduledOn || "Scheduled"
         };
       });
 
@@ -79,30 +71,61 @@ export default function AdminRoutePlanningPage() {
         routes: enrichedRoutes
       };
     }).filter(d => d.routes.length > 0);
-  }, []);
+  }, [mounted, firestoreRoutes]);
+
+  const filteredDirectory = useMemo(() => {
+    if (!search) return masterRouteDirectory;
+    return masterRouteDirectory.filter(d => 
+        d.districtName.toLowerCase().includes(search.toLowerCase()) ||
+        d.routes.some(r => r.routeId?.toLowerCase().includes(search.toLowerCase()) || r.startingGp?.toLowerCase().includes(search.toLowerCase()))
+    );
+  }, [search, masterRouteDirectory]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearch(val);
+    if (val.length > 2) {
+        const match = masterRouteDirectory.find(d => 
+            d.districtName.toLowerCase().includes(val.toLowerCase()) ||
+            d.routes.some(r => r.routeId?.toLowerCase().includes(val.toLowerCase()))
+        );
+        if (match) {
+            const el = document.getElementById(`route-${match.districtName}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+  };
+
+  if (!mounted) return <div className="p-12 text-center text-muted-foreground animate-pulse">Syncing route intelligence...</div>;
 
   return (
     <div className="space-y-6">
       <Card className="border-2 border-primary/20 bg-primary/[0.01]">
         <CardHeader>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="flex items-center gap-3">
               <Navigation className="h-8 w-8 text-primary" />
               <div>
                 <CardTitle className="text-2xl font-bold font-headline uppercase tracking-tight text-primary">State-wide Route Planning Directory</CardTitle>
-                <CardDescription className="text-lg font-medium">Consolidated Logistical Paths Linking GP Segregation Points to MRFs across all Districts.</CardDescription>
+                <CardDescription className="text-lg font-medium">Consolidated Logistical Paths Linking GP Segregation Points to MRFs.</CardDescription>
               </div>
             </div>
-            <Button variant="outline" className="font-bold border-primary text-primary hover:bg-primary/10">
-              <Download className="mr-2 h-4 w-4" /> Export Master Plan (PDF)
-            </Button>
+            <div className="relative w-full max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Search District or Route ID..." 
+                    className="pl-9 h-11 border-2 border-primary/20 focus:border-primary transition-all"
+                    value={search}
+                    onChange={handleSearchChange}
+                />
+            </div>
           </div>
         </CardHeader>
       </Card>
 
       <div className="space-y-10">
-        {masterRouteDirectory.map((district) => (
-          <Card key={district.districtName} className="border-2 shadow-sm overflow-hidden">
+        {filteredDirectory.map((district) => (
+          <Card key={district.districtName} id={`route-${district.districtName}`} className="border-2 shadow-sm overflow-hidden">
             <CardHeader className="bg-muted/40 border-b py-3 px-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -121,7 +144,6 @@ export default function AdminRoutePlanningPage() {
                 <TableHeader className="bg-muted/30">
                   <TableRow>
                     <TableHead className="w-[140px] uppercase text-[10px] font-black tracking-widest text-center border-r">Route ID</TableHead>
-                    <TableHead className="w-[150px] uppercase text-[10px] font-black tracking-widest text-center border-r">Block Node</TableHead>
                     <TableHead className="uppercase text-[10px] font-black tracking-widest border-r px-6">Logistical Path (Start &rarr; Final)</TableHead>
                     <TableHead className="w-[200px] uppercase text-[10px] font-black tracking-widest border-r px-6">Target Facility (MRF)</TableHead>
                     <TableHead className="w-[200px] uppercase text-[10px] font-black tracking-widest text-center border-r">Collection Schedule</TableHead>
@@ -133,12 +155,6 @@ export default function AdminRoutePlanningPage() {
                     <TableRow key={idx} className="hover:bg-primary/[0.02] border-b border-dashed last:border-0 transition-colors">
                       <TableCell className="text-center border-r">
                         <p className="font-mono text-xs font-black text-primary">{route.routeId}</p>
-                        <Badge variant="outline" className="text-[8px] font-bold uppercase mt-1 border-primary/20 bg-primary/5">
-                          {(route as any).routeAbbreviation || route.routeId}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center border-r">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground">{route.block}</p>
                       </TableCell>
                       <TableCell className="border-r px-6">
                         <div className="flex flex-col gap-0.5 max-w-[400px]">

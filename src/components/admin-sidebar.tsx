@@ -12,6 +12,7 @@ import {
   Video,
   Warehouse,
   ClipboardList,
+  Calculator,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -23,16 +24,14 @@ import { SheetHeader, SheetTitle } from './ui/sheet';
 
 const navItems = [
   { href: '/admin', icon: Home, label: 'Dashboard' },
+  { href: '/admin/waste-details', icon: Calculator, label: 'Waste Details' },
   { href: '/admin/schedule-meeting', icon: Video, label: 'Steering Committee Meeting' },
-  { href: '/admin/gaps-tagged-mrf', icon: Warehouse, label: 'Information about MRFs and its Associated GPs' },
   { href: '/admin/organization-structure', icon: Network, label: 'Organization Structure' },
   { href: '/admin/route-planning', icon: Navigation, label: 'Route Planning' },
-  { href: '/admin/waste-collection-details', icon: ClipboardList, label: 'Waste and Waste Collection Details' },
+  { href: '/admin/waste-collection-details', icon: ClipboardList, label: 'Waste Collection Details' },
   { href: '/admin/driver-details', icon: Truck, label: 'Driver Details' },
-  { href: '/admin/gp-details', icon: Building, label: 'GP-wise Waste Details' },
-  { id: 'ulb-link', href: '/admin/ulb-details', icon: Building, label: 'ULB Details' },
+  { href: '/admin/gp-details', icon: Building, label: 'Information about MRFs and Associated GPs' },
   { href: '/admin/monthly-details', icon: FileText, label: 'Approved Reports' },
-  { href: '/admin/schedule', icon: Calendar, label: 'Schedule/Planner' },
 ];
 
 export function AdminSidebar({ isMobile = false }: { isMobile?: boolean }) {

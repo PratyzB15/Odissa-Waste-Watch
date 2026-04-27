@@ -1,16 +1,12 @@
-
 'use client';
 
 import {
   Home,
-  Trash2,
   FileText,
   User,
   Users,
-  Video,
   HomeIcon,
   Map,
-  Calendar,
   Truck,
   ClipboardList,
   MailWarning,
@@ -30,13 +26,13 @@ const navItems = [
   { href: '/gp-ulb', icon: Home, label: 'Dashboard' },
   { href: '/gp-ulb/waste-details', icon: Calculator, label: 'Waste Details' },
   { id: 'gp-data', href: '/gp-ulb/household-collection', icon: HomeIcon, label: 'Household Data', role: 'gp' },
-  { id: 'gp-history', href: '/gp-ulb/history', icon: Calendar, label: 'Waste Collection History', role: 'gp' },
+  { id: 'gp-route', href: '/gp-ulb/vehicle-route', icon: Map, label: 'Vehicle Route', role: 'gp' },
   { id: 'ulb-gp-info', href: '/gp-ulb/gp-information', icon: TableProperties, label: 'Information about GPs', role: 'ulb' },
-  { id: 'ulb-drivers', href: '/gp-ulb/driver-details', icon: Truck, label: 'Driver & Worker Details', role: 'ulb' },
-  { id: 'ulb-roster', href: '/gp-ulb/personnel-details', icon: Navigation, label: 'Route & Worker Roster', role: 'ulb' },
+  { id: 'ulb-roster', href: '/gp-ulb/personnel-details', icon: Navigation, label: 'Route Planning', role: 'ulb' },
   { id: 'ulb-collection', href: '/gp-ulb/waste-collection-details', icon: ClipboardList, label: 'Waste Collection Details', role: 'ulb' },
   { id: 'ulb-requests', href: '/gp-ulb/personnel-requests', icon: MailWarning, label: 'Personnel Request & Complaints', role: 'ulb' },
-  { href: '/gp-ulb/waste-receipt-details', icon: FileText, label: 'Waste Receipt Details' },
+  { id: 'receipt-view', href: '/gp-ulb/waste-receipt-details', icon: FileText, label: 'Waste Receipt Submission', role: 'ulb' },
+  { id: 'receipt-gen', href: '/gp-ulb/invoice-details', icon: FileText, label: 'Waste Receipt Generation', role: 'gp' },
   { href: '/gp-ulb/monthly-reporting', icon: FileText, label: 'Monthly Reporting' },
   { href: '/gp-ulb/personal-details', icon: User, label: 'Personal Details' },
 ];
