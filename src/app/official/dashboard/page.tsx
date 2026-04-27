@@ -1,31 +1,16 @@
-
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Truck, 
   ArrowRight,
   AlertCircle,
-  CheckCircle2,
   TrendingUp,
   PieChart as PieChartIcon,
   Activity,
-  Users,
-  User,
-  Phone,
   Layers,
-  Home as HomeIcon,
-  Check,
   Building,
   Warehouse,
-  ListFilter,
-  UserCircle,
-  ShieldCheck,
-  Contact2,
-  Calendar as CalendarIcon,
-  Info,
   MapPin,
-  Weight,
-  Calculator,
   Navigation
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -93,19 +78,28 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
-    const normalized = schedule.toLowerCase().trim().replace(/\s+/g, ' ');
+    const normalized = schedule.toLowerCase()
+        .replace(/thurs\s*day/g, 'thursday')
+        .replace(/tues\s*day/g, 'tuesday')
+        .replace(/wednes\s*day/g, 'wednesday')
+        .replace(/\s+/g, ' ')
+        .trim();
+        
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const dayOfWeek = today.getDay();
     const dateOfMonth = today.getDate();
     
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
+    const ordinals: Record<string, number> = { 
+        '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 
+        'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 
+    };
 
-    const getOccurrenceDate = (year: number, month: number, targetWeekday: number, n: number) => {
+    const getNthWeekdayOfMonth = (year: number, month: number, weekdayIdx: number, n: number) => {
         let count = 0;
         let d = new Date(year, month, 1);
         while (d.getMonth() === month) {
-            if (d.getDay() === targetWeekday) {
+            if (d.getDay() === weekdayIdx) {
                 count++;
                 if (count === n) return new Date(d);
             }
@@ -114,41 +108,40 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         return null;
     };
 
-    // Handle Nth Weekday cases (e.g., 1st Thursday, Friday of 2nd week)
-    const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) ||
-                     normalized.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+of\s+(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
-
-    if (nthMatch) {
-        const nStr = ordinals[nthMatch[1].toLowerCase()] ? nthMatch[1] : nthMatch[2];
-        const dayStr = weekdays.includes(nthMatch[1].toLowerCase()) ? nthMatch[1] : nthMatch[2];
-        const n = ordinals[nStr.toLowerCase()];
-        const targetWeekday = weekdays.indexOf(dayStr.toLowerCase());
-
-        let target = getOccurrenceDate(today.getFullYear(), today.getMonth(), targetWeekday, n);
+    const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
+    const weekdayFound = weekdays.find(w => normalized.includes(w));
+    
+    if (nthMatch && weekdayFound) {
+        const n = ordinals[nthMatch[0].toLowerCase()];
+        const targetWeekdayIdx = weekdays.indexOf(weekdayFound);
+        let target = getNthWeekdayOfMonth(today.getFullYear(), today.getMonth(), targetWeekdayIdx, n);
+        
         if (!target || target < today) {
-            let nextM = today.getMonth() + 1;
-            let nextY = today.getFullYear();
-            if (nextM > 11) { nextM = 0; nextY++; }
-            target = getOccurrenceDate(nextY, nextM, targetWeekday, n);
+            let nextMonth = today.getMonth() + 1;
+            let nextYear = today.getFullYear();
+            if (nextMonth > 11) { nextMonth = 0; nextYear++; }
+            target = getNthWeekdayOfMonth(nextYear, nextMonth, targetWeekdayIdx, n);
         }
         
         if (target) {
+            if (target.getTime() === today.getTime()) return 0;
             const diffTime = target.getTime() - today.getTime();
             return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         }
     }
 
-    // Handle standard "Monday, Thursday" or "Every Friday" cases
     let minDays = 999;
+    let foundWeekday = false;
     weekdays.forEach((day, i) => {
         if (normalized.includes(day)) {
+            foundWeekday = true;
             let diff = i - dayOfWeek;
             if (diff < 0) diff += 7;
             if (diff < minDays) minDays = diff;
         }
     });
+    if (foundWeekday) return minDays;
 
-    // Handle fixed date formats (e.g., "1st & 15th")
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
         const days = dateMatches.map(Number).sort((a, b) => a - b);
@@ -159,7 +152,7 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         return (daysInMonth - dateOfMonth) + days[0];
     }
 
-    return minDays;
+    return 999;
 };
 
 function DistrictDashboardContent() {
@@ -179,7 +172,7 @@ function DistrictDashboardContent() {
 
   const districtSource = useMemo(() => {
     if (!districtName) return null;
-    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
+    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
     return map[districtName.toLowerCase()];
   }, [districtName]);
 
@@ -205,12 +198,13 @@ function DistrictDashboardContent() {
             daysLeft, 
             scheduleStr, 
             isActiveToday: daysLeft === 0, 
-            countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`,
-            driver: (sched?.driverName && sched.driverName !== '-') ? sched.driverName : 'Verified',
+            driverName: (sched?.driverName && sched.driverName !== '-') ? sched.driverName : 'Verified',
             driverContact: (sched?.driverContact && sched.driverContact !== '-') ? sched.driverContact : '9437XXXXXX',
-            vehicle: sched?.vehicleType || 'TATA ACE',
-            block: sched?.block || districtName,
-            mrf: sched?.mrf || route.destination || 'Facility'
+            vehicleDetails: sched?.vehicleType || 'TATA ACE',
+            block: sched?.block || route.block || districtName,
+            mrf: sched?.mrf || route.destination || 'Facility',
+            startingGp: route.startingGp,
+            finalGp: route.finalGp || route.destination
         };
     }).sort((a: any, b: any) => a.daysLeft - b.daysLeft);
 
@@ -239,7 +233,7 @@ function DistrictDashboardContent() {
         { name: 'Sanitation', value: verifiedRecords.reduce((s, r) => s + (r.sanitation || 0), 0) },
         { name: 'Others', value: verifiedRecords.reduce((s, r) => s + (r.others || 0), 0) },
     ] : [
-        { name: 'Plastic', value: 4500 }, { name: 'Paper', value: 3200 }, { name: 'Metal', value: 1200 }, { name: 'Glass', value: 800 }, { name: 'Sanitation', value: 1500 }, { name: 'Others', value: 900 }
+        { name: 'Plastic', value: 4500 }, { name: 'Paper', value: 3200 }, { name: 'Metal', value: 1200 }, { name: 'Glass', value: 800 }, { name: 'Sanitation', value: 150 }, { name: 'Others', value: 900 }
     ];
 
     const discrepancies: any[] = [];
@@ -377,19 +371,27 @@ function DistrictDashboardContent() {
                         <div className="grid divide-y">
                             {dashData.activeCircuits.map((log, i) => (
                                 <div key={i} className={`p-5 flex items-center justify-between border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
-                                    <div className="flex-1 space-y-1 border-r border-dashed pr-6">
-                                        <p className="font-black text-[10px] uppercase text-primary leading-none">{log.block} | {log.mrf}</p>
-                                        <p className="font-black text-[11px] uppercase truncate">{log.routeId}: {log.routeName}</p>
+                                    <div className="flex-[1.5] space-y-1 border-r border-dashed pr-6">
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground leading-none">
+                                            {log.block} | {log.mrf}
+                                        </p>
+                                        <p className="font-black text-xs uppercase text-primary truncate">
+                                            {log.routeId}: {log.routeName}
+                                        </p>
                                     </div>
                                     <div className="flex-1 text-center px-6 border-r border-dashed">
-                                        <div className={`text-sm font-black ${log.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>{log.countdown}</div>
-                                        <p className="text-[9px] font-black text-blue-700 uppercase mt-1">{log.scheduleStr}</p>
+                                        <div className={`text-sm font-black ${log.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>
+                                            {log.isActiveToday ? "Active Today" : `In ${log.daysLeft} days`}
+                                        </div>
+                                        <p className="text-[9px] font-black text-blue-700 uppercase mt-1">
+                                            {log.scheduleStr}
+                                        </p>
                                     </div>
-                                    <div className="flex-1 text-right space-y-1 pl-6">
-                                        <p className="text-[10px] font-black uppercase leading-none">{log.driver || 'Verified'}</p>
-                                        <p className="text-[9px] font-mono font-bold text-muted-foreground">{log.vehicle}</p>
-                                        <p className="text-[9px] font-bold text-primary truncate">C: {log.driverContact}</p>
-                                        <p className="text-[9px] font-bold text-foreground opacity-60 italic">{log.startingGp} → {log.finalGp || log.destination}</p>
+                                    <div className="flex-[1.5] text-right space-y-1 pl-6">
+                                        <p className="text-[11px] font-black uppercase leading-none">{log.driverName || 'Verified'}</p>
+                                        <p className="text-[9px] font-mono font-bold text-muted-foreground">{log.vehicleDetails}</p>
+                                        <p className="text-[9px] font-black text-primary font-mono">{log.driverContact}</p>
+                                        <p className="text-[8px] font-bold text-foreground/50 italic truncate">{log.startingGp} → {log.finalGp || log.destination}</p>
                                     </div>
                                 </div>
                             ))}
@@ -463,7 +465,7 @@ function DistrictDashboardContent() {
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="border-2 shadow-sm">
-            <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> District Recovery (Last 5 Months)</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/10 border-b pb-3"><Activity className="h-4 w-4 text-primary" /> District Recovery (Last 5 Months)</CardHeader>
             <CardContent className="h-[300px] pt-6">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={[{month: 'Mar', val: 5800}, {month: 'Apr', val: 6100}, {month: 'May', val: 7400}, {month: 'Jun', val: 6200}, {month: 'Jul', val: 8600}]}>
@@ -478,7 +480,7 @@ function DistrictDashboardContent() {
         </Card>
 
         <Card className="border-2 shadow-sm">
-            <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> District Stream Composition</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/10 border-b pb-3"><PieChartIcon className="h-4 w-4 text-primary" /> District Stream Composition</CardHeader>
             <CardContent className="h-[300px] pt-6">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
