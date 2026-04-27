@@ -1,3 +1,4 @@
+
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -91,46 +92,73 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed
 
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
-    const normalized = schedule.toLowerCase().replace(/\s+/g, ' ').replace('thurs day', 'thursday').replace('tues day', 'tuesday');
+    
+    const normalized = schedule.toLowerCase().trim().replace(/\s+/g, ' ');
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayOfWeek = today.getDay();
+    const dateOfMonth = today.getDate();
+    
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
-    
-    const getNthWeekday = (year: number, month: number, weekdayIdx: number, n: number) => {
-        let count = 0; 
+
+    const getOccurrenceDate = (year: number, month: number, targetWeekday: number, n: number) => {
+        let count = 0;
         let d = new Date(year, month, 1);
-        while (d.getMonth() === month) { if (d.getDay() === weekdayIdx) { count++; if (count === n) return new Date(d); } d.setDate(d.getDate() + 1); }
+        while (d.getMonth() === month) {
+            if (d.getDay() === targetWeekday) {
+                count++;
+                if (count === n) return new Date(d);
+            }
+            d.setDate(d.getDate() + 1);
+        }
         return null;
     };
 
+    // Handle Nth Weekday cases (e.g., 1st Thursday, Friday of 2nd week)
     const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) ||
                      normalized.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+of\s+(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
-    
+
     if (nthMatch) {
-        const nStr = ordinals[nthMatch[1]] ? nthMatch[1] : nthMatch[2];
-        const dayStr = weekdays.includes(nthMatch[1]) ? nthMatch[1] : nthMatch[2];
+        const nStr = ordinals[nthMatch[1].toLowerCase()] ? nthMatch[1] : nthMatch[2];
+        const dayStr = weekdays.includes(nthMatch[1].toLowerCase()) ? nthMatch[1] : nthMatch[2];
         const n = ordinals[nStr.toLowerCase()];
-        const dayIdx = weekdays.indexOf(dayStr.toLowerCase());
-        let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
-        if (!target || target <= today) {
-            let nextM = today.getMonth() + 1; let nextY = today.getFullYear();
+        const targetWeekday = weekdays.indexOf(dayStr.toLowerCase());
+
+        let target = getOccurrenceDate(today.getFullYear(), today.getMonth(), targetWeekday, n);
+        if (!target || target < today) {
+            let nextM = today.getMonth() + 1;
+            let nextY = today.getFullYear();
             if (nextM > 11) { nextM = 0; nextY++; }
-            target = getNthWeekday(nextY, nextM, dayIdx, n);
+            target = getOccurrenceDate(nextY, nextM, targetWeekday, n);
         }
-        if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (target) {
+            const diffTime = target.getTime() - today.getTime();
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
     }
 
-    let minDays = 999; 
-    weekdays.forEach((day, i) => { if (normalized.includes(day)) { let diff = i - today.getDay(); if (diff <= 0) diff += 7; if (diff < minDays) minDays = diff; } });
-    
+    // Handle standard "Monday, Thursday" or "Every Friday" cases
+    let minDays = 999;
+    weekdays.forEach((day, i) => {
+        if (normalized.includes(day)) {
+            let diff = i - dayOfWeek;
+            if (diff < 0) diff += 7;
+            if (diff < minDays) minDays = diff;
+        }
+    });
+
+    // Handle fixed date formats (e.g., "1st & 15th")
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
         const days = dateMatches.map(Number).sort((a, b) => a - b);
-        const nextDay = days.find(d => d > today.getDate());
-        if (nextDay) return nextDay - today.getDate();
+        const nextDay = days.find(d => d >= dateOfMonth);
+        if (nextDay === dateOfMonth) return 0;
+        if (nextDay) return nextDay - dateOfMonth;
         const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-        return (daysInMonth - today.getDate()) + days[0];
+        return (daysInMonth - dateOfMonth) + days[0];
     }
+
     return minDays;
 };
 
@@ -151,7 +179,7 @@ function DistrictDashboardContent() {
 
   const districtSource = useMemo(() => {
     if (!districtName) return null;
-    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
+    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
     return map[districtName.toLowerCase()];
   }, [districtName]);
 
@@ -348,20 +376,20 @@ function DistrictDashboardContent() {
                     <ScrollArea className="h-[250px]">
                         <div className="grid divide-y">
                             {dashData.activeCircuits.map((log, i) => (
-                                <div key={i} className={`p-4 flex items-center justify-between border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
-                                    <div className="flex-1 space-y-0.5 border-r border-dashed pr-4">
-                                        <p className="font-black text-[9px] uppercase text-primary leading-none">Block: {log.block}</p>
+                                <div key={i} className={`p-5 flex items-center justify-between border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
+                                    <div className="flex-1 space-y-1 border-r border-dashed pr-6">
+                                        <p className="font-black text-[10px] uppercase text-primary leading-none">{log.block} | {log.mrf}</p>
                                         <p className="font-black text-[11px] uppercase truncate">{log.routeId}: {log.routeName}</p>
-                                        <p className="text-[8px] font-black text-muted-foreground uppercase">MRF: {log.mrf}</p>
                                     </div>
-                                    <div className="flex-1 text-center px-4">
+                                    <div className="flex-1 text-center px-6 border-r border-dashed">
                                         <div className={`text-sm font-black ${log.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>{log.countdown}</div>
-                                        <p className="text-[8px] font-black text-blue-700 uppercase">{log.scheduleStr}</p>
+                                        <p className="text-[9px] font-black text-blue-700 uppercase mt-1">{log.scheduleStr}</p>
                                     </div>
-                                    <div className="flex-1 text-right space-y-0.5 pl-4">
-                                        <p className="text-[10px] font-black uppercase leading-none">{log.driver}</p>
-                                        <p className="text-[8px] font-mono font-bold text-muted-foreground">{log.vehicle}</p>
-                                        <p className="text-[9px] font-bold text-primary">{log.startingGp} → {log.finalGp || log.destination}</p>
+                                    <div className="flex-1 text-right space-y-1 pl-6">
+                                        <p className="text-[10px] font-black uppercase leading-none">{log.driver || 'Verified'}</p>
+                                        <p className="text-[9px] font-mono font-bold text-muted-foreground">{log.vehicle}</p>
+                                        <p className="text-[9px] font-bold text-primary truncate">C: {log.driverContact}</p>
+                                        <p className="text-[9px] font-bold text-foreground opacity-60 italic">{log.startingGp} → {log.finalGp || log.destination}</p>
                                     </div>
                                 </div>
                             ))}
