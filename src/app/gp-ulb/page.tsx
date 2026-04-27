@@ -89,6 +89,10 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         .replace(/thurs\s*day/g, 'thursday')
         .replace(/tues\s*day/g, 'tuesday')
         .replace(/wednes\s*day/g, 'wednesday')
+        .replace(/mon\s*day/g, 'monday')
+        .replace(/fri\s*day/g, 'friday')
+        .replace(/satur\s*day/g, 'saturday')
+        .replace(/sun\s*day/g, 'sunday')
         .replace(/\s+/g, ' ')
         .trim();
         
@@ -148,7 +152,7 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
             else if (diff < minDays) minDays = diff;
         }
     });
-    if (foundWeekday) return minDays;
+    if (foundWeekday && minDays !== 999) return minDays;
 
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
@@ -320,12 +324,13 @@ function GpUlbDashboardContent() {
         id: details.routes?.[0]?.routeId || 'TBD',
         vehicle: details.schedule?.vehicleType || 'Motorised',
         driver: (details.schedule?.driverName && details.schedule.driverName !== '-') ? details.schedule.driverName : 'Verified',
+        driverContact: details.schedule?.driverContact || '9437XXXXXX',
         scheduleDay: scheduleStr,
         isActiveToday: daysLeft === 0,
         countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`
     };
 
-    const targetUlb = details.mapping?.taggedUlb;
+    const targetUlb = details.mapping?.taggedUlb || '';
     const siblingSchedules = (districtSource as any).data.collectionSchedules.filter((s: any) => 
         s.ulb.toLowerCase().trim().includes(targetUlb.toLowerCase().trim()) ||
         targetUlb.toLowerCase().trim().includes(s.ulb.toLowerCase().trim())
@@ -340,8 +345,10 @@ function GpUlbDashboardContent() {
     const drivers = Array.from(new Set(siblingSchedules.map(s => JSON.stringify({ name: s?.driverName || 'Verified', contact: s?.driverContact || '9437XXXXXX' }))))
         .map(s => JSON.parse(s)).filter(d => d.name !== '' && d.name !== '-');
 
-    const workers = (districtSource as any).data.routes.filter((r: any) => r.destination.toLowerCase().includes(targetUlb.toLowerCase()) || targetUlb.toLowerCase().includes(r.destination.toLowerCase()))
-        .flatMap((r: any) => r.workers || []);
+    const relevantRoutes = (districtSource as any).data.routes.filter((r: any) => 
+        r.destination.toLowerCase().includes(targetUlb.toLowerCase()) || targetUlb.toLowerCase().includes(r.destination.toLowerCase())
+    );
+    const workers = relevantRoutes.flatMap((r: any) => r.workers || []);
 
     const discrepancies = [];
     const todayStr = new Date().toISOString().split('T')[0];
@@ -357,7 +364,7 @@ function GpUlbDashboardContent() {
         isActiveToday: daysLeft === 0,
         countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`,
         scheduleStr,
-        discrepancies
+        discrepancies: discrepancies || []
     };
   }, [role, gpName, districtSource, mounted, allRecords, districtName, blockName]);
 
@@ -638,9 +645,9 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> ULB Operator Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] uppercase font-black">Name</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {ulbRealData.ulbOperators.map((n, i) => (
+                                {(ulbRealData.ulbOperators || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
                                 ))}
                             </TableBody></Table>
@@ -702,7 +709,7 @@ function GpUlbDashboardContent() {
                         <CardTitle className="text-base font-black uppercase text-destructive">Critical Discrepancy Hub</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <ScrollArea className="h-[200px]">
+                        <ScrollArea className="h-[250px]">
                             <div className="divide-y">
                                 {gpRealData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
                                     <div key={alert.id} className="p-4 flex items-center justify-between group">
@@ -719,27 +726,36 @@ function GpUlbDashboardContent() {
                 </Card>
 
                 <Card className="border-2 border-primary/30 bg-primary/[0.01]">
-                    <CardHeader className="bg-primary/5 border-b pb-3 flex row items-center justify-between">
-                        <div className="flex items-center gap-2 text-primary">
-                            <Truck className="h-5 w-5" />
-                            <CardTitle className="text-base font-black uppercase">Active Circuits</CardTitle>
-                        </div>
+                    <CardHeader className="bg-primary/5 border-b pb-3 flex row items-center gap-2">
+                        <Truck className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-base font-black uppercase">Active Circuits</CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-4">
-                        <div className={`p-5 flex items-center justify-between border rounded-2xl bg-card border-l-4 ${gpRealData.circuit.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
-                            <div className="flex-1 space-y-1 border-r border-dashed">
-                                <p className="font-black text-xs uppercase text-primary">Route: {gpRealData.circuit.id}</p>
-                                <p className="text-[10px] font-bold uppercase">{gpRealData.circuit.mrf}</p>
+                    <CardContent className="p-0">
+                        <ScrollArea className="h-[250px]">
+                            <div className={`p-5 flex items-center justify-between border-l-4 ${gpRealData.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
+                                <div className="flex-[1.5] space-y-1 border-r border-dashed pr-6">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground leading-none">
+                                        {blockName} | {gpRealData.circuit.mrf}
+                                    </p>
+                                    <p className="font-black text-xs uppercase text-primary truncate">
+                                        {gpRealData.circuit.id}: {gpRealData.circuit.id}
+                                    </p>
+                                </div>
+                                <div className="flex-1 text-center px-6 border-r border-dashed">
+                                    <div className={`text-sm font-black ${gpRealData.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>
+                                        {gpRealData.countdown}
+                                    </div>
+                                    <p className="text-[9px] font-black text-blue-700 uppercase mt-1">
+                                        {gpRealData.scheduleStr}
+                                    </p>
+                                </div>
+                                <div className="flex-[1.5] text-right space-y-1 pl-6">
+                                    <p className="text-[11px] font-black uppercase leading-none">{gpRealData.circuit.driver}</p>
+                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">{gpRealData.circuit.vehicle}</p>
+                                    <p className="text-[9px] font-black text-primary font-mono">{gpRealData.circuit.driverContact}</p>
+                                </div>
                             </div>
-                            <div className="flex-1 text-center px-6">
-                                <div className={`text-lg font-black ${gpRealData.circuit.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>{gpRealData.circuit.countdown}</div>
-                                <p className="text-[9px] font-black text-blue-700 uppercase mt-1">{gpRealData.circuit.scheduleDay}</p>
-                            </div>
-                            <div className="flex-1 text-right border-l border-dashed space-y-1 pl-6">
-                                <p className="font-black text-[10px] uppercase">{gpRealData.circuit.driver}</p>
-                                <p className="text-[8px] font-bold uppercase text-muted-foreground">{gpRealData.circuit.vehicle}</p>
-                            </div>
-                        </div>
+                        </ScrollArea>
                     </CardContent>
                 </Card>
             </div>
@@ -848,7 +864,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> ULB Operator Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">{n.name}</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {(gpRealData.ulbOperators || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
@@ -866,7 +882,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> Driver Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">{n.name}</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {(gpRealData.drivers || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
