@@ -1,30 +1,22 @@
-
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Truck, 
   ArrowRight,
   AlertCircle,
-  CheckCircle2,
   TrendingUp,
   PieChart as PieChartIcon,
   Activity,
   Users,
-  User,
-  Phone,
   Layers,
-  Home as HomeIcon,
-  Check,
   Building,
   Warehouse,
   ListFilter,
   UserCircle,
   ShieldCheck,
-  Contact2,
   Calendar as CalendarIcon,
-  Info,
   MapPin,
-  Weight
+  Calculator
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, useEffect } from "react";
@@ -50,7 +42,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -90,10 +82,8 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed
 
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
-    
     const normalized = schedule.toLowerCase().replace(/\s+/g, ' ').replace('thurs day', 'thursday').replace('tues day', 'tuesday');
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
     
@@ -116,14 +106,11 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (nthMatch) {
         const nStr = ordinals[nthMatch[1]] ? nthMatch[1] : nthMatch[2];
         const dayStr = weekdays.includes(nthMatch[1]) ? nthMatch[1] : nthMatch[2];
-        
         const n = ordinals[nStr.toLowerCase()];
         const dayIdx = weekdays.indexOf(dayStr.toLowerCase());
-        
         let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
         if (!target || target <= today) {
-            let nextM = today.getMonth() + 1;
-            let nextY = today.getFullYear();
+            let nextM = today.getMonth() + 1; let nextY = today.getFullYear();
             if (nextM > 11) { nextM = 0; nextY++; }
             target = getNthWeekday(nextY, nextM, dayIdx, n);
         }
@@ -131,14 +118,8 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     }
 
     let minDays = 999; 
-    weekdays.forEach((day, i) => {
-        if (normalized.includes(day)) {
-            let diff = i - today.getDay();
-            if (diff <= 0) diff += 7;
-            if (diff < minDays) minDays = diff;
-        }
-    });
-
+    weekdays.forEach((day, i) => { if (normalized.includes(day)) { let diff = i - today.getDay(); if (diff <= 0) diff += 7; if (diff < minDays) minDays = diff; } });
+    
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
         const days = dateMatches.map(Number).sort((a, b) => a - b);
@@ -162,7 +143,7 @@ function GpUlbDashboardContent() {
   const [solvedAlerts, setSolvedAlerts] = useState<string[]>([]);
   const [lineToggle, setLineToggle] = useState('monthly');
   const [barToggle, setBarToggle] = useState('top');
-  const [mrfBarToggle, setMrfBarToggle] = useState('mrf');
+  const [mrfUlbToggle, setMrfUlbToggle] = useState('mrf');
 
   const db = useFirestore();
   const wasteQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'desc')) : null, [db]);
@@ -183,7 +164,6 @@ function GpUlbDashboardContent() {
     return map[districtName.toLowerCase()];
   }, [districtName]);
 
-  // ULB DASHBOARD LOGIC
   const ulbRealData = useMemo(() => {
     if (!mounted || role !== 'ulb' || !ulbName || !districtSource) return null;
     const ulbRecords = mrfData.filter(m => m.ulbName.toLowerCase().trim() === ulbName.toLowerCase().trim());
@@ -268,7 +248,6 @@ function GpUlbDashboardContent() {
     };
   }, [role, ulbName, districtSource, mounted, allRecords]);
 
-  // GP DASHBOARD LOGIC
   const gpRealData = useMemo(() => {
     if (!mounted || role !== 'gp' || !gpName || !districtSource) return null;
     const details = (districtSource as any).getGpDetails(gpName);
@@ -297,18 +276,6 @@ function GpUlbDashboardContent() {
         { name: 'Plastic', value: 40 }, { name: 'Paper', value: 25 }, { name: 'Metal', value: 10 }, { name: 'Glass', value: 5 }, { name: 'Sanitation', value: 10 }, { name: 'Others', value: 10 }
     ];
 
-    const schedules = details.schedule ? [details.schedule] : [];
-    const peos = Array.from(new Set(schedules.map(s => JSON.stringify({ name: (s.gpNodalPerson || "").split(',')[0].trim(), contact: (s.gpNodalContact || "").split(',')[0].trim() }))))
-        .map(s => JSON.parse(s))
-        .filter(p => p.name !== '-');
-    const ulbOperators = Array.from(new Set(schedules.map(s => JSON.stringify({ name: (s.ulbNodalPerson || "").split('&')[0].trim(), contact: (s.ulbNodalContact || "").split(',')[0].trim() }))))
-        .map(s => JSON.parse(s))
-        .filter(u => u.name !== '-');
-    const drivers = Array.from(new Set(schedules.map(s => JSON.stringify({ name: s.driverName || 'Verified', contact: s.driverContact || '9437XXXXXX' }))))
-        .map(s => JSON.parse(s))
-        .filter(d => d.name !== '-');
-    const workers = details.routes.flatMap((r:any) => r.workers || []);
-
     const daysLeft = calculateDaysUntilNext(details.schedule?.collectionSchedule || details.routes[0]?.scheduledOn || '', new Date());
 
     const circuit = {
@@ -322,17 +289,22 @@ function GpUlbDashboardContent() {
         countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`
     };
 
+    const peos = Array.from(new Set([details.schedule].map(s => JSON.stringify({ name: (s?.gpNodalPerson || "").split(',')[0].trim(), contact: (s?.gpNodalContact || "").split(',')[0].trim() }))))
+        .map(s => JSON.parse(s))
+        .filter(p => p.name !== '');
+
+    const ulbOperators = Array.from(new Set([details.schedule].map(s => JSON.stringify({ name: (s?.ulbNodalPerson || "").split('&')[0].trim(), contact: (s?.ulbNodalContact || "").split(',')[0].trim() }))))
+        .map(s => JSON.parse(s))
+        .filter(u => u.name !== '');
+
+    const drivers = Array.from(new Set([details.schedule].map(s => JSON.stringify({ name: s?.driverName || 'Verified', contact: s?.driverContact || '9437XXXXXX' }))))
+        .map(s => JSON.parse(s))
+        .filter(d => d.name !== '');
+
+    const workers = details.routes.flatMap((r: any) => r.workers || []);
+
     return { 
-        ...details, 
-        circuit,
-        weeklyData, 
-        composition, 
-        gpRecords,
-        peos,
-        ulbOperators,
-        drivers,
-        workers,
-        daysLeft,
+        ...details, circuit, weeklyData, composition, gpRecords, peos, ulbOperators, drivers, workers,
         isActiveToday: daysLeft === 0,
         countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`,
         scheduleStr: details.schedule?.collectionSchedule || details.routes[0]?.scheduledOn || 'Scheduled'
@@ -404,7 +376,7 @@ function GpUlbDashboardContent() {
                         <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px]">Household Census (GP-wise)</div>
                         <Table>
                             <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] uppercase font-black">GP Node</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Count</TableHead></TableRow></TableHeader>
-                            <TableBody>{ulbRealData.gpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody></Table>
+                            <TableBody>{ulbRealData.gpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody>
                         </Table>
                     </PopoverContent>
                 </Popover>
@@ -741,7 +713,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><ShieldCheck className="h-3 w-3" /> GP PEO Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {gpRealData.peos.map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
@@ -759,7 +731,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> ULB Operator Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {gpRealData.ulbOperators.map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
@@ -777,7 +749,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> Driver Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {gpRealData.drivers.map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>

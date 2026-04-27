@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -354,7 +353,7 @@ function StateAdminDashboardContent() {
                 <ScrollArea className="h-80">
                   <Table>
                     <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] uppercase font-black">GP Node</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Count</TableHead></TableRow></TableHeader>
-                    <TableBody>{stateData.allGps.map((g, i) => (<TableRow key={i}><TableCell className="text-[10px] font-bold uppercase">{g.gpName}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody>
+                    <TableBody>{stateData.allGps.map((g, i) => (<TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.gpName}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody>
                   </Table>
                 </ScrollArea>
             </PopoverContent>
@@ -391,7 +390,7 @@ function StateAdminDashboardContent() {
             <Card className="border-2 border-primary/30 bg-primary/[0.01]">
                 <CardHeader className="bg-primary/5 border-b pb-3 flex row items-center gap-2">
                     <Truck className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-base font-black uppercase">Active Circuits Today</CardTitle>
+                    <CardTitle className="text-base font-black uppercase">Active Today Circuits</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <ScrollArea className="h-[250px]">
