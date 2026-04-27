@@ -42,7 +42,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -255,17 +255,22 @@ function GpUlbDashboardContent() {
     const gpRecords = allRecords.filter(r => r.gpName === gpName || r.gpBreakdown?.some((g:any) => g.name === gpName));
     const hasData = gpRecords.length > 0;
 
-    const weeklyData = [
-        { name: 'Mon', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 1).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 45 },
-        { name: 'Tue', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 2).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 52 },
-        { name: 'Wed', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 3).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 48 },
-        { name: 'Thu', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 4).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 70 },
-        { name: 'Fri', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 5).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 65 },
-        { name: 'Sat', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 6).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 30 },
-        { name: 'Sun', value: hasData ? gpRecords.filter(r => new Date(r.date).getDay() === 0).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 10 },
+    const lineData = [
+        { name: 'Week 1', weekly: hasData ? gpRecords.slice(0, 1).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 45, monthly: hasData ? gpRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 180 },
+        { name: 'Week 2', weekly: hasData ? gpRecords.slice(1, 2).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 52, monthly: hasData ? gpRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 210 },
+        { name: 'Week 3', weekly: hasData ? gpRecords.slice(2, 3).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 38, monthly: hasData ? gpRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 190 },
+        { name: 'Week 4', weekly: hasData ? gpRecords.slice(3, 4).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 65, monthly: hasData ? gpRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 240 },
     ];
 
-    const composition = hasData ? [
+    const monthlyTonnage = [
+        { month: 'Mar', value: hasData ? 1200 : 1100 },
+        { month: 'Apr', value: hasData ? 1450 : 1300 },
+        { month: 'May', value: hasData ? 1800 : 1600 },
+        { month: 'Jun', value: hasData ? 1620 : 1500 },
+        { month: 'Jul', value: hasData ? gpRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 1900 },
+    ];
+
+    const streamData = hasData ? [
         { name: 'Plastic', value: gpRecords.reduce((s, r) => s + (r.plastic || 0), 0) },
         { name: 'Paper', value: gpRecords.reduce((s, r) => s + (r.paper || 0), 0) },
         { name: 'Metal', value: gpRecords.reduce((s, r) => s + (r.metal || 0), 0) },
@@ -273,10 +278,10 @@ function GpUlbDashboardContent() {
         { name: 'Sanitation', value: gpRecords.reduce((s, r) => s + (r.sanitation || 0), 0) },
         { name: 'Others', value: gpRecords.reduce((s, r) => s + (r.others || 0), 0) },
     ] : [
-        { name: 'Plastic', value: 40 }, { name: 'Paper', value: 25 }, { name: 'Metal', value: 10 }, { name: 'Glass', value: 5 }, { name: 'Sanitation', value: 10 }, { name: 'Others', value: 10 }
+        { name: 'Plastic', value: 450 }, { name: 'Paper', value: 300 }, { name: 'Metal', value: 120 }, { name: 'Glass', value: 80 }, { name: 'Sanitation', value: 150 }, { name: 'Others', value: 100 }
     ];
 
-    const scheduleStr = details.schedule?.collectionSchedule || details.routes[0]?.scheduledOn || '';
+    const scheduleStr = details.schedule?.collectionSchedule || details.routes[0]?.scheduledOn || 'Scheduled';
     const daysLeft = calculateDaysUntilNext(scheduleStr, new Date());
 
     const circuit = {
@@ -285,31 +290,34 @@ function GpUlbDashboardContent() {
         id: details.routes?.[0]?.routeId || 'TBD',
         vehicle: details.schedule?.vehicleType || 'Motorised',
         driver: (details.schedule?.driverName && details.schedule.driverName !== '-') ? details.schedule.driverName : 'Verified',
-        scheduleDay: scheduleStr || 'Scheduled',
+        scheduleDay: scheduleStr,
         isActiveToday: daysLeft === 0,
         countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`
     };
 
     const peos = Array.from(new Set([details.schedule].map(s => JSON.stringify({ name: (s?.gpNodalPerson || "").split(',')[0].trim(), contact: (s?.gpNodalContact || "").split(',')[0].trim() }))))
-        .map(s => JSON.parse(s))
-        .filter(p => p.name !== '');
+        .map(s => JSON.parse(s)).filter(p => p.name !== '');
 
     const ulbOperators = Array.from(new Set([details.schedule].map(s => JSON.stringify({ name: (s?.ulbNodalPerson || "").split('&')[0].trim(), contact: (s?.ulbNodalContact || "").split(',')[0].trim() }))))
-        .map(s => JSON.parse(s))
-        .filter(u => u.name !== '');
+        .map(s => JSON.parse(s)).filter(u => u.name !== '');
 
     const drivers = Array.from(new Set([details.schedule].map(s => JSON.stringify({ name: s?.driverName || 'Verified', contact: s?.driverContact || '9437XXXXXX' }))))
-        .map(s => JSON.parse(s))
-        .filter(d => d.name !== '');
+        .map(s => JSON.parse(s)).filter(d => d.name !== '');
 
     const workers = (details.routes || []).flatMap((r: any) => r.workers || []);
 
+    const discrepancies = [];
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (daysLeft === 0 && !gpRecords.some(r => r.date === todayStr)) {
+        discrepancies.push({ id: `missed-${circuit.id}`, msg: `Route ${circuit.id} active today - Receipt not submitted.` });
+    }
+
     return { 
-        ...details, circuit, weeklyData, composition, gpRecords, peos, ulbOperators, drivers, workers,
+        details, circuit, lineData, monthlyTonnage, streamData, gpRecords, peos, ulbOperators, drivers, workers,
         isActiveToday: daysLeft === 0,
         countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`,
-        scheduleStr: scheduleStr || 'Scheduled',
-        discrepancies: [] // Safeguard to prevent .filter() errors
+        scheduleStr,
+        discrepancies
     };
   }, [role, gpName, districtSource, mounted, allRecords]);
 
@@ -378,13 +386,12 @@ function GpUlbDashboardContent() {
                         <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px]">Household Census (GP-wise)</div>
                         <Table>
                             <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] uppercase font-black">GP Node</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Count</TableHead></TableRow></TableHeader>
-                            <TableBody>{ulbRealData.gpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody>
-                        </Table>
+                            <TableBody>{ulbRealData.gpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody></Table>
                     </PopoverContent>
                 </Popover>
 
                 <Card className="border-2 shadow-sm p-4 text-center bg-primary/5 border-primary/20">
-                    <p className="text-[9px] font-black text-primary uppercase mb-1">Efficiency Score</p>
+                    <p className="text-[9px] font-black uppercase text-primary mb-1">Efficiency Score</p>
                     <p className="text-lg font-black text-primary">96.4%</p>
                 </Card>
             </div>
@@ -398,13 +405,13 @@ function GpUlbDashboardContent() {
                     <CardContent className="p-0">
                         <ScrollArea className="h-[250px]">
                             <div className="divide-y">
-                                {(ulbRealData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
+                                {ulbRealData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
                                     <div key={alert.id} className="p-4 flex items-center justify-between group">
                                         <p className="text-[10px] font-bold text-foreground uppercase italic">{alert.msg}</p>
                                         <Button size="sm" variant="outline" className="h-7 text-[8px] font-black uppercase hover:bg-green-600 hover:text-white" onClick={() => setSolvedAlerts([...solvedAlerts, alert.id])}>Mark Solved</Button>
                                     </div>
                                 ))}
-                                {(ulbRealData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
+                                {ulbRealData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
                                     <div className="p-12 text-center text-muted-foreground opacity-30 italic uppercase font-black text-xs">No active discrepancies.</div>
                                 )}
                             </div>
@@ -626,31 +633,28 @@ function GpUlbDashboardContent() {
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Block</p><p className="text-xs font-black uppercase truncate">{blockName}</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Tagged ULB</p><p className="text-xs font-black uppercase truncate text-primary">{gpRealData.circuit.ulb}</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Tagged MRF</p><p className="text-xs font-black uppercase truncate text-primary">{gpRealData.circuit.mrf}</p></Card>
-                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p><p className="text-lg font-black text-primary">{(gpRealData.waste?.totalHouseholds || 0).toLocaleString()}</p></Card>
-                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Schools</p><p className="text-lg font-black text-primary">{gpRealData.waste?.schools || 0}</p></Card>
-                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Anganwadis</p><p className="text-lg font-black text-primary">{gpRealData.waste?.anganwadis || 0}</p></Card>
-                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Commercials</p><p className="text-lg font-black text-primary">{gpRealData.waste?.commercial || 0}</p></Card>
-                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Avg Load/Week</p><p className="text-sm font-black text-primary">{(gpRealData.waste?.dailyWasteTotalGm ? (gpRealData.waste.dailyWasteTotalGm * 7 / 1000).toFixed(1) : 0)} Kg</p></Card>
-                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Avg Load/Month</p><p className="text-sm font-black text-primary">{(gpRealData.waste?.monthlyWasteTotalGm ? (gpRealData.waste.monthlyWasteTotalGm / 1000).toFixed(1) : 0)} Kg</p></Card>
-                <Card className="border-2 shadow-sm p-4 text-center bg-primary/5 border-primary/20 col-span-2"><p className="text-[9px] font-black uppercase text-primary mb-1">Efficiency Score</p><p className="text-lg font-black text-primary">94.5%</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p><p className="text-lg font-black text-primary">{(gpRealData.details.waste?.totalHouseholds || 0).toLocaleString()}</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Schools</p><p className="text-lg font-black text-primary">{gpRealData.details.waste?.schools || 0}</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Anganwadis</p><p className="text-lg font-black text-primary">{gpRealData.details.waste?.anganwadis || 0}</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center bg-primary/5 border-primary/20 col-span-1"><p className="text-[9px] font-black uppercase text-primary mb-1">Efficiency</p><p className="text-lg font-black text-primary">94.5%</p></Card>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
                 <Card className="border-2 border-destructive/20 bg-destructive/[0.01]">
                     <CardHeader className="bg-destructive/5 border-b pb-3 flex row items-center gap-2">
                         <AlertCircle className="h-5 w-5 text-destructive" />
-                        <CardTitle className="text-base font-black uppercase text-destructive">Operational Discrepancy Hub</CardTitle>
+                        <CardTitle className="text-base font-black uppercase text-destructive">Critical Discrepancy Hub</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <ScrollArea className="h-[200px]">
                             <div className="divide-y">
-                                {(gpRealData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
+                                {gpRealData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
                                     <div key={alert.id} className="p-4 flex items-center justify-between group">
                                         <p className="text-[10px] font-bold text-foreground uppercase italic">{alert.msg}</p>
                                         <Button size="sm" variant="outline" className="h-7 text-[8px] font-black uppercase hover:bg-green-600 hover:text-white" onClick={() => setSolvedAlerts([...solvedAlerts, alert.id])}>Mark Solved</Button>
                                     </div>
                                 ))}
-                                {(gpRealData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
+                                {gpRealData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
                                     <div className="p-12 text-center text-muted-foreground opacity-30 italic uppercase font-black text-xs">No active discrepancies.</div>
                                 )}
                             </div>
@@ -680,6 +684,58 @@ function GpUlbDashboardContent() {
                                 <p className="text-[8px] font-bold uppercase text-muted-foreground">{gpRealData.circuit.vehicle}</p>
                             </div>
                         </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="border-2 shadow-sm overflow-hidden">
+                <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary"/> Nodal Recovery Trend (Kg)</CardTitle>
+                    <Tabs value={lineToggle} onValueChange={setLineToggle}>
+                        <TabsList className="h-8 bg-background border"><TabsTrigger value="weekly" className="text-[9px] font-black uppercase">Weekly</TabsTrigger><TabsTrigger value="monthly" className="text-[9px] font-black uppercase">Monthly</TabsTrigger></TabsList>
+                    </Tabs>
+                </CardHeader>
+                <CardContent className="h-[300px] pt-8">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={gpRealData.lineData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                            <XAxis dataKey="name" fontSize={10} fontWeights="bold" />
+                            <YAxis fontSize={10} />
+                            <Tooltip />
+                            <Line type="monotone" dataKey={lineToggle === 'monthly' ? 'monthly' : 'weekly'} stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))" }} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
+
+            <div className="grid md:grid-cols-2 gap-6">
+                <Card className="border-2 shadow-sm">
+                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Waste Collected (Last 5 Months)</CardTitle></CardHeader>
+                    <CardContent className="h-[300px] pt-6">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={gpRealData.monthlyTonnage}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                                <XAxis dataKey="month" fontSize={10} fontWeights="black" />
+                                <YAxis fontSize={10} />
+                                <Tooltip />
+                                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-2 shadow-sm">
+                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Stream Composition</CardTitle></CardHeader>
+                    <CardContent className="h-[300px] pt-6">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={gpRealData.streamData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                                    {gpRealData.streamData.map((_, i) => (<Cell key={`cell-${i}`} fill={COMPOSITION_COLORS[i % COMPOSITION_COLORS.length]} />))}
+                                </Pie>
+                                <Tooltip />
+                                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '9px', fontWeight: 'black', textTransform: 'uppercase'}} />
+                            </PieChart>
+                        </ResponsiveContainer>
                     </CardContent>
                 </Card>
             </div>
@@ -717,24 +773,6 @@ function GpUlbDashboardContent() {
                             <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {(gpRealData.peos || []).map((n:any, i:number) => (
-                                    <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
-                                ))}
-                            </TableBody></Table>
-                        </PopoverContent>
-                    </Popover>
-
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
-                                <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (ULB)</p>
-                                <p className="text-2xl font-black text-primary underline">{(gpRealData.ulbOperators || []).length}</p>
-                            </Card>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
-                            <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> ULB Operator Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {(gpRealData.ulbOperators || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
                                 ))}
                             </TableBody></Table>
