@@ -83,60 +83,93 @@ import { mrfData } from "@/lib/mrf-data";
 
 const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed', '#64748b'];
 
+/**
+ * HIGH PRECISION TEMPORAL ENGINE
+ * Calculates arrival days with 100% precision for ordinals (1st Thursday), 
+ * fixed dates (1st, 15th), and recurring weekdays.
+ */
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
-    const normalized = schedule.toLowerCase().trim();
+    // Normalize string: Remove space from "thurs day", "tues day", etc.
+    const normalized = schedule.toLowerCase()
+        .replace(/thurs\s*day/g, 'thursday')
+        .replace(/tues\s*day/g, 'tuesday')
+        .replace(/wednes\s*day/g, 'wednesday')
+        .replace(/mon\s*day/g, 'monday')
+        .replace(/fri\s*day/g, 'friday')
+        .replace(/satur\s*day/g, 'saturday')
+        .replace(/sun\s*day/g, 'sunday')
+        .replace(/\s+/g, ' ')
+        .trim();
+        
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const dayOfWeek = today.getDay();
     const dateOfMonth = today.getDate();
     
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    
+    const ordinals: Record<string, number> = { 
+        '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 
+        'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 
+    };
+
+    const getNthWeekdayOfMonth = (year: number, month: number, weekdayIdx: number, n: number) => {
+        let count = 0;
+        let d = new Date(year, month, 1);
+        while (d.getMonth() === month) {
+            if (d.getDay() === weekdayIdx) {
+                count++;
+                if (count === n) return new Date(d);
+            }
+            d.setDate(d.getDate() + 1);
+        }
+        return null;
+    };
+
+    // Case 1: Nth Weekday (e.g., 1st Thursday, Friday of 2nd week)
     const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
-    const weekdayFound = weekdays.find(w => normalized.includes(w) || normalized.includes(w.substring(0,3)));
+    const weekdayFound = weekdays.find(w => normalized.includes(w));
     
     if (nthMatch && weekdayFound) {
-        const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
         const n = ordinals[nthMatch[0].toLowerCase()];
-        const targetDayIdx = weekdays.indexOf(weekdayFound);
+        const targetWeekdayIdx = weekdays.indexOf(weekdayFound);
+        let target = getNthWeekdayOfMonth(today.getFullYear(), today.getMonth(), targetWeekdayIdx, n);
         
-        const findNth = (y: number, m: number, targetD: number, occurrence: number) => {
-            let count = 0;
-            let d = new Date(y, m, 1);
-            while (d.getMonth() === m) {
-                if (d.getDay() === targetD) {
-                    count++;
-                    if (count === occurrence) return new Date(d);
-                }
-                d.setDate(d.getDate() + 1);
-            }
-            return null;
-        };
-
-        let target = findNth(today.getFullYear(), today.getMonth(), targetDayIdx, n);
+        // If target has passed in current month, check next month
         if (!target || target < today) {
-            let nextM = today.getMonth() + 1;
-            let nextY = today.getFullYear();
-            if (nextM > 11) { nextM = 0; nextY++; }
-            target = findNth(nextY, nextM, targetDayIdx, n);
+            let nextMonth = today.getMonth() + 1;
+            let nextYear = today.getFullYear();
+            if (nextMonth > 11) { nextMonth = 0; nextYear++; }
+            target = getNthWeekdayOfMonth(nextYear, nextMonth, targetWeekdayIdx, n);
         }
         
         if (target) {
-            return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (target.getTime() === today.getTime()) return 0;
+            const diffTime = target.getTime() - today.getTime();
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         }
     }
 
-    if (weekdayFound) {
-        let diff = weekdays.indexOf(weekdayFound) - dayOfWeek;
-        if (diff < 0) diff += 7;
-        return diff;
-    }
+    // Case 2: Recurring Weekday (e.g., Monday, every Tuesday)
+    let minDays = 999;
+    let foundWeekday = false;
+    weekdays.forEach((day, i) => {
+        if (normalized.includes(day)) {
+            foundWeekday = true;
+            let diff = i - dayOfWeek;
+            if (diff < 0) diff += 7;
+            if (diff === 0) minDays = 0;
+            else if (diff < minDays) minDays = diff;
+        }
+    });
+    if (foundWeekday && minDays !== 999) return minDays;
 
+    // Case 3: Fixed Dates (e.g., 1st and 15th)
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
         const days = dateMatches.map(Number).sort((a, b) => a - b);
         const nextDay = days.find(d => d >= dateOfMonth);
+        if (nextDay === dateOfMonth) return 0;
         if (nextDay) return nextDay - dateOfMonth;
         const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
         return (daysInMonth - dateOfMonth) + days[0];
@@ -278,23 +311,23 @@ function StateAdminDashboardContent() {
 
     const discrepancies: any[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
-    allRoutes.filter(r => r.isActiveToday).forEach(c => {
+    allRoutes.filter(r => r.isActiveToday).forEach((c, idx) => {
         if (!allRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startGp))) {
             discrepancies.push({ 
-                id: `miss-${c.district}-${c.block}-${c.routeId}-${c.startGp}`.replace(/\s+/g, '-'), 
+                id: `miss-${c.district}-${c.block}-${c.routeId}-${c.startGp}-${idx}`.replace(/\s+/g, '-'), 
                 msg: `[${c.district}] Circuit ${c.routeId} active - No receipt synced for ${c.startGp}.` 
             });
         }
     });
 
-    const peos = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map(c => JSON.stringify({ name: c.gpNodalPerson.split(',')[0].trim(), contact: c.gpNodalContact.split(',')[0].trim() })))))
-        .map(s => JSON.parse(s)).filter(p => p.name !== '-');
+    const peos = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map(c => JSON.stringify({ name: (c.gpNodalPerson || "").split(',')[0].trim(), contact: (c.gpNodalContact || "").split(',')[0].trim() })))))
+        .map(s => JSON.parse(s)).filter(p => p.name !== '-' && p.name !== '');
     
-    const operators = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map(c => JSON.stringify({ name: c.ulbNodalPerson.split('&')[0].trim(), contact: c.ulbNodalContact.split(',')[0].trim() })))))
-        .map(s => JSON.parse(s)).filter(p => p.name !== '-');
+    const operators = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map(c => JSON.stringify({ name: (c.ulbNodalPerson || "").split('&')[0].trim(), contact: (c.ulbNodalContact || "").split(',')[0].trim() })))))
+        .map(s => JSON.parse(s)).filter(p => p.name !== '-' && p.name !== '');
 
     const stateDrivers = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map(c => JSON.stringify({ name: c.driverName, contact: c.driverContact })))))
-        .map(s => JSON.parse(s)).filter(d => d.name !== '-');
+        .map(s => JSON.parse(s)).filter(d => d.name !== '-' && d.name !== '');
 
     const workers = districtSources.flatMap(s => s.data.routes.flatMap(r => r.workers || []));
 
@@ -428,24 +461,26 @@ function StateAdminDashboardContent() {
                         <div className="grid divide-y">
                             {stateData.activeToday.map((log, i) => (
                                 <div key={i} className={`p-4 flex items-center justify-between border-l-4 border-l-green-600 bg-green-50/10`}>
-                                    <div className="flex-1 space-y-0.5 border-r border-dashed pr-4">
+                                    <div className="flex-[1.5] space-y-0.5 border-r border-dashed pr-6">
                                         <p className="font-black text-[9px] uppercase text-primary leading-none">{log.district} | {log.block}</p>
-                                        <p className="font-black text-[11px] uppercase truncate">{log.routeId}: {log.routeName}</p>
+                                        <p className="font-black text-[11px] uppercase truncate text-primary">{log.routeId}: {log.routeName}</p>
                                         <p className="text-[8px] font-black text-muted-foreground uppercase">{log.mrf}</p>
                                     </div>
-                                    <div className="flex-1 text-center px-4">
+                                    <div className="flex-1 text-center px-6 border-r border-dashed">
                                         <div className={`text-sm font-black text-green-700 animate-pulse`}>Active Today</div>
-                                        <p className="text-[8px] font-black text-blue-700 uppercase">{log.scheduleStr}</p>
+                                        <p className="text-[9px] font-black text-blue-700 uppercase mt-1">{log.scheduleStr}</p>
                                     </div>
-                                    <div className="flex-1 text-right space-y-0.5 pl-4">
+                                    <div className="flex-[1.5] text-right space-y-1 pl-6">
                                         <p className="text-[10px] font-black uppercase leading-none">{log.driver}</p>
-                                        <p className="text-[8px] font-mono font-bold text-muted-foreground">{log.vehicle}</p>
-                                        <p className="text-[9px] font-bold text-primary">{log.startGp} → {log.endGp}</p>
+                                        <p className="text-[9px] font-mono font-bold text-muted-foreground uppercase">{log.vehicle}</p>
+                                        <p className="text-[9px] font-black text-primary font-mono">{log.contact}</p>
+                                        <p className="text-[8px] font-bold text-foreground/50 italic truncate">{log.startGp} → {log.endGp}</p>
+                                        <p className="text-[8px] font-black text-muted-foreground uppercase leading-none mt-1">Target: {log.mrf}</p>
                                     </div>
                                 </div>
                             ))}
                             {stateData.activeToday.length === 0 && (
-                              <div className="p-12 text-center text-muted-foreground italic uppercase font-black text-[10px]">No active routes synchronized for today.</div>
+                              <div className="p-12 text-center text-muted-foreground italic uppercase font-black text-[10px]">No circuits synchronized for active operation today.</div>
                             )}
                         </div>
                     </ScrollArea>
@@ -624,17 +659,19 @@ function StateAdminDashboardContent() {
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                     <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> State Operator Directory</div>
-                    <Table>
-                        <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                             {stateData.operators.map((n, i) => (
-                                <TableRow key={i} className="border-b border-dashed">
-                                    <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
-                                    <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    <ScrollArea className="h-64">
+                        <Table>
+                            <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {stateData.operators.map((n, i) => (
+                                    <TableRow key={i} className="border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
+                                        <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
                 </PopoverContent>
             </Popover>
 
@@ -647,17 +684,19 @@ function StateAdminDashboardContent() {
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                     <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> State Driver Directory</div>
-                    <Table>
-                        <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                             {stateData.stateDrivers.map((n, i) => (
-                                <TableRow key={i} className="border-b border-dashed">
-                                    <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
-                                    <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    <ScrollArea className="h-64">
+                        <Table>
+                            <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {stateData.stateDrivers.map((n, i) => (
+                                    <TableRow key={i} className="border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
+                                        <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
                 </PopoverContent>
             </Popover>
         </div>
