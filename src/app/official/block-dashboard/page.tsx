@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
@@ -13,32 +14,32 @@ import {
     PieChart, 
     Pie, 
     Cell, 
-    LineChart,
-    Line,
-    CartesianGrid,
-    Legend
+    LineChart, 
+    Line, 
+    CartesianGrid, 
+    Legend 
 } from 'recharts';
 import { 
     Building, 
     Truck, 
-    Warehouse,
-    PieChart as PieIcon,
-    Activity,
-    ArrowRight,
-    TrendingUp,
-    ListFilter,
-    Layers,
-    UserCircle,
-    MapPin,
-    Users,
-    Home,
-    AlertCircle,
-    CheckCircle2,
-    ShieldCheck,
-    Phone,
-    Navigation,
-    Weight,
-    Calculator
+    Warehouse, 
+    PieChart as PieIcon, 
+    Activity, 
+    ArrowRight, 
+    TrendingUp, 
+    ListFilter, 
+    Layers, 
+    UserCircle, 
+    MapPin, 
+    Users, 
+    Home, 
+    AlertCircle, 
+    CheckCircle2, 
+    ShieldCheck, 
+    Phone, 
+    Navigation, 
+    Weight, 
+    Calculator 
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -87,45 +88,72 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed
 
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
-    const normalized = schedule.toLowerCase().replace(/\s+/g, ' ').replace('thurs day', 'thursday').replace('tues day', 'tuesday');
+    
+    const normalized = schedule.toLowerCase().trim().replace(/\s+/g, ' ');
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayOfWeek = today.getDay();
+    const dateOfMonth = today.getDate();
+    
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
-    
-    const getNthWeekday = (year: number, month: number, weekdayIdx: number, n: number) => {
-        let count = 0; let d = new Date(year, month, 1);
-        while (d.getMonth() === month) { if (d.getDay() === weekdayIdx) { count++; if (count === n) return new Date(d); } d.setDate(d.getDate() + 1); }
+
+    const getOccurrenceDate = (year: number, month: number, targetWeekday: number, n: number) => {
+        let count = 0;
+        let d = new Date(year, month, 1);
+        while (d.getMonth() === month) {
+            if (d.getDay() === targetWeekday) {
+                count++;
+                if (count === n) return new Date(d);
+            }
+            d.setDate(d.getDate() + 1);
+        }
         return null;
     };
 
+    // Handle Nth Weekday cases (e.g., 1st Thursday, Friday of 2nd week)
     const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) ||
                      normalized.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+of\s+(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
-    
+
     if (nthMatch) {
         const nStr = ordinals[nthMatch[1]] ? nthMatch[1] : nthMatch[2];
         const dayStr = weekdays.includes(nthMatch[1]) ? nthMatch[1] : nthMatch[2];
         const n = ordinals[nStr.toLowerCase()];
-        const dayIdx = weekdays.indexOf(dayStr.toLowerCase());
-        let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
-        if (!target || target <= today) {
-            let nextM = today.getMonth() + 1; let nextY = today.getFullYear();
+        const targetWeekday = weekdays.indexOf(dayStr.toLowerCase());
+
+        let target = getOccurrenceDate(today.getFullYear(), today.getMonth(), targetWeekday, n);
+        if (!target || target < today) {
+            let nextM = today.getMonth() + 1;
+            let nextY = today.getFullYear();
             if (nextM > 11) { nextM = 0; nextY++; }
-            target = getNthWeekday(nextY, nextM, dayIdx, n);
+            target = getOccurrenceDate(nextY, nextM, targetWeekday, n);
         }
-        if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (target) {
+            return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        }
     }
 
-    let minDays = 999; 
-    weekdays.forEach((day, i) => { if (normalized.includes(day)) { let diff = i - today.getDay(); if (diff <= 0) diff += 7; if (diff < minDays) minDays = diff; } });
-    
+    // Handle standard "Every Day" or "Monday, Thursday" cases
+    let minDays = 999;
+    weekdays.forEach((day, i) => {
+        if (normalized.includes(day)) {
+            let diff = i - dayOfWeek;
+            if (diff < 0) diff += 7;
+            if (diff < minDays) minDays = diff;
+        }
+    });
+
+    // Handle fixed date formats (e.g., "1st & 15th")
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
         const days = dateMatches.map(Number).sort((a, b) => a - b);
-        const nextDay = days.find(d => d > today.getDate());
-        if (nextDay) return nextDay - today.getDate();
+        const nextDay = days.find(d => d >= dateOfMonth);
+        if (nextDay === dateOfMonth) return 0;
+        if (nextDay) return nextDay - dateOfMonth;
         const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-        return (daysInMonth - today.getDate()) + days[0];
+        return (daysInMonth - dateOfMonth) + days[0];
     }
+
     return minDays;
 };
 
@@ -173,7 +201,19 @@ function BlockDashboardContent() {
         const sched = (blockDetails.schedules || []).find((s:any) => (s.gpName || "").toLowerCase().includes((route.routeId || "").toLowerCase()) || (s.gpName || "").toLowerCase().includes((route.startingGp || "").toLowerCase()));
         const scheduleStr = sched?.collectionSchedule || route.scheduledOn || 'Scheduled';
         const daysLeft = calculateDaysUntilNext(scheduleStr, new Date());
-        return { ...route, daysLeft, scheduleStr, isActiveToday: daysLeft === 0, countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`, driverName: (sched?.driverName && sched.driverName !== '-') ? sched.driverName : 'Verified', driverPhone: (sched?.driverContact && sched.driverContact !== '-') ? sched.driverContact : '9437XXXXXX', vehicleDetails: `${sched?.vehicleType || 'TATA ACE'}`, mrf: sched?.mrf || route.destination || 'Facility', startGp: route.startingGp, endGp: route.finalGp || route.destination };
+        return { 
+            ...route, 
+            daysLeft, 
+            scheduleStr, 
+            isActiveToday: daysLeft === 0, 
+            countdown: daysLeft === 0 ? "Active Today" : `Arrival in ${daysLeft} days`, 
+            driverName: (sched?.driverName && sched.driverName !== '-') ? sched.driverName : 'Verified', 
+            driverPhone: (sched?.driverContact && sched.driverContact !== '-') ? sched.driverContact : '9437XXXXXX', 
+            vehicleDetails: `${sched?.vehicleType || 'TATA ACE'}`, 
+            mrf: sched?.mrf || route.destination || 'Facility', 
+            startGp: route.startingGp, 
+            endGp: route.finalGp || route.destination 
+        };
     }).sort((a: any, b: any) => a.daysLeft - b.daysLeft);
 
     const hasData = verifiedRecords.length > 0;
@@ -218,7 +258,7 @@ function BlockDashboardContent() {
     };
   }, [blockName, districtSource, mounted, verifiedRecords, districtName]);
 
-  if (!mounted || !blockData) return null;
+  if (!mounted || !blockData) return <div className="p-12 text-center animate-pulse">Initializing block node...</div>;
 
   return (
     <div className="space-y-8">
@@ -330,7 +370,7 @@ function BlockDashboardContent() {
                             {blockData.activeCircuits.map((log, i) => (
                                 <div key={i} className={`p-4 flex items-center justify-between border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
                                     <div className="flex-1 space-y-0.5 border-r border-dashed pr-4">
-                                        <p className="font-black text-[9px] uppercase text-primary leading-none">{log.mrf}</p>
+                                        <p className="font-black text-[9px] uppercase text-primary leading-none">Block: {blockName} | {log.mrf}</p>
                                         <p className="font-black text-[11px] uppercase truncate">{log.routeId}: {log.routeName}</p>
                                     </div>
                                     <div className="flex-1 text-center px-4">
@@ -339,7 +379,7 @@ function BlockDashboardContent() {
                                     </div>
                                     <div className="flex-1 text-right space-y-0.5 pl-4">
                                         <p className="text-[10px] font-black uppercase leading-none">{log.driverName || 'Verified'}</p>
-                                        <p className="text-[8px] font-mono font-bold text-muted-foreground">{log.vehicleDetails}</p>
+                                        <p className="text-[8px] font-mono font-bold text-muted-foreground">{log.vehicleDetails} | C: {log.driverPhone}</p>
                                         <p className="text-[9px] font-bold text-primary">{log.startGp} → {log.endGp}</p>
                                     </div>
                                 </div>
@@ -400,7 +440,7 @@ function BlockDashboardContent() {
                         <XAxis dataKey="name" fontSize={9} fontWeights="black" />
                         <YAxis fontSize={10} />
                         <Tooltip />
-                        <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} radius={[4, 4, 0, 0]} barSize={40} />
+                        <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
                     </BarChart>
                 </ResponsiveContainer>
             </CardContent>
