@@ -19,7 +19,8 @@ import {
   Map as DistrictIcon,
   Globe,
   UserCircle,
-  Users
+  Users,
+  CheckCircle2
 } from "lucide-react";
 import { Suspense, useMemo, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -82,65 +83,73 @@ import { mrfData } from "@/lib/mrf-data";
 
 const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed', '#64748b'];
 
+/**
+ * HIGH PRECISION TEMPORAL ENGINE
+ * Calculates days until next arrival based on all schedule types.
+ */
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
-    const normalized = schedule.toLowerCase().replace(/\s+/g, ' ').replace('thurs day', 'thursday').replace('tues day', 'tuesday');
+    const normalized = schedule.toLowerCase().trim();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayOfWeek = today.getDay();
+    const dateOfMonth = today.getDate();
     
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
     
-    const getNthWeekday = (year: number, month: number, weekdayIdx: number, n: number) => {
-        let count = 0; 
-        let d = new Date(year, month, 1);
-        while (d.getMonth() === month) {
-            if (d.getDay() === weekdayIdx) {
-                count++;
-                if (count === n) return new Date(d);
-            }
-            d.setDate(d.getDate() + 1);
-        }
-        return null;
-    };
-
-    const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) ||
-                     normalized.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+of\s+(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
+    // 1. Handle Nth Weekday Pattern ("1st Thursday", "Friday of 2nd week", etc.)
+    const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
+    const weekdayFound = weekdays.find(w => normalized.includes(w) || normalized.includes(w.substring(0,3)));
     
-    if (nthMatch) {
-        const nStr = ordinals[nthMatch[1]] ? nthMatch[1] : nthMatch[2];
-        const dayStr = weekdays.includes(nthMatch[1]) ? nthMatch[1] : nthMatch[2];
-        const n = ordinals[nStr.toLowerCase()];
-        const dayIdx = weekdays.indexOf(dayStr.toLowerCase());
+    if (nthMatch && weekdayFound) {
+        const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
+        const n = ordinals[nthMatch[0].toLowerCase()];
+        const targetDayIdx = weekdays.indexOf(weekdayFound);
         
-        let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
-        if (!target || target <= today) {
-            let nextM = today.getMonth() + 1; let nextY = today.getFullYear();
+        const findNth = (y: number, m: number, targetD: number, occurrence: number) => {
+            let count = 0;
+            let d = new Date(y, m, 1);
+            while (d.getMonth() === m) {
+                if (d.getDay() === targetD) {
+                    count++;
+                    if (count === occurrence) return new Date(d);
+                }
+                d.setDate(d.getDate() + 1);
+            }
+            return null;
+        };
+
+        let target = findNth(today.getFullYear(), today.getMonth(), targetDayIdx, n);
+        if (!target || target < today) {
+            let nextM = today.getMonth() + 1;
+            let nextY = today.getFullYear();
             if (nextM > 11) { nextM = 0; nextY++; }
-            target = getNthWeekday(nextY, nextM, dayIdx, n);
+            target = findNth(nextY, nextM, targetDayIdx, n);
         }
-        if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (target) {
+            return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        }
     }
 
-    let minDays = 999; 
-    weekdays.forEach((day, i) => {
-        if (normalized.includes(day)) {
-            let diff = i - today.getDay();
-            if (diff <= 0) diff += 7;
-            if (diff < minDays) minDays = diff;
-        }
-    });
+    // 2. Handle Simple Weekday ("Every Monday", "Monday")
+    if (weekdayFound) {
+        let diff = weekdays.indexOf(weekdayFound) - dayOfWeek;
+        if (diff < 0) diff += 7;
+        return diff;
+    }
 
+    // 3. Handle Specific Dates ("1st & 15th", "7, 22")
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
         const days = dateMatches.map(Number).sort((a, b) => a - b);
-        const nextDay = days.find(d => d >= today.getDate());
-        if (nextDay === today.getDate()) return 0;
-        if (nextDay) return nextDay - today.getDate();
+        const nextDay = days.find(d => d >= dateOfMonth);
+        if (nextDay) return nextDay - dateOfMonth;
         const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-        return (daysInMonth - today.getDate()) + days[0];
+        return (daysInMonth - dateOfMonth) + days[0];
     }
-    return minDays;
+
+    return 999;
 };
 
 function StateAdminDashboardContent() {
