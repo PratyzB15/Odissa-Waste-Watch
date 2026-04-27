@@ -143,7 +143,7 @@ function GpUlbDashboardContent() {
   const [solvedAlerts, setSolvedAlerts] = useState<string[]>([]);
   const [lineToggle, setLineToggle] = useState('monthly');
   const [barToggle, setBarToggle] = useState('top');
-  const [mrfUlbToggle, setMrfUlbToggle] = useState('mrf');
+  const [mrfBarToggle, setMrfBarToggle] = useState('mrf');
 
   const db = useFirestore();
   const wasteQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'desc')) : null, [db]);
@@ -153,14 +153,14 @@ function GpUlbDashboardContent() {
 
   const districtName = useMemo(() => {
     if (districtNameParam) return districtNameParam;
-    if (ulbName) return mrfData.find(m => m.ulbName.toLowerCase() === ulbName.toLowerCase())?.district || '';
-    if (gpName && blockName) return mrfData.find(m => m.blockCovered.toLowerCase() === blockName.toLowerCase())?.district || '';
+    if (ulbName) return mrfData.find(m => m.ulbName.toLowerCase().trim() === ulbName.toLowerCase().trim())?.district || '';
+    if (gpName && blockName) return mrfData.find(m => m.blockCovered.toLowerCase().trim() === blockName.toLowerCase().trim())?.district || '';
     return '';
   }, [districtNameParam, ulbName, gpName, blockName]);
 
   const districtSource = useMemo(() => {
     if (!districtName) return null;
-    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
+    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
     return map[districtName.toLowerCase()];
   }, [districtName]);
 
@@ -235,7 +235,7 @@ function GpUlbDashboardContent() {
         { name: 'Plastic', value: 450 }, { name: 'Paper', value: 300 }, { name: 'Metal', value: 120 }, { name: 'Glass', value: 80 }, { name: 'Sanitation', value: 150 }, { name: 'Others', value: 100 }
     ];
 
-    const discrepancies = [];
+    const discrepancies: any[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
     schedules.filter(s => s.isActiveToday).forEach(s => {
         const hasReceipt = allRecords.some(r => r.date === todayStr && (r.routeId === s.routeId || r.gpName === s.gpName));
@@ -276,7 +276,8 @@ function GpUlbDashboardContent() {
         { name: 'Plastic', value: 40 }, { name: 'Paper', value: 25 }, { name: 'Metal', value: 10 }, { name: 'Glass', value: 5 }, { name: 'Sanitation', value: 10 }, { name: 'Others', value: 10 }
     ];
 
-    const daysLeft = calculateDaysUntilNext(details.schedule?.collectionSchedule || details.routes[0]?.scheduledOn || '', new Date());
+    const scheduleStr = details.schedule?.collectionSchedule || details.routes[0]?.scheduledOn || '';
+    const daysLeft = calculateDaysUntilNext(scheduleStr, new Date());
 
     const circuit = {
         ulb: details.mapping?.taggedUlb || 'N/A',
@@ -284,7 +285,7 @@ function GpUlbDashboardContent() {
         id: details.routes?.[0]?.routeId || 'TBD',
         vehicle: details.schedule?.vehicleType || 'Motorised',
         driver: (details.schedule?.driverName && details.schedule.driverName !== '-') ? details.schedule.driverName : 'Verified',
-        scheduleDay: details.schedule?.collectionSchedule || details.routes?.[0]?.scheduledOn || 'Scheduled',
+        scheduleDay: scheduleStr || 'Scheduled',
         isActiveToday: daysLeft === 0,
         countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`
     };
@@ -301,13 +302,14 @@ function GpUlbDashboardContent() {
         .map(s => JSON.parse(s))
         .filter(d => d.name !== '');
 
-    const workers = details.routes.flatMap((r: any) => r.workers || []);
+    const workers = (details.routes || []).flatMap((r: any) => r.workers || []);
 
     return { 
         ...details, circuit, weeklyData, composition, gpRecords, peos, ulbOperators, drivers, workers,
         isActiveToday: daysLeft === 0,
         countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`,
-        scheduleStr: details.schedule?.collectionSchedule || details.routes[0]?.scheduledOn || 'Scheduled'
+        scheduleStr: scheduleStr || 'Scheduled',
+        discrepancies: [] // Safeguard to prevent .filter() errors
     };
   }, [role, gpName, districtSource, mounted, allRecords]);
 
@@ -396,13 +398,13 @@ function GpUlbDashboardContent() {
                     <CardContent className="p-0">
                         <ScrollArea className="h-[250px]">
                             <div className="divide-y">
-                                {ulbRealData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
+                                {(ulbRealData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
                                     <div key={alert.id} className="p-4 flex items-center justify-between group">
                                         <p className="text-[10px] font-bold text-foreground uppercase italic">{alert.msg}</p>
                                         <Button size="sm" variant="outline" className="h-7 text-[8px] font-black uppercase hover:bg-green-600 hover:text-white" onClick={() => setSolvedAlerts([...solvedAlerts, alert.id])}>Mark Solved</Button>
                                     </div>
                                 ))}
-                                {ulbRealData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
+                                {(ulbRealData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
                                     <div className="p-12 text-center text-muted-foreground opacity-30 italic uppercase font-black text-xs">No active discrepancies.</div>
                                 )}
                             </div>
@@ -420,9 +422,9 @@ function GpUlbDashboardContent() {
                             <div className="grid divide-y">
                                 {ulbRealData.activeCircuits.map((log, i) => (
                                     <div key={i} className={`p-4 flex items-center justify-between border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
-                                        <div className="flex-1 space-y-0.5"><p className="font-black text-[10px] uppercase text-primary">ID: {log.routeId || 'R-01'}</p><p className="text-[8px] font-black text-muted-foreground uppercase">{log.mrf}</p></div>
-                                        <div className="flex-1 text-center border-x border-dashed px-4"><div className={`text-sm font-black ${log.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>{log.countdown}</div><p className="text-[8px] font-black text-blue-700 uppercase">{log.collectionSchedule}</p></div>
-                                        <div className="flex-1 text-right space-y-0.5"><p className="text-[10px] font-black uppercase">{log.driverName || 'Verified'}</p><p className="text-[8px] font-mono font-bold text-muted-foreground">{log.vehicleType}</p></div>
+                                        <div className="flex-1 space-y-0.5 pr-4 border-r border-dashed"><p className="font-black text-[10px] uppercase text-primary">ID: {log.routeId || 'R-01'}</p><p className="text-[8px] font-black text-muted-foreground uppercase">{log.mrf}</p></div>
+                                        <div className="flex-1 text-center px-4"><div className={`text-sm font-black ${log.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>{log.countdown}</div><p className="text-[8px] font-black text-blue-700 uppercase">{log.collectionSchedule}</p></div>
+                                        <div className="flex-1 text-right space-y-0.5 pl-4"><p className="text-[10px] font-black uppercase">{log.driverName || 'Verified'}</p><p className="text-[8px] font-mono font-bold text-muted-foreground">{log.vehicleType}</p></div>
                                     </div>
                                 ))}
                             </div>
@@ -495,7 +497,7 @@ function GpUlbDashboardContent() {
 
             <div className="grid md:grid-cols-2 gap-6">
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> State Recovery (Last 5 Months)</CardTitle></CardHeader>
+                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Nodal Recovery (Last 5 Months)</CardTitle></CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={[{month: 'Mar', val: 12000}, {month: 'Apr', val: 14500}, {month: 'May', val: 18000}, {month: 'Jun', val: 16200}, {month: 'Jul', val: 21600}]}>
@@ -510,7 +512,7 @@ function GpUlbDashboardContent() {
                 </Card>
 
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> State Stream Composition</CardTitle></CardHeader>
+                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Stream Composition</CardTitle></CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -628,8 +630,8 @@ function GpUlbDashboardContent() {
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Schools</p><p className="text-lg font-black text-primary">{gpRealData.waste?.schools || 0}</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Anganwadis</p><p className="text-lg font-black text-primary">{gpRealData.waste?.anganwadis || 0}</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Commercials</p><p className="text-lg font-black text-primary">{gpRealData.waste?.commercial || 0}</p></Card>
-                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Avg Load/Week</p><p className="text-sm font-black text-primary">{((gpRealData.waste?.dailyWasteTotalGm * 7) / 1000).toFixed(1)} Kg</p></Card>
-                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Avg Load/Month</p><p className="text-sm font-black text-primary">{(gpRealData.waste?.monthlyWasteTotalGm / 1000).toFixed(1)} Kg</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Avg Load/Week</p><p className="text-sm font-black text-primary">{(gpRealData.waste?.dailyWasteTotalGm ? (gpRealData.waste.dailyWasteTotalGm * 7 / 1000).toFixed(1) : 0)} Kg</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Avg Load/Month</p><p className="text-sm font-black text-primary">{(gpRealData.waste?.monthlyWasteTotalGm ? (gpRealData.waste.monthlyWasteTotalGm / 1000).toFixed(1) : 0)} Kg</p></Card>
                 <Card className="border-2 shadow-sm p-4 text-center bg-primary/5 border-primary/20 col-span-2"><p className="text-[9px] font-black uppercase text-primary mb-1">Efficiency Score</p><p className="text-lg font-black text-primary">94.5%</p></Card>
             </div>
 
@@ -642,13 +644,13 @@ function GpUlbDashboardContent() {
                     <CardContent className="p-0">
                         <ScrollArea className="h-[200px]">
                             <div className="divide-y">
-                                {gpRealData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
+                                {(gpRealData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
                                     <div key={alert.id} className="p-4 flex items-center justify-between group">
                                         <p className="text-[10px] font-bold text-foreground uppercase italic">{alert.msg}</p>
                                         <Button size="sm" variant="outline" className="h-7 text-[8px] font-black uppercase hover:bg-green-600 hover:text-white" onClick={() => setSolvedAlerts([...solvedAlerts, alert.id])}>Mark Solved</Button>
                                     </div>
                                 ))}
-                                {gpRealData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
+                                {(gpRealData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
                                     <div className="p-12 text-center text-muted-foreground opacity-30 italic uppercase font-black text-xs">No active discrepancies.</div>
                                 )}
                             </div>
@@ -682,7 +684,6 @@ function GpUlbDashboardContent() {
                 </Card>
             </div>
 
-            {/* Professional Node Registry (GP) */}
             <div className="space-y-4">
                 <h3 className="font-black text-xl uppercase tracking-tight flex items-center gap-2"><Layers className="h-6 w-6 text-primary" /> Professional Node Registry</h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -690,14 +691,14 @@ function GpUlbDashboardContent() {
                         <PopoverTrigger asChild>
                             <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
                                 <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Sanitation Workers</p>
-                                <p className="text-2xl font-black text-primary underline">{gpRealData.workers.length}</p>
+                                <p className="text-2xl font-black text-primary underline">{(gpRealData.workers || []).length}</p>
                             </Card>
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Users className="h-3 w-3" /> Sanitation Roster</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[9px] uppercase font-black">Name</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {gpRealData.workers.map((n:any, i:number) => (
+                                {(gpRealData.workers || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact || '9437XXXXXX'}</TableCell></TableRow>
                                 ))}
                             </TableBody></Table>
@@ -708,14 +709,14 @@ function GpUlbDashboardContent() {
                         <PopoverTrigger asChild>
                             <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
                                 <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (GP)</p>
-                                <p className="text-2xl font-black text-primary underline">{gpRealData.peos.length}</p>
+                                <p className="text-2xl font-black text-primary underline">{(gpRealData.peos || []).length}</p>
                             </Card>
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><ShieldCheck className="h-3 w-3" /> GP PEO Directory</div>
                             <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {gpRealData.peos.map((n:any, i:number) => (
+                                {(gpRealData.peos || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
                                 ))}
                             </TableBody></Table>
@@ -726,14 +727,14 @@ function GpUlbDashboardContent() {
                         <PopoverTrigger asChild>
                             <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
                                 <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (ULB)</p>
-                                <p className="text-2xl font-black text-primary underline">{gpRealData.ulbOperators.length}</p>
+                                <p className="text-2xl font-black text-primary underline">{(gpRealData.ulbOperators || []).length}</p>
                             </Card>
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> ULB Operator Directory</div>
                             <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {gpRealData.ulbOperators.map((n:any, i:number) => (
+                                {(gpRealData.ulbOperators || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
                                 ))}
                             </TableBody></Table>
@@ -744,14 +745,14 @@ function GpUlbDashboardContent() {
                         <PopoverTrigger asChild>
                             <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
                                 <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Logistical Driver</p>
-                                <p className="text-2xl font-black text-primary underline">{gpRealData.drivers.length}</p>
+                                <p className="text-2xl font-black text-primary underline">{(gpRealData.drivers || []).length}</p>
                             </Card>
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> Driver Directory</div>
                             <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {gpRealData.drivers.map((n:any, i:number) => (
+                                {(gpRealData.drivers || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
                                 ))}
                             </TableBody></Table>

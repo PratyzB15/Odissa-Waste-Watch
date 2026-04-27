@@ -90,8 +90,15 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
     
     const getNthWeekday = (year: number, month: number, weekdayIdx: number, n: number) => {
-        let count = 0; let d = new Date(year, month, 1);
-        while (d.getMonth() === month) { if (d.getDay() === weekdayIdx) { count++; if (count === n) return new Date(d); } d.setDate(d.getDate() + 1); }
+        let count = 0; 
+        let d = new Date(year, month, 1);
+        while (d.getMonth() === month) {
+            if (d.getDay() === weekdayIdx) {
+                count++;
+                if (count === n) return new Date(d);
+            }
+            d.setDate(d.getDate() + 1);
+        }
         return null;
     };
 
@@ -130,8 +137,7 @@ function StateAdminDashboardContent() {
   const [mounted, setMounted] = useState(false);
   const [solvedAlerts, setSolvedAlerts] = useState<string[]>([]);
   const [lineToggle, setLineToggle] = useState('monthly');
-  const [barToggle, setBarToggle] = useState('top');
-  const [mrfUlbToggle, setMrfUlbToggle] = useState('mrf');
+  const [mrfUlbToggle, setMrfUlbToggle] = useState('ulb');
 
   const db = useFirestore();
   const wasteQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'desc')) : null, [db]);
@@ -204,7 +210,6 @@ function StateAdminDashboardContent() {
     const hasData = allRecords.length > 0;
     const verifiedTotal = allRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0);
 
-    // Block-level Recovery Trend for ALL blocks
     const lineData: any[] = [];
     districtSources.forEach(source => {
         source.blocks.forEach(blockName => {
@@ -223,7 +228,6 @@ function StateAdminDashboardContent() {
         value: hasData ? allRecords.filter(r => r.district === s.district).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 1000 + Math.random() * 5000
     }));
 
-    // Infrastructure Audit: Top 5
     const mrfMap = new Map();
     uniqueMrfs.forEach(m => mrfMap.set(m, 0));
     if (hasData) {
@@ -259,7 +263,7 @@ function StateAdminDashboardContent() {
         { name: 'Plastic', value: 45000 }, { name: 'Paper', value: 32000 }, { name: 'Metal', value: 12000 }, { name: 'Glass', value: 8000 }, { name: 'Sanitation', value: 15000 }, { name: 'Others', value: 9000 }
     ];
 
-    const discrepancies = [];
+    const discrepancies: any[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
     allRoutes.filter(r => r.isActiveToday).forEach(c => {
         if (!allRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startGp))) {
@@ -373,13 +377,13 @@ function StateAdminDashboardContent() {
                 <CardContent className="p-0">
                     <ScrollArea className="h-[250px]">
                         <div className="divide-y">
-                            {stateData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
+                            {(stateData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
                                 <div key={alert.id} className="p-4 flex items-center justify-between group">
                                     <p className="text-[10px] font-bold text-foreground uppercase italic">{alert.msg}</p>
                                     <Button size="sm" variant="outline" className="h-7 text-[8px] font-black uppercase hover:bg-green-600 hover:text-white" onClick={() => setSolvedAlerts([...solvedAlerts, alert.id])}>Mark Solved</Button>
                                 </div>
                             ))}
-                            {stateData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
+                            {(stateData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
                                 <div className="p-12 text-center text-muted-foreground opacity-30 italic uppercase font-black text-xs">No active state-wide alerts.</div>
                             )}
                         </div>
@@ -537,3 +541,4 @@ function StateAdminDashboardContent() {
 export default function StateAdminDashboard() {
     return (<Suspense fallback={<div>Loading state dashboard...</div>}><StateAdminDashboardContent /></Suspense>);
 }
+
