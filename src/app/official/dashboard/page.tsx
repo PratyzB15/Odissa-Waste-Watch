@@ -1,3 +1,4 @@
+
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -11,7 +12,11 @@ import {
   Building,
   Warehouse,
   MapPin,
-  Navigation
+  Navigation,
+  Users,
+  ShieldCheck,
+  UserCircle,
+  Phone
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, useEffect } from "react";
@@ -186,8 +191,17 @@ function DistrictDashboardContent() {
     const gpsList = (districtSource.data.gpMappings || []).map((gp: any) => {
         const w = (districtSource.data.wasteGeneration || []).find((waste: any) => waste.gpName.toLowerCase() === gp.gpName.toLowerCase());
         const total = w ? (w.totalWasteKg || (w.monthlyWasteTotalGm / 1000) || 0) : 0;
-        return { name: gp.gpName, households: w?.totalHouseholds || 0, surveyed: total };
+        return { 
+            name: gp.gpName, 
+            households: w?.totalHouseholds || 0, 
+            surveyed: total,
+            dailyGen: w?.dailyWasteTotalGm || 0,
+            monthlyGen: w?.monthlyWasteTotalGm || 0
+        };
     });
+
+    const totalDailyGen = gpsList.reduce((s, g) => s + g.dailyGen, 0);
+    const totalMonthlyGen = gpsList.reduce((s, g) => s + g.monthlyGen, 0);
 
     const activeCircuits = (districtSource.data.routes || []).map((route: any) => {
         const sched = (districtSource.data.collectionSchedules || []).find((s:any) => s.gpName.toLowerCase().includes(route.routeId.toLowerCase()) || s.gpName.toLowerCase().includes(route.startingGp.toLowerCase()));
@@ -247,11 +261,22 @@ function DistrictDashboardContent() {
         }
     });
 
+    const peos = Array.from(new Set((districtSource.data.collectionSchedules || []).map((s:any) => JSON.stringify({ name: (s.gpNodalPerson || "").split(',')[0].trim(), contact: (s.gpNodalContact || "").split(',')[0].trim(), mrf: s.mrf }))))
+        .map(s => JSON.parse(s)).filter(p => p.name !== '-' && p.name !== '');
+
+    const operators = Array.from(new Set((districtSource.data.collectionSchedules || []).map((s:any) => JSON.stringify({ name: (s.ulbNodalPerson || "").split('&')[0].trim(), contact: (s.ulbNodalContact || "").split(',')[0].trim(), ulb: s.ulb }))))
+        .map(s => JSON.parse(s)).filter(o => o.name !== '-' && o.name !== '');
+
+    const drivers = Array.from(new Set((districtSource.data.collectionSchedules || []).map((s:any) => JSON.stringify({ name: s.driverName, contact: s.driverContact, vehicle: s.vehicleType }))))
+        .map(s => JSON.parse(s)).filter(d => d.name !== '-' && d.name !== '');
+
+    const workers = (districtSource.data.routes || []).flatMap((r:any) => (r.workers || []).map((w:any) => ({ ...w, mrf: r.destination })));
+
     return { 
         ulbs, mrfs, gpsList, activeCircuits,
-        lineData, mrfTonnage, ulbTonnage, streamData, discrepancies,
+        lineData, mrfTonnage, ulbTonnage, streamData, discrepancies, peos, operators, drivers, workers,
         households: gpsList.reduce((s, g) => s + g.households, 0),
-        surveyedWaste: gpsList.reduce((s, g) => s + g.surveyed, 0)
+        totalDailyGen, totalMonthlyGen
     };
   }, [districtName, districtSource, mounted, verifiedRecords]);
 
@@ -271,11 +296,19 @@ function DistrictDashboardContent() {
         </CardHeader>
       </Card>
 
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-        <Card className="border-2 shadow-sm p-4 text-center">
-            <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Blocks</p>
-            <p className="text-lg font-black text-primary">{districtSource.blocks.length}</p>
-        </Card>
+      <div className="grid grid-cols-2 lg:grid-cols-8 gap-4">
+        <Popover>
+            <PopoverTrigger asChild>
+                <Card className="border-2 shadow-sm p-4 text-center cursor-pointer hover:bg-primary/5 transition-all group">
+                    <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Blocks</p>
+                    <p className="text-lg font-black text-primary underline">{districtSource.blocks.length}</p>
+                </Card>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px]">Administrative Blocks</div>
+                <Table><TableBody>{districtSource.blocks.map((b, i) => (<TableRow key={i}><TableCell className="text-[10px] font-bold uppercase">{b}</TableCell></TableRow>))}</TableBody></Table>
+            </PopoverContent>
+        </Popover>
 
         <Popover>
             <PopoverTrigger asChild>
@@ -316,21 +349,20 @@ function DistrictDashboardContent() {
             </PopoverContent>
         </Popover>
 
-        <Popover>
-            <PopoverTrigger asChild>
-                <Card className="border-2 shadow-sm p-4 text-center cursor-pointer hover:bg-primary/5 transition-all group">
-                    <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p>
-                    <p className="text-lg font-black text-primary underline">{dashData.households.toLocaleString()}</p>
-                </Card>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
-                <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px]">Household Census (GP-wise)</div>
-                <Table>
-                    <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] uppercase font-black">GP Node</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Count</TableHead></TableRow></TableHeader>
-                    <TableBody>{dashData.gpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody>
-                </Table>
-            </PopoverContent>
-        </Popover>
+        <Card className="border-2 shadow-sm p-4 text-center">
+            <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p>
+            <p className="text-lg font-black">{dashData.households.toLocaleString()}</p>
+        </Card>
+
+        {/* NEW WASTE BOXES */}
+        <Card className="border-2 shadow-sm p-4 text-center border-primary/20 bg-primary/5">
+            <p className="text-[9px] font-black text-primary uppercase mb-1">Total Waste/Day (Gm)</p>
+            <p className="text-lg font-black text-primary">{(dashData.totalDailyGen / 1000).toFixed(1)} Kg</p>
+        </Card>
+        <Card className="border-2 shadow-sm p-4 text-center border-primary/20 bg-primary/5">
+            <p className="text-[9px] font-black text-primary uppercase mb-1">Total Waste/Month (Gm)</p>
+            <p className="text-lg font-black text-primary">{(dashData.totalMonthlyGen / 1000).toFixed(1)} Kg</p>
+        </Card>
 
         <Card className="border-2 shadow-sm p-4 text-center bg-primary/5 border-primary/20">
             <p className="text-[9px] font-black uppercase text-primary mb-1">Efficiency Score</p>
@@ -493,6 +525,91 @@ function DistrictDashboardContent() {
                 </ResponsiveContainer>
             </CardContent>
         </Card>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="font-black text-xl uppercase tracking-tight flex items-center gap-2"><Layers className="h-6 w-6 text-primary" /> Professional District Registry</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Sanitation Workers</p>
+                        <p className="text-2xl font-black text-primary underline">{dashData.workers.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Users className="h-3 w-3" /> District Sanitation Roster</div>
+                    <ScrollArea className="h-64">
+                        <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">MRF</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {dashData.workers.map((n, i) => (
+                                <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact || '9437XXXXXX'}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.mrf}</TableCell></TableRow>
+                            ))}
+                        </TableBody></Table>
+                    </ScrollArea>
+                </PopoverContent>
+            </Popover>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (GP)</p>
+                        <p className="text-2xl font-black text-primary underline">{dashData.peos.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><ShieldCheck className="h-3 w-3" /> District PEO Directory</div>
+                    <ScrollArea className="h-64">
+                        <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">MRF</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {dashData.peos.map((n, i) => (
+                                <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.mrf}</TableCell></TableRow>
+                            ))}
+                        </TableBody></Table>
+                    </ScrollArea>
+                </PopoverContent>
+            </Popover>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (ULB)</p>
+                        <p className="text-2xl font-black text-primary underline">{dashData.operators.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> District Operator Directory</div>
+                    <ScrollArea className="h-64">
+                        <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">ULB</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {dashData.operators.map((n, i) => (
+                                <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.ulb}</TableCell></TableRow>
+                            ))}
+                        </TableBody></Table>
+                    </ScrollArea>
+                </PopoverContent>
+            </Popover>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Logistical Drivers</p>
+                        <p className="text-2xl font-black text-primary underline">{dashData.drivers.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> District Driver Directory</div>
+                    <ScrollArea className="h-64">
+                        <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">Vehicle</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {dashData.drivers.map((n, i) => (
+                                <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.vehicle}</TableCell></TableRow>
+                            ))}
+                        </TableBody></Table>
+                    </ScrollArea>
+                </PopoverContent>
+            </Popover>
+        </div>
       </div>
     </div>
   );

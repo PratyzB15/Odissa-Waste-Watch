@@ -29,7 +29,11 @@ import {
     TrendingUp, 
     Layers, 
     AlertCircle, 
-    Navigation 
+    Navigation,
+    Users,
+    ShieldCheck,
+    UserCircle,
+    Phone
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -78,7 +82,6 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
-    // Strict temporal normalization (ignore spacing for tuesday/thursday)
     const normalized = schedule.toLowerCase()
         .replace(/thurs\s*day/g, 'thursday')
         .replace(/tues\s*day/g, 'tuesday')
@@ -179,7 +182,7 @@ function BlockDashboardContent() {
   }, [districtNameParam, blockName]);
 
   const districtSource = useMemo(() => {
-    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
+    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
     return map[districtName.toLowerCase()];
   }, [districtName]);
 
@@ -194,8 +197,17 @@ function BlockDashboardContent() {
     const gpsList = (blockDetails.gps || []).map((gp: any) => {
         const w = (blockDetails.waste || []).find((waste: any) => waste.gpName.toLowerCase() === gp.gpName.toLowerCase());
         const collected = w ? (w.totalWasteKg || (w.monthlyWasteTotalGm / 1000) || 0) : 0;
-        return { name: gp.gpName, households: w?.totalHouseholds || 0, collected };
+        return { 
+            name: gp.gpName, 
+            households: w?.totalHouseholds || 0, 
+            collected, 
+            dailyGen: w?.dailyWasteTotalGm || 0, 
+            monthlyGen: w?.monthlyWasteTotalGm || 0 
+        };
     });
+
+    const totalDailyGen = gpsList.reduce((s, g) => s + g.dailyGen, 0);
+    const totalMonthlyGen = gpsList.reduce((s, g) => s + g.monthlyGen, 0);
 
     const activeCircuits = (blockDetails.routes || []).map((route: any) => {
         const sched = (blockDetails.schedules || []).find((s:any) => (s.gpName || "").toLowerCase().includes((route.routeId || "").toLowerCase()) || (s.gpName || "").toLowerCase().includes((route.startingGp || "").toLowerCase()));
@@ -250,10 +262,21 @@ function BlockDashboardContent() {
         }
     });
 
+    const peos = Array.from(new Set((blockDetails.schedules || []).map((s:any) => JSON.stringify({ name: (s.gpNodalPerson || "").split(',')[0].trim(), contact: (s.gpNodalContact || "").split(',')[0].trim(), mrf: s.mrf }))))
+        .map(s => JSON.parse(s)).filter(p => p.name !== '-' && p.name !== '');
+
+    const operators = Array.from(new Set((blockDetails.schedules || []).map((s:any) => JSON.stringify({ name: (s.ulbNodalPerson || "").split('&')[0].trim(), contact: (s.ulbNodalContact || "").split(',')[0].trim(), ulb: s.ulb }))))
+        .map(s => JSON.parse(s)).filter(o => o.name !== '-' && o.name !== '');
+
+    const drivers = Array.from(new Set((blockDetails.schedules || []).map((s:any) => JSON.stringify({ name: s.driverName, contact: s.driverContact, vehicle: s.vehicleType }))))
+        .map(s => JSON.parse(s)).filter(d => d.name !== '-' && d.name !== '');
+
+    const workers = (blockDetails.routes || []).flatMap((r:any) => (r.workers || []).map((w:any) => ({ ...w, mrf: r.destination })));
+
     return { 
-        ulbs, mrfs, gpsList, activeCircuits, lineData, mrfTonnage, streamData, discrepancies,
+        ulbs, mrfs, gpsList, activeCircuits, lineData, mrfTonnage, streamData, discrepancies, peos, operators, drivers, workers,
         households: gpsList.reduce((s, g) => s + g.households, 0),
-        surveyedWaste: gpsList.reduce((s, g) => s + g.collected, 0)
+        totalDailyGen, totalMonthlyGen
     };
   }, [blockName, districtSource, mounted, verifiedRecords, districtName]);
 
@@ -271,7 +294,7 @@ function BlockDashboardContent() {
         </CardHeader>
       </Card>
 
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-8 gap-4">
         <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">District</p><p className="text-xs font-black uppercase truncate">{districtName}</p></Card>
         
         <Popover>
@@ -304,20 +327,22 @@ function BlockDashboardContent() {
             </PopoverContent>
         </Popover>
 
-        <Popover>
-            <PopoverTrigger asChild>
-                <Card className="border-2 shadow-sm p-4 text-center cursor-pointer hover:bg-primary/5 transition-all group"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p><p className="text-lg font-black text-primary underline">{blockData.households.toLocaleString()}</p></Card>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
-                <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px]">Household Census (GP-wise)</div>
-                <Table>
-                    <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] uppercase font-black">GP Node</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Count</TableHead></TableRow></TableHeader>
-                    <TableBody>{blockData.gpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody>
-                </Table>
-            </PopoverContent>
-        </Popover>
+        <Card className="border-2 shadow-sm p-4 text-center">
+            <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Households</p>
+            <p className="text-lg font-black">{blockData.households.toLocaleString()}</p>
+        </Card>
 
-        <Card className="border-2 shadow-sm p-4 text-center bg-primary/5 border-primary/20"><p className="text-[9px] font-black uppercase text-primary mb-1">Efficiency Score</p><p className="text-lg font-black text-primary">94.8%</p></Card>
+        {/* NEW WASTE BOXES */}
+        <Card className="border-2 shadow-sm p-4 text-center border-primary/20 bg-primary/5">
+            <p className="text-[9px] font-black text-primary uppercase mb-1">Total Waste/Day (Gm)</p>
+            <p className="text-lg font-black text-primary">{(blockData.totalDailyGen / 1000).toFixed(1)} Kg</p>
+        </Card>
+        <Card className="border-2 shadow-sm p-4 text-center border-primary/20 bg-primary/5">
+            <p className="text-[9px] font-black text-primary uppercase mb-1">Total Waste/Month (Gm)</p>
+            <p className="text-lg font-black text-primary">{(blockData.totalMonthlyGen / 1000).toFixed(1)} Kg</p>
+        </Card>
+
+        <Card className="border-2 shadow-sm p-4 text-center border-primary/20"><p className="text-[9px] font-black uppercase text-primary mb-1">Efficiency Score</p><p className="text-lg font-black text-primary">94.8%</p></Card>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -373,7 +398,6 @@ function BlockDashboardContent() {
                                         <p className="text-[11px] font-black uppercase leading-none">{log.driverName || 'Verified'}</p>
                                         <p className="text-[9px] font-bold text-muted-foreground uppercase">{log.vehicleDetails}</p>
                                         <p className="text-[9px] font-black text-primary font-mono">{log.driverPhone}</p>
-                                        <p className="text-[8px] font-bold text-foreground/50 italic truncate">{log.startGp} → {log.endGp}</p>
                                     </div>
                                 </div>
                             ))}
@@ -470,6 +494,91 @@ function BlockDashboardContent() {
                 </ResponsiveContainer>
             </CardContent>
         </Card>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="font-black text-xl uppercase tracking-tight flex items-center gap-2"><Layers className="h-6 w-6 text-primary" /> Professional Node Registry</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Sanitation Workers</p>
+                        <p className="text-2xl font-black text-primary underline">{blockData.workers.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Users className="h-3 w-3" /> Block Sanitation Roster</div>
+                    <ScrollArea className="h-64">
+                        <Table><TableHeader className="bg-muted"><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">MRF</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {blockData.workers.map((n, i) => (
+                                <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact || '9437XXXXXX'}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.mrf}</TableCell></TableRow>
+                            ))}
+                        </TableBody></Table>
+                    </ScrollArea>
+                </PopoverContent>
+            </Popover>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (GP)</p>
+                        <p className="text-2xl font-black text-primary underline">{blockData.peos.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><ShieldCheck className="h-3 w-3" /> Block PEO Directory</div>
+                    <ScrollArea className="h-64">
+                        <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">MRF</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {blockData.peos.map((n, i) => (
+                                <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.mrf}</TableCell></TableRow>
+                            ))}
+                        </TableBody></Table>
+                    </ScrollArea>
+                </PopoverContent>
+            </Popover>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (ULB)</p>
+                        <p className="text-2xl font-black text-primary underline">{blockData.operators.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> Block Operator Directory</div>
+                    <ScrollArea className="h-64">
+                        <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">ULB</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {blockData.operators.map((n, i) => (
+                                <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.ulb}</TableCell></TableRow>
+                            ))}
+                        </TableBody></Table>
+                    </ScrollArea>
+                </PopoverContent>
+            </Popover>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Logistical Drivers</p>
+                        <p className="text-2xl font-black text-primary underline">{blockData.drivers.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> Driver Directory</div>
+                    <ScrollArea className="h-64">
+                        <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">Vehicle</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {blockData.drivers.map((n, i) => (
+                                <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.vehicle}</TableCell></TableRow>
+                            ))}
+                        </TableBody></Table>
+                    </ScrollArea>
+                </PopoverContent>
+            </Popover>
+        </div>
       </div>
     </div>
   );
