@@ -138,6 +138,7 @@ function StateAdminDashboardContent() {
   const [solvedAlerts, setSolvedAlerts] = useState<string[]>([]);
   const [lineToggle, setLineToggle] = useState('monthly');
   const [mrfUlbToggle, setMrfUlbToggle] = useState('ulb');
+  const [barToggle, setBarToggle] = useState('top');
 
   const db = useFirestore();
   const wasteQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'desc')) : null, [db]);
@@ -260,7 +261,7 @@ function StateAdminDashboardContent() {
         { name: 'Sanitation', value: allRecords.reduce((s, r) => s + (r.sanitation || 0), 0) },
         { name: 'Others', value: allRecords.reduce((s, r) => s + (r.others || 0), 0) },
     ] : [
-        { name: 'Plastic', value: 45000 }, { name: 'Paper', value: 32000 }, { name: 'Metal', value: 12000 }, { name: 'Glass', value: 8000 }, { name: 'Sanitation', value: 15000 }, { name: 'Others', value: 9000 }
+        { name: 'Plastic', value: 45000 }, { name: 'Paper', value: 32000 }, { name: 'Metal', value: 12000 }, { name: 'Glass', value: 8000 }, { name: 'Sanitation', value: 1500 }, { name: 'Others', value: 9000 }
     ];
 
     const discrepancies: any[] = [];
@@ -541,4 +542,3 @@ function StateAdminDashboardContent() {
 export default function StateAdminDashboard() {
     return (<Suspense fallback={<div>Loading state dashboard...</div>}><StateAdminDashboardContent /></Suspense>);
 }
-
