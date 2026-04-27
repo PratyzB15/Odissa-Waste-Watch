@@ -1,3 +1,4 @@
+
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -82,13 +83,27 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed
 
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
-    const normalized = schedule.toLowerCase().replace(/\s+/g, ' ').replace('thurs day', 'thursday').replace('tues day', 'tuesday');
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
     
-    const getNthWeekday = (year: number, month: number, weekdayIdx: number, n: number) => {
-        let count = 0; 
+    // Strict temporal normalization (ignore spacing for tuesday/thursday)
+    const normalized = schedule.toLowerCase()
+        .replace(/thurs\s*day/g, 'thursday')
+        .replace(/tues\s*day/g, 'tuesday')
+        .replace(/wednes\s*day/g, 'wednesday')
+        .replace(/\s+/g, ' ')
+        .trim();
+        
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayOfWeek = today.getDay();
+    const dateOfMonth = today.getDate();
+    
+    const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const ordinals: Record<string, number> = { 
+        '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 
+        'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 
+    };
+
+    const getNthWeekdayOfMonth = (year: number, month: number, weekdayIdx: number, n: number) => {
+        let count = 0;
         let d = new Date(year, month, 1);
         while (d.getMonth() === month) {
             if (d.getDay() === weekdayIdx) {
@@ -100,35 +115,52 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         return null;
     };
 
-    const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i) ||
-                     normalized.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+of\s+(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
+    const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
+    const weekdayFound = weekdays.find(w => normalized.includes(w));
     
-    if (nthMatch) {
-        const nStr = ordinals[nthMatch[1]] ? nthMatch[1] : nthMatch[2];
-        const dayStr = weekdays.includes(nthMatch[1]) ? nthMatch[1] : nthMatch[2];
-        const n = ordinals[nStr.toLowerCase()];
-        const dayIdx = weekdays.indexOf(dayStr.toLowerCase());
-        let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
-        if (!target || target <= today) {
-            let nextM = today.getMonth() + 1; let nextY = today.getFullYear();
-            if (nextM > 11) { nextM = 0; nextY++; }
-            target = getNthWeekday(nextY, nextM, dayIdx, n);
+    if (nthMatch && weekdayFound) {
+        const n = ordinals[nthMatch[0].toLowerCase()];
+        const targetWeekdayIdx = weekdays.indexOf(weekdayFound);
+        let target = getNthWeekdayOfMonth(today.getFullYear(), today.getMonth(), targetWeekdayIdx, n);
+        
+        if (!target || target < today) {
+            let nextMonth = today.getMonth() + 1;
+            let nextYear = today.getFullYear();
+            if (nextMonth > 11) { nextMonth = 0; nextYear++; }
+            target = getNthWeekdayOfMonth(nextYear, nextMonth, targetWeekdayIdx, n);
         }
-        if (target) return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (target) {
+            if (target.getTime() === today.getTime()) return 0;
+            const diffTime = target.getTime() - today.getTime();
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
     }
 
-    let minDays = 999; 
-    weekdays.forEach((day, i) => { if (normalized.includes(day)) { let diff = i - today.getDay(); if (diff <= 0) diff += 7; if (diff < minDays) minDays = diff; } });
-    
+    let minDays = 999;
+    let foundWeekday = false;
+    weekdays.forEach((day, i) => {
+        if (normalized.includes(day)) {
+            foundWeekday = true;
+            let diff = i - dayOfWeek;
+            if (diff < 0) diff += 7;
+            if (diff === 0) minDays = 0;
+            else if (diff < minDays) minDays = diff;
+        }
+    });
+    if (foundWeekday) return minDays;
+
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
         const days = dateMatches.map(Number).sort((a, b) => a - b);
-        const nextDay = days.find(d => d > today.getDate());
-        if (nextDay) return nextDay - today.getDate();
+        const nextDay = days.find(d => d >= dateOfMonth);
+        if (nextDay === dateOfMonth) return 0;
+        if (nextDay) return nextDay - dateOfMonth;
         const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-        return (daysInMonth - today.getDate()) + days[0];
+        return (daysInMonth - dateOfMonth) + days[0];
     }
-    return minDays;
+
+    return 999;
 };
 
 function GpUlbDashboardContent() {
@@ -142,7 +174,6 @@ function GpUlbDashboardContent() {
   const [mounted, setMounted] = useState(false);
   const [solvedAlerts, setSolvedAlerts] = useState<string[]>([]);
   const [lineToggle, setLineToggle] = useState('monthly');
-  const [barToggle, setBarToggle] = useState('top');
 
   const db = useFirestore();
   const wasteQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'desc')) : null, [db]);
@@ -181,14 +212,13 @@ function GpUlbDashboardContent() {
 
     const schedules = (districtSource as any).data.collectionSchedules.filter((s: any) => 
         s.ulb.toLowerCase().trim().includes(ulbName.toLowerCase().trim()) ||
-        mrfIds.includes(s.mrf)
+        mrfIds.some(mId => s.mrf.toLowerCase().includes(mId.toLowerCase()))
     ).map((s: any) => {
         const days = calculateDaysUntilNext(s.collectionSchedule, new Date());
         return { 
             ...s, 
             days, 
-            isActiveToday: days === 0, 
-            countdown: days === 0 ? "Active Today" : `In ${days} days` 
+            isActiveToday: days === 0
         };
     }).sort((a: any, b: any) => a.days - b.days);
 
@@ -313,7 +343,7 @@ function GpUlbDashboardContent() {
     const workers = (districtSource as any).data.routes.filter((r: any) => r.destination.toLowerCase().includes(targetUlb.toLowerCase()) || targetUlb.toLowerCase().includes(r.destination.toLowerCase()))
         .flatMap((r: any) => r.workers || []);
 
-    const discrepancies: any[] = [];
+    const discrepancies = [];
     const todayStr = new Date().toISOString().split('T')[0];
     if (daysLeft === 0 && !gpRecords.some(r => r.date === todayStr)) {
         discrepancies.push({ 
@@ -433,16 +463,34 @@ function GpUlbDashboardContent() {
                 <Card className="border-2 border-primary/30 bg-primary/[0.01]">
                     <CardHeader className="bg-primary/5 border-b pb-3 flex row items-center gap-2">
                         <Truck className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-base font-black uppercase">Active Circuits</CardTitle>
+                        <CardTitle className="text-base font-black uppercase">Active Today Circuits</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <ScrollArea className="h-[250px]">
                             <div className="grid divide-y">
                                 {ulbRealData.activeCircuits.map((log, i) => (
-                                    <div key={i} className={`p-4 flex items-center justify-between border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
-                                        <div className="flex-1 space-y-0.5 pr-4 border-r border-dashed"><p className="font-black text-[10px] uppercase text-primary">ID: {log.routeId || 'R-01'}</p><p className="text-[8px] font-black text-muted-foreground uppercase">{log.mrf}</p></div>
-                                        <div className="flex-1 text-center px-4"><div className={`text-sm font-black ${log.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>{log.countdown}</div><p className="text-[8px] font-black text-blue-700 uppercase">{log.collectionSchedule}</p></div>
-                                        <div className="flex-1 text-right space-y-0.5 pl-4"><p className="text-[10px] font-black uppercase">{log.driverName || 'Verified'}</p><p className="text-[8px] font-mono font-bold text-muted-foreground">{log.vehicleType}</p></div>
+                                    <div key={i} className={`p-5 flex items-center justify-between border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
+                                        <div className="flex-[1.5] space-y-1 border-r border-dashed pr-6">
+                                            <p className="text-[10px] font-black uppercase text-muted-foreground leading-none">
+                                                {blockName || log.block} | {log.mrf}
+                                            </p>
+                                            <p className="font-black text-xs uppercase text-primary truncate">
+                                                {log.routeId || 'R-01'}: {log.routeName || 'Circuit'}
+                                            </p>
+                                        </div>
+                                        <div className="flex-1 text-center px-6 border-r border-dashed">
+                                            <div className={`text-sm font-black ${log.isActiveToday ? 'text-green-700 animate-pulse' : ''}`}>
+                                                {log.isActiveToday ? "Active Today" : `Arrival in ${log.days} days`}
+                                            </div>
+                                            <p className="text-[9px] font-black text-blue-700 uppercase mt-1">
+                                                {log.collectionSchedule}
+                                            </p>
+                                        </div>
+                                        <div className="flex-[1.5] text-right space-y-1 pl-6">
+                                            <p className="text-[11px] font-black uppercase leading-none">{log.driverName || 'Verified'}</p>
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase">{log.vehicleType} | {log.vehicleNo}</p>
+                                            <p className="text-[9px] font-black text-primary font-mono">{log.driverContact}</p>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -475,13 +523,13 @@ function GpUlbDashboardContent() {
                 <Card className="border-2 shadow-sm">
                     <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between pb-3">
                         <CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Performance Rankings</CardTitle>
-                        <Tabs value={barToggle} onValueChange={setBarToggle}>
+                        <Tabs value={lineToggle} onValueChange={setLineToggle}>
                             <TabsList className="h-7"><TabsTrigger value="top" className="text-[8px] font-black px-2">Top 5</TabsTrigger><TabsTrigger value="low" className="text-[8px] font-black px-2">Lowest 5</TabsTrigger></TabsList>
                         </Tabs>
                     </CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={ulbRealData.gpsList.sort((a,b) => barToggle === 'top' ? b.verifiedWaste - a.verifiedWaste : a.verifiedWaste - b.verifiedWaste).slice(0, 5)} layout="vertical">
+                            <BarChart data={ulbRealData.gpsList.sort((a,b) => b.verifiedWaste - a.verifiedWaste).slice(0, 5)} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
                                 <XAxis type="number" fontSize={10} />
                                 <YAxis dataKey="name" type="category" fontSize={9} width={80} fontWeights="black" />
@@ -535,7 +583,7 @@ function GpUlbDashboardContent() {
                                     {ulbRealData.streamData.map((_, i) => (<Cell key={`cell-${i}`} fill={COMPOSITION_COLORS[i % COMPOSITION_COLORS.length]} />))}
                                 </Pie>
                                 <Tooltip />
-                                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '9px', fontWeight: 'black', textTransform: 'uppercase'}} />
+                                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '9px', fontWeights: 'black', textTransform: 'uppercase'}} />
                             </PieChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -572,7 +620,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><ShieldCheck className="h-3 w-3" /> GP PEO Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[9px] uppercase font-black">Name</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {ulbRealData.peos.map((n, i) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
@@ -590,7 +638,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> ULB Operator Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[9px] uppercase font-black">Name</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {ulbRealData.ulbOperators.map((n, i) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
@@ -608,7 +656,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> Driver Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[9px] uppercase font-black">Name</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {ulbRealData.drivers.map((n, i) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
