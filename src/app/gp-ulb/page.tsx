@@ -166,7 +166,6 @@ function GpUlbDashboardContent() {
   const ulbRealData = useMemo(() => {
     if (!mounted || role !== 'ulb' || !ulbName || !districtSource) return null;
     const ulbRecords = mrfData.filter(m => m.ulbName.toLowerCase().trim() === ulbName.toLowerCase().trim());
-    const primaryRecord = ulbRecords[0];
     const mrfIds = ulbRecords.map(m => m.mrfId);
     
     const gpMappings = (districtSource as any).data.gpMappings.filter((m: any) => 
@@ -194,16 +193,13 @@ function GpUlbDashboardContent() {
     }).sort((a: any, b: any) => a.days - b.days);
 
     const peos = Array.from(new Set(schedules.map(s => JSON.stringify({ name: (s.gpNodalPerson || "").split(',')[0].trim(), contact: (s.gpNodalContact || "").split(',')[0].trim() }))))
-        .map(s => JSON.parse(s))
-        .filter(p => p.name !== '-');
+        .map(s => JSON.parse(s)).filter(p => p.name !== '-');
 
     const ulbOperators = Array.from(new Set(schedules.map(s => JSON.stringify({ name: (s.ulbNodalPerson || "").split('&')[0].trim(), contact: (s.ulbNodalContact || "").split(',')[0].trim() }))))
-        .map(s => JSON.parse(s))
-        .filter(u => u.name !== '-');
+        .map(s => JSON.parse(s)).filter(u => u.name !== '-');
 
     const drivers = Array.from(new Set(schedules.map(s => JSON.stringify({ name: s.driverName, contact: s.driverContact }))))
-        .map(s => JSON.parse(s))
-        .filter(d => d.name !== '-');
+        .map(s => JSON.parse(s)).filter(d => d.name !== '-');
 
     const relevantRoutes = (districtSource as any).data.routes.filter((r: any) => 
         mrfIds.includes(r.destination) || r.destination.toLowerCase().includes(ulbName.toLowerCase())
@@ -236,18 +232,18 @@ function GpUlbDashboardContent() {
 
     const discrepancies: any[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
-    schedules.filter(s => s.isActiveToday).forEach(s => {
+    schedules.filter(s => s.isActiveToday).forEach((s, idx) => {
         const hasReceipt = allRecords.some(r => r.date === todayStr && (r.routeId === s.routeId || r.gpName === s.gpName));
         if (!hasReceipt) {
             discrepancies.push({ 
-                id: `miss-${districtName}-${blockName}-${s.routeId}-${s.gpName}`.replace(/\s+/g, '-'), 
+                id: `miss-${districtName}-${blockName}-${s.routeId}-${s.gpName}-${idx}`.replace(/\s+/g, '-'), 
                 msg: `Circuit ${s.routeId} active today - No receipt transmitted.` 
             });
         }
     });
 
     return { 
-        primaryRecord, gpsList, activeCircuits: schedules, lineData, mrfTonnage, streamData, discrepancies,
+        primaryRecord: ulbRecords[0], gpsList, activeCircuits: schedules, lineData, mrfTonnage, streamData, discrepancies,
         mrfCount: mrfIds.length, mrfList: mrfIds, workers, drivers, peos, ulbOperators
     };
   }, [role, ulbName, districtSource, mounted, allRecords, blockName, districtName]);
@@ -267,10 +263,10 @@ function GpUlbDashboardContent() {
     ];
 
     const monthlyTonnage = [
-        { month: 'Mar', value: hasData ? 1200 : 1100 },
-        { month: 'Apr', value: hasData ? 1450 : 1300 },
-        { month: 'May', value: hasData ? 1800 : 1600 },
-        { month: 'Jun', value: hasData ? 1620 : 1500 },
+        { month: 'Mar', value: 1200 },
+        { month: 'Apr', value: 1450 },
+        { month: 'May', value: 1800 },
+        { month: 'Jun', value: 1620 },
         { month: 'Jul', value: hasData ? gpRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 1900 },
     ];
 
@@ -308,13 +304,14 @@ function GpUlbDashboardContent() {
         .map(s => JSON.parse(s))
         .filter(p => p.name !== '-');
 
-    const ulbOperators = Array.from(new Set([details.schedule].map(s => JSON.stringify({ name: (s?.ulbNodalPerson || "").split('&')[0].trim(), contact: (s?.ulbNodalContact || "").split(',')[0].trim() }))))
-        .map(s => JSON.parse(s)).filter(u => u.name !== '');
+    const ulbOperators = Array.from(new Set(siblingSchedules.map(s => JSON.stringify({ name: (s?.ulbNodalPerson || "").split('&')[0].trim(), contact: (s?.ulbNodalContact || "").split(',')[0].trim() }))))
+        .map(s => JSON.parse(s)).filter(u => u.name !== '' && u.name !== '-');
 
-    const drivers = Array.from(new Set([details.schedule].map(s => JSON.stringify({ name: s?.driverName || 'Verified', contact: s?.driverContact || '9437XXXXXX' }))))
-        .map(s => JSON.parse(s)).filter(d => d.name !== '');
+    const drivers = Array.from(new Set(siblingSchedules.map(s => JSON.stringify({ name: s?.driverName || 'Verified', contact: s?.driverContact || '9437XXXXXX' }))))
+        .map(s => JSON.parse(s)).filter(d => d.name !== '' && d.name !== '-');
 
-    const workers = (details.routes || []).flatMap((r: any) => r.workers || []);
+    const workers = (districtSource as any).data.routes.filter((r: any) => r.destination.toLowerCase().includes(targetUlb.toLowerCase()) || targetUlb.toLowerCase().includes(r.destination.toLowerCase()))
+        .flatMap((r: any) => r.workers || []);
 
     const discrepancies: any[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
@@ -763,12 +760,14 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Users className="h-3 w-3" /> Sanitation Roster</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] uppercase font-black">Name</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Phone</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {(gpRealData.workers || []).map((n:any, i:number) => (
-                                    <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact || '9437XXXXXX'}</TableCell></TableRow>
-                                ))}
-                            </TableBody></Table>
+                            <ScrollArea className="h-64">
+                                <Table><TableHeader><TableRow><TableHead className="text-[9px] uppercase font-black">Name</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Phone</TableHead></TableRow></TableHeader>
+                                <TableBody>
+                                    {(gpRealData.workers || []).map((n:any, i:number) => (
+                                        <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact || '9437XXXXXX'}</TableCell></TableRow>
+                                    ))}
+                                </TableBody></Table>
+                            </ScrollArea>
                         </PopoverContent>
                     </Popover>
 
@@ -781,12 +780,14 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><ShieldCheck className="h-3 w-3" /> GP PEO Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {(gpRealData.peos || []).map((n:any, i:number) => (
-                                    <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
-                                ))}
-                            </TableBody></Table>
+                            <ScrollArea className="h-64">
+                                <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                                <TableBody>
+                                    {(gpRealData.peos || []).map((n:any, i:number) => (
+                                        <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
+                                    ))}
+                                </TableBody></Table>
+                            </ScrollArea>
                         </PopoverContent>
                     </Popover>
 
@@ -799,7 +800,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> ULB Operator Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">{n.name}</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">{n.name}</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {(gpRealData.ulbOperators || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
@@ -817,7 +818,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> Driver Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">{n.name}</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">{n.name}</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {(gpRealData.drivers || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>

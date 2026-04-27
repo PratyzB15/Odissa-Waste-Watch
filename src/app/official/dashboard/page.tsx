@@ -91,23 +91,15 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed
 
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
-    
     const normalized = schedule.toLowerCase().replace(/\s+/g, ' ').replace('thurs day', 'thursday').replace('tues day', 'tuesday');
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
     
     const getNthWeekday = (year: number, month: number, weekdayIdx: number, n: number) => {
         let count = 0; 
         let d = new Date(year, month, 1);
-        while (d.getMonth() === month) {
-            if (d.getDay() === weekdayIdx) {
-                count++;
-                if (count === n) return new Date(d);
-            }
-            d.setDate(d.getDate() + 1);
-        }
+        while (d.getMonth() === month) { if (d.getDay() === weekdayIdx) { count++; if (count === n) return new Date(d); } d.setDate(d.getDate() + 1); }
         return null;
     };
 
@@ -117,14 +109,11 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (nthMatch) {
         const nStr = ordinals[nthMatch[1]] ? nthMatch[1] : nthMatch[2];
         const dayStr = weekdays.includes(nthMatch[1]) ? nthMatch[1] : nthMatch[2];
-        
         const n = ordinals[nStr.toLowerCase()];
         const dayIdx = weekdays.indexOf(dayStr.toLowerCase());
-        
         let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
         if (!target || target <= today) {
-            let nextM = today.getMonth() + 1;
-            let nextY = today.getFullYear();
+            let nextM = today.getMonth() + 1; let nextY = today.getFullYear();
             if (nextM > 11) { nextM = 0; nextY++; }
             target = getNthWeekday(nextY, nextM, dayIdx, n);
         }
@@ -132,14 +121,8 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     }
 
     let minDays = 999; 
-    weekdays.forEach((day, i) => {
-        if (normalized.includes(day)) {
-            let diff = i - today.getDay();
-            if (diff <= 0) diff += 7;
-            if (diff < minDays) minDays = diff;
-        }
-    });
-
+    weekdays.forEach((day, i) => { if (normalized.includes(day)) { let diff = i - today.getDay(); if (diff <= 0) diff += 7; if (diff < minDays) minDays = diff; } });
+    
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
         const days = dateMatches.map(Number).sort((a, b) => a - b);
@@ -203,17 +186,6 @@ function DistrictDashboardContent() {
         };
     }).sort((a: any, b: any) => a.daysLeft - b.daysLeft);
 
-    const peos = Array.from(new Set(districtSource.data.collectionSchedules.map((s: any) => JSON.stringify({ name: s.gpNodalPerson.split(',')[0].trim(), contact: s.gpNodalContact.split(',')[0].trim() }))))
-        .map(s => JSON.parse(s)).filter(p => p.name !== '-');
-    
-    const operators = Array.from(new Set(districtSource.data.collectionSchedules.map((s: any) => JSON.stringify({ name: s.ulbNodalPerson.split('&')[0].trim(), contact: s.ulbNodalContact.split(',')[0].trim() }))))
-        .map(s => JSON.parse(s)).filter(p => p.name !== '-');
-
-    const drivers = Array.from(new Set(districtSource.data.collectionSchedules.map((s: any) => JSON.stringify({ name: s.driverName, contact: s.driverContact }))))
-        .map(s => JSON.parse(s)).filter(p => p.name !== '-');
-
-    const workers = districtSource.data.routes.flatMap((r: any) => r.workers || []);
-
     const hasData = verifiedRecords.length > 0;
     const lineData = gpsList.map(g => ({
         name: g.name,
@@ -242,19 +214,19 @@ function DistrictDashboardContent() {
         { name: 'Plastic', value: 4500 }, { name: 'Paper', value: 3200 }, { name: 'Metal', value: 1200 }, { name: 'Glass', value: 800 }, { name: 'Sanitation', value: 1500 }, { name: 'Others', value: 900 }
     ];
 
-    const discrepancies = [];
+    const discrepancies: any[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
-    activeCircuits.filter(c => c.isActiveToday).forEach(c => {
+    activeCircuits.filter(c => c.isActiveToday).forEach((c, idx) => {
         if (!verifiedRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startingGp))) {
             discrepancies.push({ 
-                id: `miss-${districtName}-${c.block}-${c.routeId}-${c.startingGp}`.replace(/\s+/g, '-'), 
+                id: `miss-${districtName}-${c.block}-${c.routeId}-${c.startingGp}-${idx}`.replace(/\s+/g, '-'), 
                 msg: `Circuit ${c.routeId} active - No receipt synced for ${c.startingGp}.` 
             });
         }
     });
 
     return { 
-        ulbs, mrfs, gpsList, activeCircuits, peos, operators, drivers, workers,
+        ulbs, mrfs, gpsList, activeCircuits,
         lineData, mrfTonnage, ulbTonnage, streamData, discrepancies,
         households: gpsList.reduce((s, g) => s + g.households, 0),
         surveyedWaste: gpsList.reduce((s, g) => s + g.surveyed, 0)
@@ -441,7 +413,7 @@ function DistrictDashboardContent() {
         </Card>
 
         <Card className="border-2 shadow-sm">
-            <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between pb-3">
+            <CardHeader className="bg-muted/10 border-b pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Warehouse className="h-4 w-4 text-primary" /> District Facility Audit</CardTitle>
                 <Tabs value={mrfUlbToggle} onValueChange={setMrfUlbToggle}>
                     <TabsList className="h-7"><TabsTrigger value="mrf" className="text-[8px] font-black px-2">MRFs</TabsTrigger><TabsTrigger value="ulb" className="text-[8px] font-black px-2">ULBs</TabsTrigger></TabsList>
@@ -491,107 +463,6 @@ function DistrictDashboardContent() {
                 </ResponsiveContainer>
             </CardContent>
         </Card>
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="font-black text-xl uppercase tracking-tight flex items-center gap-2"><Layers className="h-6 w-6 text-primary" /> Professional District Registry</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Sanitation Workers</p>
-                        <p className="text-2xl font-black text-primary underline">{dashData.workers.length}</p>
-                    </Card>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
-                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Users className="h-3 w-3" /> District Sanitation Roster</div>
-                    <ScrollArea className="h-64">
-                        <Table>
-                            <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {dashData.workers.map((n, i) => (
-                                    <TableRow key={i} className="border-b border-dashed">
-                                        <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
-                                        <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact || '9437XXXXXX'}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </ScrollArea>
-                </PopoverContent>
-            </Popover>
-
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (GP)</p>
-                        <p className="text-2xl font-black text-primary underline">{dashData.peos.length}</p>
-                    </Card>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
-                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><ShieldCheck className="h-3 w-3" /> District PEO Directory</div>
-                    <ScrollArea className="h-64">
-                        <Table>
-                            <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">PEO Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {dashData.peos.map((n, i) => (
-                                    <TableRow key={i} className="border-b border-dashed">
-                                        <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
-                                        <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </ScrollArea>
-                </PopoverContent>
-            </Popover>
-
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (ULB)</p>
-                        <p className="text-2xl font-black text-primary underline">{dashData.operators.length}</p>
-                    </Card>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
-                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> District Operator Directory</div>
-                    <Table>
-                        <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Operator</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                             {dashData.operators.map((n, i) => (
-                                <TableRow key={i} className="border-b border-dashed">
-                                    <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
-                                    <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </PopoverContent>
-            </Popover>
-
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Logistical Drivers</p>
-                        <p className="text-2xl font-black text-primary underline">{dashData.drivers.length}</p>
-                    </Card>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
-                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> District Driver Directory</div>
-                    <Table>
-                        <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Driver</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableHeader>
-                        <TableBody>
-                             {dashData.drivers.map((n, i) => (
-                                <TableRow key={i} className="border-b border-dashed">
-                                    <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
-                                    <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </PopoverContent>
-            </Popover>
-        </div>
       </div>
     </div>
   );

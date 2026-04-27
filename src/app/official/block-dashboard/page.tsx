@@ -199,41 +199,24 @@ function BlockDashboardContent() {
         { name: 'Plastic', value: 1200 }, { name: 'Paper', value: 800 }, { name: 'Metal', value: 400 }, { name: 'Glass', value: 300 }, { name: 'Sanitation', value: 200 }, { name: 'Others', value: 150 }
     ];
 
-    const discrepancies = [];
+    const discrepancies: any[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
-    activeCircuits.filter(c => c.isActiveToday).forEach(c => {
+    activeCircuits.filter(c => c.isActiveToday).forEach((c, idx) => {
         const hasReceipt = verifiedRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startGp));
         if (!hasReceipt) {
             discrepancies.push({ 
-                id: `miss-${districtName}-${blockName}-${c.routeId}-${c.startGp}`.replace(/\s+/g, '-'), 
+                id: `miss-${districtName}-${blockName}-${c.routeId}-${c.startGp}-${idx}`.replace(/\s+/g, '-'), 
                 msg: `Circuit ${c.routeId} active today - No receipt generated.` 
             });
         }
     });
 
-    const peos = Array.from(new Set(blockDetails.schedules.map(s => JSON.stringify({ name: s.gpNodalPerson.split(',')[0].trim(), contact: s.gpNodalContact.split(',')[0].trim() }))))
-        .map(s => JSON.parse(s))
-        .filter(p => p.name !== '-');
-
-    const ulbOperators = Array.from(new Set(blockDetails.schedules.map(s => JSON.stringify({ name: s.ulbNodalPerson.split('&')[0].trim(), contact: s.ulbNodalContact.split(',')[0].trim() }))))
-        .map(s => JSON.parse(s))
-        .filter(u => u.name !== '-');
-
-    const workers = blockDetails.routes.flatMap(r => r.workers || []);
-    const drivers = Array.from(new Set(blockDetails.schedules.map(s => JSON.stringify({ name: s.driverName, contact: s.driverContact }))))
-        .map(s => JSON.parse(s))
-        .filter(d => d.name !== '-');
-
     return { 
         ulbs, mrfs, gpsList, activeCircuits, lineData, mrfTonnage, streamData, discrepancies,
         households: gpsList.reduce((s, g) => s + g.households, 0),
-        surveyedWaste: gpsList.reduce((s, g) => s + g.collected, 0),
-        workers,
-        drivers,
-        peos,
-        ulbOperators
+        surveyedWaste: gpsList.reduce((s, g) => s + g.collected, 0)
     };
-  }, [blockName, districtSource, mounted, verifiedRecords]);
+  }, [blockName, districtSource, mounted, verifiedRecords, districtName]);
 
   if (!mounted || !blockData) return null;
 
@@ -417,7 +400,7 @@ function BlockDashboardContent() {
                         <XAxis dataKey="name" fontSize={9} fontWeights="black" />
                         <YAxis fontSize={10} />
                         <Tooltip />
-                        <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
+                        <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} radius={[4, 4, 0, 0]} barSize={40} />
                     </BarChart>
                 </ResponsiveContainer>
             </CardContent>
@@ -454,108 +437,6 @@ function BlockDashboardContent() {
                 </ResponsiveContainer>
             </CardContent>
         </Card>
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="font-black text-xl uppercase tracking-tight flex items-center gap-2"><Layers className="h-6 w-6 text-primary" /> Professional Node Registry</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Sanitation Workers</p>
-                        <p className="text-2xl font-black text-primary underline">{blockData.workers.length}</p>
-                    </Card>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
-                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Users className="h-3 w-3" /> Sanitation Roster</div>
-                    <ScrollArea className="h-64">
-                        <Table>
-                            <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {blockData.workers.map((n, i) => (
-                                    <TableRow key={i} className="border-b border-dashed">
-                                        <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
-                                        <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact || '9437XXXXXX'}</TableCell>
-                                    </TableRow>
-                                ))}
-                                {blockData.workers.length === 0 && <TableRow><TableCell colSpan={2} className="p-4 text-center text-xs italic text-muted-foreground">No workers assigned.</TableCell></TableRow>}
-                            </TableBody>
-                        </Table>
-                    </ScrollArea>
-                </PopoverContent>
-            </Popover>
-
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (GP)</p>
-                        <p className="text-2xl font-black text-primary underline">{blockData.peos.length}</p>
-                    </Card>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
-                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><ShieldCheck className="h-3 w-3" /> GP PEO Directory</div>
-                    <ScrollArea className="h-64">
-                        <Table>
-                            <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">PEO Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {blockData.peos.map((n, i) => (
-                                    <TableRow key={i} className="border-b border-dashed">
-                                        <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
-                                        <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </ScrollArea>
-                </PopoverContent>
-            </Popover>
-
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (ULB)</p>
-                        <p className="text-2xl font-black text-primary underline">{blockData.ulbOperators.length}</p>
-                    </Card>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
-                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> ULB Operator Directory</div>
-                    <Table>
-                        <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Operator</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                             {blockData.ulbOperators.map((n, i) => (
-                                <TableRow key={i} className="border-b border-dashed">
-                                    <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
-                                    <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </PopoverContent>
-            </Popover>
-
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Logistical Drivers</p>
-                        <p className="text-2xl font-black text-primary underline">{blockData.drivers.length}</p>
-                    </Card>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
-                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> Driver Directory</div>
-                    <Table>
-                        <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Driver</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                             {blockData.drivers.map((n, i) => (
-                                <TableRow key={i} className="border-b border-dashed">
-                                    <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
-                                    <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </PopoverContent>
-            </Popover>
-        </div>
       </div>
     </div>
   );
