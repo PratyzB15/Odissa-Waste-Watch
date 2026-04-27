@@ -84,8 +84,10 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed
 
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
+    
     const normalized = schedule.toLowerCase().replace(/\s+/g, ' ').replace('thurs day', 'thursday').replace('tues day', 'tuesday');
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const ordinals: Record<string, number> = { '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5 };
     
@@ -110,6 +112,7 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         const dayStr = weekdays.includes(nthMatch[1]) ? nthMatch[1] : nthMatch[2];
         const n = ordinals[nStr.toLowerCase()];
         const dayIdx = weekdays.indexOf(dayStr.toLowerCase());
+        
         let target = getNthWeekday(today.getFullYear(), today.getMonth(), dayIdx, n);
         if (!target || target <= today) {
             let nextM = today.getMonth() + 1; let nextY = today.getFullYear();
@@ -120,12 +123,19 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     }
 
     let minDays = 999; 
-    weekdays.forEach((day, i) => { if (normalized.includes(day)) { let diff = i - today.getDay(); if (diff <= 0) diff += 7; if (diff < minDays) minDays = diff; } });
-    
+    weekdays.forEach((day, i) => {
+        if (normalized.includes(day)) {
+            let diff = i - today.getDay();
+            if (diff <= 0) diff += 7;
+            if (diff < minDays) minDays = diff;
+        }
+    });
+
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
         const days = dateMatches.map(Number).sort((a, b) => a - b);
-        const nextDay = days.find(d => d > today.getDate());
+        const nextDay = days.find(d => d >= today.getDate());
+        if (nextDay === today.getDate()) return 0;
         if (nextDay) return nextDay - today.getDate();
         const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
         return (daysInMonth - today.getDate()) + days[0];
@@ -137,8 +147,8 @@ function StateAdminDashboardContent() {
   const [mounted, setMounted] = useState(false);
   const [solvedAlerts, setSolvedAlerts] = useState<string[]>([]);
   const [lineToggle, setLineToggle] = useState('monthly');
-  const [mrfUlbToggle, setMrfUlbToggle] = useState('ulb');
   const [barToggle, setBarToggle] = useState('top');
+  const [mrfUlbToggle, setMrfUlbToggle] = useState('mrf');
 
   const db = useFirestore();
   const wasteQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'desc')) : null, [db]);
@@ -272,10 +282,21 @@ function StateAdminDashboardContent() {
         }
     });
 
+    const peos = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map(c => JSON.stringify({ name: c.gpNodalPerson.split(',')[0].trim(), contact: c.gpNodalContact.split(',')[0].trim() })))))
+        .map(s => JSON.parse(s)).filter(p => p.name !== '-');
+    
+    const operators = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map(c => JSON.stringify({ name: c.ulbNodalPerson.split('&')[0].trim(), contact: c.ulbNodalContact.split(',')[0].trim() })))))
+        .map(s => JSON.parse(s)).filter(p => p.name !== '-');
+
+    const stateDrivers = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map(c => JSON.stringify({ name: c.driverName, contact: c.driverContact })))))
+        .map(s => JSON.parse(s)).filter(d => d.name !== '-');
+
+    const workers = districtSources.flatMap(s => s.data.routes.flatMap(r => r.workers || []));
+
     return { 
         districtsList, blocksList: uniqueBlocks, ulbsList: uniqueUlbs, mrfsList: uniqueMrfs, allGps, activeToday, lineData, districtTonnage, streamData, discrepancies,
         surveyedTotal, verifiedTotal, efficiency: surveyedTotal > 0 ? (verifiedTotal / surveyedTotal) * 100 : 94.2,
-        top5Mrfs, top5Ulbs
+        top5Mrfs, top5Ulbs, peos, operators, stateDrivers, workers
     };
   }, [mounted, allRecords]);
 
@@ -364,7 +385,7 @@ function StateAdminDashboardContent() {
             </PopoverContent>
         </Popover>
 
-        <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Total Survey Load</p><p className="text-lg font-black uppercase">{(stateData.surveyedTotal / 1000).toFixed(1)} Tons</p></Card>
+        <Card className="border-2 shadow-sm p-4 text-center"><p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Total State Load</p><p className="text-lg font-black uppercase">{(stateData.surveyedTotal / 1000).toFixed(1)} Tons</p></Card>
         
         <Card className="border-2 shadow-sm p-4 text-center bg-primary/5 border-primary/20"><p className="text-[9px] font-black uppercase text-primary mb-1">State Efficiency</p><p className="text-lg font-black text-primary">{stateData.efficiency.toFixed(1)}%</p></Card>
       </div>
@@ -378,13 +399,13 @@ function StateAdminDashboardContent() {
                 <CardContent className="p-0">
                     <ScrollArea className="h-[250px]">
                         <div className="divide-y">
-                            {(stateData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
+                            {stateData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
                                 <div key={alert.id} className="p-4 flex items-center justify-between group">
                                     <p className="text-[10px] font-bold text-foreground uppercase italic">{alert.msg}</p>
                                     <Button size="sm" variant="outline" className="h-7 text-[8px] font-black uppercase hover:bg-green-600 hover:text-white" onClick={() => setSolvedAlerts([...solvedAlerts, alert.id])}>Mark Solved</Button>
                                 </div>
                             ))}
-                            {(stateData.discrepancies || []).filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
+                            {stateData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
                                 <div className="p-12 text-center text-muted-foreground opacity-30 italic uppercase font-black text-xs">No active state-wide alerts.</div>
                             )}
                         </div>
@@ -534,6 +555,107 @@ function StateAdminDashboardContent() {
                 </ResponsiveContainer>
             </CardContent>
         </Card>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="font-black text-xl uppercase tracking-tight flex items-center gap-2"><Layers className="h-6 w-6 text-primary" /> Professional State-wide Registry</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Sanitation Workers</p>
+                        <p className="text-2xl font-black text-primary underline">{stateData.workers.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Users className="h-3 w-3" /> State-wide Roster</div>
+                    <ScrollArea className="h-64">
+                        <Table>
+                            <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {stateData.workers.map((n, i) => (
+                                    <TableRow key={i} className="border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
+                                        <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact || '9437XXXXXX'}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </PopoverContent>
+            </Popover>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (GP)</p>
+                        <p className="text-2xl font-black text-primary underline">{stateData.peos.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><ShieldCheck className="h-3 w-3" /> State PEO Directory</div>
+                    <ScrollArea className="h-64">
+                        <Table>
+                            <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {stateData.peos.map((n, i) => (
+                                    <TableRow key={i} className="border-b border-dashed">
+                                        <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
+                                        <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </PopoverContent>
+            </Popover>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (ULB)</p>
+                        <p className="text-2xl font-black text-primary underline">{stateData.operators.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> State Operator Directory</div>
+                    <Table>
+                        <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                             {stateData.operators.map((n, i) => (
+                                <TableRow key={i} className="border-b border-dashed">
+                                    <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
+                                    <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </PopoverContent>
+            </Popover>
+
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-6 text-center">
+                        <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Logistical Drivers</p>
+                        <p className="text-2xl font-black text-primary underline">{stateData.stateDrivers.length}</p>
+                    </Card>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> State Driver Directory</div>
+                    <Table>
+                        <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                             {stateData.stateDrivers.map((n, i) => (
+                                <TableRow key={i} className="border-b border-dashed">
+                                    <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
+                                    <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </PopoverContent>
+            </Popover>
+        </div>
       </div>
     </div>
   );
