@@ -143,7 +143,6 @@ function GpUlbDashboardContent() {
   const [solvedAlerts, setSolvedAlerts] = useState<string[]>([]);
   const [lineToggle, setLineToggle] = useState('monthly');
   const [barToggle, setBarToggle] = useState('top');
-  const [mrfBarToggle, setMrfBarToggle] = useState('mrf');
 
   const db = useFirestore();
   const wasteQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'desc')) : null, [db]);
@@ -160,7 +159,7 @@ function GpUlbDashboardContent() {
 
   const districtSource = useMemo(() => {
     if (!districtName) return null;
-    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
+    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
     return map[districtName.toLowerCase()];
   }, [districtName]);
 
@@ -295,8 +294,15 @@ function GpUlbDashboardContent() {
         countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`
     };
 
-    const peos = Array.from(new Set([details.schedule].map(s => JSON.stringify({ name: (s?.gpNodalPerson || "").split(',')[0].trim(), contact: (s?.gpNodalContact || "").split(',')[0].trim() }))))
-        .map(s => JSON.parse(s)).filter(p => p.name !== '');
+    // CLUSTER-WIDE PEO RESOLUTION: Get PEOs from ALL GPs tagged to the same ULB node
+    const targetUlb = details.mapping?.taggedUlb;
+    const siblingSchedules = (districtSource as any).data.collectionSchedules.filter((s: any) => 
+        s.ulb.toLowerCase().trim().includes(targetUlb.toLowerCase().trim()) ||
+        targetUlb.toLowerCase().trim().includes(s.ulb.toLowerCase().trim())
+    );
+    const peos = Array.from(new Set(siblingSchedules.map((s: any) => JSON.stringify({ name: (s.gpNodalPerson || "").split(',')[0].trim(), contact: (s.gpNodalContact || "").split(',')[0].trim() }))))
+        .map(s => JSON.parse(s))
+        .filter(p => p.name !== '-');
 
     const ulbOperators = Array.from(new Set([details.schedule].map(s => JSON.stringify({ name: (s?.ulbNodalPerson || "").split('&')[0].trim(), contact: (s?.ulbNodalContact || "").split(',')[0].trim() }))))
         .map(s => JSON.parse(s)).filter(u => u.name !== '');
@@ -306,7 +312,7 @@ function GpUlbDashboardContent() {
 
     const workers = (details.routes || []).flatMap((r: any) => r.workers || []);
 
-    const discrepancies = [];
+    const discrepancies: any[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
     if (daysLeft === 0 && !gpRecords.some(r => r.date === todayStr)) {
         discrepancies.push({ id: `missed-${circuit.id}`, msg: `Route ${circuit.id} active today - Receipt not submitted.` });
@@ -386,7 +392,8 @@ function GpUlbDashboardContent() {
                         <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px]">Household Census (GP-wise)</div>
                         <Table>
                             <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] uppercase font-black">GP Node</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Count</TableHead></TableRow></TableHeader>
-                            <TableBody>{ulbRealData.gpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody></Table>
+                            <TableBody>{ulbRealData.gpsList.map((g, i) => (<TableRow key={i} className="h-10 border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell><TableCell className="text-right font-mono font-bold text-xs">{g.households.toLocaleString()}</TableCell></TableRow>))}</TableBody>
+                        </Table>
                     </PopoverContent>
                 </Popover>
 
@@ -484,9 +491,6 @@ function GpUlbDashboardContent() {
                 <Card className="border-2 shadow-sm">
                     <CardHeader className="bg-muted/10 border-b pb-3 flex flex-row items-center justify-between">
                         <CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Warehouse className="h-4 w-4 text-primary" /> Facility Inventory (All Time)</CardTitle>
-                        <Tabs value={mrfBarToggle} onValueChange={setMrfBarToggle}>
-                            <TabsList className="h-7"><TabsTrigger value="mrf" className="text-[8px] font-black px-2">MRFs</TabsTrigger><TabsTrigger value="ulb" className="text-[8px] font-black px-2">ULBs</TabsTrigger></TabsList>
-                        </Tabs>
                     </CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
@@ -773,6 +777,24 @@ function GpUlbDashboardContent() {
                             <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {(gpRealData.peos || []).map((n:any, i:number) => (
+                                    <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
+                                ))}
+                            </TableBody></Table>
+                        </PopoverContent>
+                    </Popover>
+
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Card className="border-2 border-primary/10 shadow-sm cursor-pointer hover:bg-primary/5 transition-all p-4 text-center">
+                                <p className="text-[8px] font-black text-muted-foreground uppercase mb-1">Nodal Person (ULB)</p>
+                                <p className="text-2xl font-black text-primary underline">{(gpRealData.ulbOperators || []).length}</p>
+                            </Card>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
+                            <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> ULB Operator Directory</div>
+                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {(gpRealData.ulbOperators || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
                                 ))}
                             </TableBody></Table>
