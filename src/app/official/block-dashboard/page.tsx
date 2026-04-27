@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
@@ -77,6 +78,7 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
+    // Strict temporal normalization (ignore spacing for tuesday/thursday)
     const normalized = schedule.toLowerCase()
         .replace(/thurs\s*day/g, 'thursday')
         .replace(/tues\s*day/g, 'tuesday')
@@ -136,10 +138,11 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
             foundWeekday = true;
             let diff = i - dayOfWeek;
             if (diff < 0) diff += 7;
-            if (diff < minDays) minDays = diff;
+            if (diff === 0) minDays = 0;
+            else if (diff < minDays) minDays = diff;
         }
     });
-    if (foundWeekday) return minDays;
+    if (foundWeekday && minDays !== 999) return minDays;
 
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
@@ -176,7 +179,7 @@ function BlockDashboardContent() {
   }, [districtNameParam, blockName]);
 
   const districtSource = useMemo(() => {
-    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
+    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
     return map[districtName.toLowerCase()];
   }, [districtName]);
 
@@ -322,7 +325,7 @@ function BlockDashboardContent() {
                 <CardHeader className="bg-destructive/5 border-b pb-3 flex row items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-destructive" />
                     <CardTitle className="text-base font-black uppercase text-destructive">Operational Discrepancy Hub</CardTitle>
-                </AlertCircle>
+                </CardHeader>
                 <CardContent className="p-0">
                     <ScrollArea className="h-[250px]">
                         <div className="divide-y">
