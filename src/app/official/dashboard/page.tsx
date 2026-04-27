@@ -1,4 +1,3 @@
-
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -169,7 +168,7 @@ function DistrictDashboardContent() {
 
   const districtSource = useMemo(() => {
     if (!districtName) return null;
-    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
+    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
     return map[districtName.toLowerCase()];
   }, [districtName]);
 
@@ -247,7 +246,10 @@ function DistrictDashboardContent() {
     const todayStr = new Date().toISOString().split('T')[0];
     activeCircuits.filter(c => c.isActiveToday).forEach(c => {
         if (!verifiedRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startingGp))) {
-            discrepancies.push({ id: `miss-${c.routeId}`, msg: `Circuit ${c.routeId} active - No receipt synced for ${c.startingGp}.` });
+            discrepancies.push({ 
+                id: `miss-${districtName}-${c.block}-${c.routeId}-${c.startingGp}`.replace(/\s+/g, '-'), 
+                msg: `Circuit ${c.routeId} active - No receipt synced for ${c.startingGp}.` 
+            });
         }
     });
 
@@ -577,7 +579,7 @@ function DistrictDashboardContent() {
                 <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                     <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> District Driver Directory</div>
                     <Table>
-                        <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Driver</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
+                        <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Driver</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableHeader>
                         <TableBody>
                              {dashData.drivers.map((n, i) => (
                                 <TableRow key={i} className="border-b border-dashed">

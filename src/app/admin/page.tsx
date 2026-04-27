@@ -83,10 +83,6 @@ import { mrfData } from "@/lib/mrf-data";
 
 const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed', '#64748b'];
 
-/**
- * HIGH PRECISION TEMPORAL ENGINE
- * Calculates days until next arrival based on all schedule types.
- */
 const calculateDaysUntilNext = (schedule: string, now: Date) => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
@@ -97,7 +93,6 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
     
     const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     
-    // 1. Handle Nth Weekday Pattern ("1st Thursday", "Friday of 2nd week", etc.)
     const nthMatch = normalized.match(/(1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)/i);
     const weekdayFound = weekdays.find(w => normalized.includes(w) || normalized.includes(w.substring(0,3)));
     
@@ -132,14 +127,12 @@ const calculateDaysUntilNext = (schedule: string, now: Date) => {
         }
     }
 
-    // 2. Handle Simple Weekday ("Every Monday", "Monday")
     if (weekdayFound) {
         let diff = weekdays.indexOf(weekdayFound) - dayOfWeek;
         if (diff < 0) diff += 7;
         return diff;
     }
 
-    // 3. Handle Specific Dates ("1st & 15th", "7, 22")
     const dateMatches = normalized.match(/(\d+)/g);
     if (dateMatches && !normalized.includes('week')) {
         const days = dateMatches.map(Number).sort((a, b) => a - b);
@@ -287,7 +280,10 @@ function StateAdminDashboardContent() {
     const todayStr = new Date().toISOString().split('T')[0];
     allRoutes.filter(r => r.isActiveToday).forEach(c => {
         if (!allRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startGp))) {
-            discrepancies.push({ id: `miss-${c.routeId}`, msg: `[${c.district}] Circuit ${c.routeId} active - No receipt synced for ${c.startGp}.` });
+            discrepancies.push({ 
+                id: `miss-${c.district}-${c.block}-${c.routeId}-${c.startGp}`.replace(/\s+/g, '-'), 
+                msg: `[${c.district}] Circuit ${c.routeId} active - No receipt synced for ${c.startGp}.` 
+            });
         }
     });
 

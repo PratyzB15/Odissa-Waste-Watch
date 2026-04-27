@@ -203,10 +203,14 @@ function BlockDashboardContent() {
     const todayStr = new Date().toISOString().split('T')[0];
     activeCircuits.filter(c => c.isActiveToday).forEach(c => {
         const hasReceipt = verifiedRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startGp));
-        if (!hasReceipt) discrepancies.push({ id: `miss-${c.routeId}`, msg: `Circuit ${c.routeId} active today - No receipt generated.` });
+        if (!hasReceipt) {
+            discrepancies.push({ 
+                id: `miss-${districtName}-${blockName}-${c.routeId}-${c.startGp}`.replace(/\s+/g, '-'), 
+                msg: `Circuit ${c.routeId} active today - No receipt generated.` 
+            });
+        }
     });
 
-    // Explicit Mappings for Professional Node Registry
     const peos = Array.from(new Set(blockDetails.schedules.map(s => JSON.stringify({ name: s.gpNodalPerson.split(',')[0].trim(), contact: s.gpNodalContact.split(',')[0].trim() }))))
         .map(s => JSON.parse(s))
         .filter(p => p.name !== '-');

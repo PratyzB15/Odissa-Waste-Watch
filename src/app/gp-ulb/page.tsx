@@ -159,7 +159,7 @@ function GpUlbDashboardContent() {
 
   const districtSource = useMemo(() => {
     if (!districtName) return null;
-    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
+    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
     return map[districtName.toLowerCase()];
   }, [districtName]);
 
@@ -238,14 +238,19 @@ function GpUlbDashboardContent() {
     const todayStr = new Date().toISOString().split('T')[0];
     schedules.filter(s => s.isActiveToday).forEach(s => {
         const hasReceipt = allRecords.some(r => r.date === todayStr && (r.routeId === s.routeId || r.gpName === s.gpName));
-        if (!hasReceipt) discrepancies.push({ id: `missed-${s.routeId}`, msg: `Circuit ${s.routeId} active today - No receipt transmitted.` });
+        if (!hasReceipt) {
+            discrepancies.push({ 
+                id: `miss-${districtName}-${blockName}-${s.routeId}-${s.gpName}`.replace(/\s+/g, '-'), 
+                msg: `Circuit ${s.routeId} active today - No receipt transmitted.` 
+            });
+        }
     });
 
     return { 
         primaryRecord, gpsList, activeCircuits: schedules, lineData, mrfTonnage, streamData, discrepancies,
         mrfCount: mrfIds.length, mrfList: mrfIds, workers, drivers, peos, ulbOperators
     };
-  }, [role, ulbName, districtSource, mounted, allRecords]);
+  }, [role, ulbName, districtSource, mounted, allRecords, blockName, districtName]);
 
   const gpRealData = useMemo(() => {
     if (!mounted || role !== 'gp' || !gpName || !districtSource) return null;
@@ -294,7 +299,6 @@ function GpUlbDashboardContent() {
         countdown: daysLeft === 0 ? "Active Today" : `In ${daysLeft} days`
     };
 
-    // CLUSTER-WIDE PEO RESOLUTION: Get PEOs from ALL GPs tagged to the same ULB node
     const targetUlb = details.mapping?.taggedUlb;
     const siblingSchedules = (districtSource as any).data.collectionSchedules.filter((s: any) => 
         s.ulb.toLowerCase().trim().includes(targetUlb.toLowerCase().trim()) ||
@@ -315,7 +319,10 @@ function GpUlbDashboardContent() {
     const discrepancies: any[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
     if (daysLeft === 0 && !gpRecords.some(r => r.date === todayStr)) {
-        discrepancies.push({ id: `missed-${circuit.id}`, msg: `Route ${circuit.id} active today - Receipt not submitted.` });
+        discrepancies.push({ 
+            id: `miss-${districtName}-${blockName}-${circuit.id}-${gpName}`.replace(/\s+/g, '-'), 
+            msg: `Route ${circuit.id} active today - Receipt not submitted.` 
+        });
     }
 
     return { 
@@ -325,7 +332,7 @@ function GpUlbDashboardContent() {
         scheduleStr,
         discrepancies
     };
-  }, [role, gpName, districtSource, mounted, allRecords]);
+  }, [role, gpName, districtSource, mounted, allRecords, districtName, blockName]);
 
   if (!mounted) return <div className="p-12 text-center animate-pulse">Syncing nodal analytics...</div>;
 
@@ -508,7 +515,7 @@ function GpUlbDashboardContent() {
 
             <div className="grid md:grid-cols-2 gap-6">
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Nodal Recovery (Last 5 Months)</CardTitle></CardHeader>
+                    <CardHeader className="bg-muted/10 border-b pb-3"><Activity className="h-4 w-4 text-primary" /> Nodal Recovery (Last 5 Months)</CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={[{month: 'Mar', val: 12000}, {month: 'Apr', val: 14500}, {month: 'May', val: 18000}, {month: 'Jun', val: 16200}, {month: 'Jul', val: 21600}]}>
@@ -523,7 +530,7 @@ function GpUlbDashboardContent() {
                 </Card>
 
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Stream Composition</CardTitle></CardHeader>
+                    <CardHeader className="bg-muted/10 border-b pb-3"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Stream Composition</CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -714,7 +721,7 @@ function GpUlbDashboardContent() {
 
             <div className="grid md:grid-cols-2 gap-6">
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Waste Collected (Last 5 Months)</CardTitle></CardHeader>
+                    <CardHeader className="bg-muted/10 border-b pb-3"><Activity className="h-4 w-4 text-primary" /> Waste Collected (Last 5 Months)</CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={gpRealData.monthlyTonnage}>
@@ -729,7 +736,7 @@ function GpUlbDashboardContent() {
                 </Card>
 
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Stream Composition</CardTitle></CardHeader>
+                    <CardHeader className="bg-muted/10 border-b pb-3"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Stream Composition</CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -792,7 +799,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><UserCircle className="h-3 w-3" /> ULB Operator Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">{n.name}</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {(gpRealData.ulbOperators || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
@@ -810,7 +817,7 @@ function GpUlbDashboardContent() {
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                             <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px] flex items-center gap-2"><Truck className="h-3 w-3" /> Driver Directory</div>
-                            <Table><TableHeader><TableRow><TableHead className="text-[9px] font-bold uppercase">Name</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">{n.name}</TableHead><TableHead className="text-[9px] font-bold uppercase text-right">Phone</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {(gpRealData.drivers || []).map((n:any, i:number) => (
                                     <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell></TableRow>
