@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
 interface PortalLayoutWrapperProps {
@@ -26,11 +26,8 @@ export function PortalLayoutWrapper({
     return () => window.removeEventListener('popstate', handleRouteChange);
   }, []);
 
-  // Function to render sidebar with isMobile=true for mobile view
   const renderMobileSidebar = () => {
-    // Check if sidebarContent is a React element and has a type that is a function/component
     if (React.isValidElement(sidebarContent)) {
-      // Clone the element and add isMobile={true} prop
       return React.cloneElement(sidebarContent as React.ReactElement<any>, { isMobile: true });
     }
     return sidebarContent;
@@ -38,14 +35,14 @@ export function PortalLayoutWrapper({
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
-      {/* Desktop Sidebar - Hidden on mobile */}
+      {/* Desktop Sidebar */}
       <div className="hidden lg:block">
         {sidebarContent}
       </div>
       
       {/* Mobile Layout */}
       <div className="flex flex-1 flex-col w-full">
-        {/* Mobile Header with Menu Button - Only visible on mobile */}
+        {/* Mobile Header with Menu Button */}
         <div className="lg:hidden sticky top-0 z-40 bg-background border-b">
           <div className="flex items-center h-16 px-4">
             <Sheet open={open} onOpenChange={setOpen}>
@@ -55,18 +52,18 @@ export function PortalLayoutWrapper({
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="p-0 w-80 z-[100]">
-                <div className="flex flex-col h-full">
-                  <div className="flex justify-between items-center p-4 border-b">
-                    <span className="font-semibold">{title}</span>
-                    <SheetClose asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpen(false)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </SheetClose>
-                  </div>
-                  <div className="flex-1 overflow-y-auto" onClick={() => setOpen(false)}>
-                    {renderMobileSidebar()}
-                  </div>
+                {/* ONLY ONE CROSS BUTTON - closes sidebar when clicked */}
+                <div className="flex justify-end p-4 border-b">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setOpen(false)}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+                <div className="flex-1 overflow-y-auto" onClick={() => setOpen(false)}>
+                  {renderMobileSidebar()}
                 </div>
               </SheetContent>
             </Sheet>
