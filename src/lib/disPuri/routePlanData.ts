@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -19,6 +20,7 @@ export const routePlanData: RoutePlanData[] = [
   // Data for GOP Block (Konark MRF)
   {
     id: 1,
+    block: 'Gop',
     routeId: 'PGOPSBIDSJD',
     routeName: 'SBIDSJD-01',
     routeAbbreviation: 'SBIDSJD-01',
@@ -40,6 +42,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Gop',
     routeId: 'PGOPBBBMEBGG',
     routeName: 'BBBMEBGG-02',
     routeAbbreviation: 'BBBMEBGG-02',
@@ -62,6 +65,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Gop',
     routeId: 'PGOPNABKBBP',
     routeName: 'NABKBBP-02',
     routeAbbreviation: 'NABKBBP-02',
@@ -82,6 +86,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Gop',
     routeId: 'PGOPDRNAI',
     routeName: 'DRNAI-03',
     routeAbbreviation: 'DRNAI-03',
@@ -101,6 +106,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Gop',
     routeId: 'PGOPCGBST',
     routeName: 'CGBST-03',
     routeAbbreviation: 'CGBST-03',
@@ -118,9 +124,11 @@ export const routePlanData: RoutePlanData[] = [
       { name: 'PRATAP SENAPATI', contact: '7381243171' }
     ]
   },
+
   // Data for NIMAPADA Block
   {
     id: 6,
+    block: 'Nimapada',
     routeId: 'PNIMASBNU',
     routeName: 'ASBNU-01',
     routeAbbreviation: 'ASBNU-01',
@@ -139,6 +147,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Nimapada',
     routeId: 'PNIMADBKBG',
     routeName: 'ADBKBG-01',
     routeAbbreviation: 'ADBKBG-01',
@@ -158,6 +167,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Nimapada',
     routeId: 'PNIMDSRGH',
     routeName: 'DSRGH-02',
     routeAbbreviation: 'DSRGH-02',
@@ -176,6 +186,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Nimapada',
     routeId: 'PNIMDCRSBA',
     routeName: 'DCRSBA-02',
     routeAbbreviation: 'DCRSBA-02',
@@ -196,6 +207,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Nimapada',
     routeId: 'PNIMTBBMK',
     routeName: 'TBBMK-03',
     routeAbbreviation: 'TBBMK-03',
@@ -213,6 +225,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Nimapada',
     routeId: 'PNIMBTBCT',
     routeName: 'BTBCT-03',
     routeAbbreviation: 'BTBCT-03',
@@ -230,9 +243,11 @@ export const routePlanData: RoutePlanData[] = [
       { name: 'Bihari Sethi', contact: '7853054988' }
     ]
   },
+
   // Data for PIPILI Block
   {
     id: 12,
+    block: 'Pipili',
     routeId: 'PPIPPGPLP',
     routeName: 'PGPLP-01',
     routeAbbreviation: 'PGPLP-01',
@@ -252,6 +267,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Pipili',
     routeId: 'PPIPOJNS',
     routeName: 'OJNS-01',
     routeAbbreviation: 'OJNS-01',
@@ -270,6 +286,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Pipili',
     routeId: 'PPIPHBPK',
     routeName: 'HBPK-02',
     routeAbbreviation: 'HBPK-02',
@@ -288,6 +305,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Pipili',
     routeId: 'PPIPDKMDC',
     routeName: 'DKMDC-02',
     routeAbbreviation: 'DKMDC-02',
@@ -307,6 +325,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 16,
+    block: 'Pipili',
     routeId: 'PPIPJRSP',
     routeName: 'JRSP-03',
     routeAbbreviation: 'JRSP-03',
@@ -324,6 +343,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 17,
+    block: 'Pipili',
     routeId: 'PPIPSTB',
     routeName: 'STB-03',
     routeAbbreviation: 'STB-03',
@@ -339,9 +359,11 @@ export const routePlanData: RoutePlanData[] = [
       { name: 'Salma Begum (PEO)', contact: '7735802307' }
     ]
   },
+
   // Data for PURI SADAR Block
   {
     id: 18,
+    block: 'Puri Sadar',
     routeId: 'PSADSBKBHMT',
     routeName: 'SBKBHMT-01',
     routeAbbreviation: 'SBKBHMT-01',
@@ -362,6 +384,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 19,
+    block: 'Puri Sadar',
     routeId: 'PSADBCCGB',
     routeName: 'BCCGB-01',
     routeAbbreviation: 'BCCGB-01',
@@ -381,6 +404,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 20,
+    block: 'Puri Sadar',
     routeId: 'PSADBBBGKPP',
     routeName: 'BBBGKPP-02',
     routeAbbreviation: 'BBBGKPP-02',
@@ -401,6 +425,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 21,
+    block: 'Puri Sadar',
     routeId: 'PSADBBGJR',
     routeName: 'BBGJR-03',
     routeAbbreviation: 'BBGJR-03',

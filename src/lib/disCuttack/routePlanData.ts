@@ -1,6 +1,6 @@
-
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -18,9 +18,10 @@ export interface RoutePlanData {
 }
 
 export const routePlanData: RoutePlanData[] = [
-  // ATHAGARH Block
+  // ATHAGARH Block Routes
   {
     id: 1,
+    block: 'Athagarh',
     routeId: 'CATHBJIK',
     routeName: 'BADABHUIN to KHUNTUKATA',
     routeAbbreviation: 'BJIK-01',
@@ -40,6 +41,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Athagarh',
     routeId: 'CATHSSDK',
     routeName: 'SAMASARAPUR to KULAILO',
     routeAbbreviation: 'SSDK-02',
@@ -58,6 +60,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Athagarh',
     routeId: 'CATHRDRK',
     routeName: 'RADHAGOVIUNDAPUR to KANDARPUR',
     routeAbbreviation: 'RDRK-03',
@@ -76,6 +79,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Athagarh',
     routeId: 'CATHMKDA',
     routeName: 'MEGHA to MEGHA (Loop)',
     routeAbbreviation: 'MKDA-04',
@@ -94,6 +98,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Athagarh',
     routeId: 'CATHBJTM',
     routeName: 'BENTAPADA to MAHAKALABASTA',
     routeAbbreviation: 'BJTM-05',
@@ -112,6 +117,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Athagarh',
     routeId: 'CATHKBDK',
     routeName: 'KHUNTUNI to KANDAREI',
     routeAbbreviation: 'KBDK-06',
@@ -130,6 +136,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Athagarh',
     routeId: 'CATHRRGGK',
     routeName: 'RADHAKRUSHNAPUR to KUMARAPUR',
     routeAbbreviation: 'RRGGK-07',
@@ -149,6 +156,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Athagarh',
     routeId: 'CATHOKMGC',
     routeName: 'ORANDA to CHHAGAON',
     routeAbbreviation: 'OKMGC-08',
@@ -167,9 +175,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // BANKI Block
+  // BANKI Block Routes
   {
     id: 9,
+    block: 'Banki',
     routeId: 'CBANSOKK',
     routeName: 'SUBARNAPUR to KANTAPANHRA',
     routeAbbreviation: 'SOKK-1',
@@ -188,6 +197,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Banki',
     routeId: 'CBANBBR',
     routeName: 'BAUNSPUT to RATAGADA(GOVINDPUR)',
     routeAbbreviation: 'BBR-2',
@@ -205,6 +215,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Banki',
     routeId: 'CBANAGBK',
     routeName: 'ANUARY to KALAPATHAR',
     routeAbbreviation: 'AGBK-3',
@@ -223,6 +234,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 12,
+    block: 'Banki',
     routeId: 'CBANBJKK',
     routeName: 'BALABHADRAPUR to KALIPOI',
     routeAbbreviation: 'BJKK-4',
@@ -241,6 +253,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Banki',
     routeId: 'CBANBKBNP',
     routeName: 'BERHUMPURA to PUINCHA',
     routeAbbreviation: 'BKBNP-5',
@@ -259,9 +272,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // BANKI-DAMPADA Block
+  // BANKI-DAMPADA Block Routes
   {
     id: 14,
+    block: 'Banki-Dampada',
     routeId: 'CBANDNTDR',
     routeName: 'DUGAPUR to RAGADI',
     routeAbbreviation: 'DNTDR-1',
@@ -281,6 +295,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Banki-Dampada',
     routeId: 'CBANGBHS',
     routeName: 'GOPALPUR to SIMILIPUR',
     routeAbbreviation: 'GBHS-2',
@@ -299,6 +314,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 16,
+    block: 'Banki-Dampada',
     routeId: 'CBANTGDD',
     routeName: 'TALABASTA to DOMPARA',
     routeAbbreviation: 'TGDD-3',
@@ -317,6 +333,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 17,
+    block: 'Banki-Dampada',
     routeId: 'CBANKBPP',
     routeName: 'KUSPANGI to BANARA',
     routeAbbreviation: 'KPBB-4',
@@ -334,9 +351,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // CUTTACK SADAR Block
+  // CUTTACK SADAR Block Routes
   {
     id: 18,
+    block: 'Cuttack Sadar',
     routeId: 'CCUTUKA',
     routeName: 'URALI to AMAN',
     routeAbbreviation: 'UKA-01',
@@ -354,6 +372,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 19,
+    block: 'Cuttack Sadar',
     routeId: 'CCUTBDBJ',
     routeName: 'BRAHMAPUR to JHARKATA',
     routeAbbreviation: 'BDBJ-02',
@@ -372,6 +391,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 20,
+    block: 'Cuttack Sadar',
     routeId: 'CCUTGNPA',
     routeName: 'GATIROUTPATNA to AYATPUR',
     routeAbbreviation: 'GNPA-03',
@@ -390,6 +410,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 21,
+    block: 'Cuttack Sadar',
     routeId: 'CCUTKKKF',
     routeName: 'KALAPADA to FAKIRPADA',
     routeAbbreviation: 'KKKF-04',
@@ -408,6 +429,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 22,
+    block: 'Cuttack Sadar',
     routeId: 'CCUTBJDA',
     routeName: 'BARDA to ARILO',
     routeAbbreviation: 'BJDA-05',
@@ -426,6 +448,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 23,
+    block: 'Cuttack Sadar',
     routeId: 'CCUTSBPK',
     routeName: 'SOMPUR to KISHOR NAGAR',
     routeAbbreviation: 'SBPK-06',
@@ -443,9 +466,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // TANGI CHOUDWAR Block
+  // TANGI CHOUDWAR Block Routes
   {
     id: 24,
+    block: 'Tangi Choudwar',
     routeId: 'CTANBMSM',
     routeName: 'BADASAMANTARAPUR to MAHISALANDA',
     routeAbbreviation: 'BMSM-01',
@@ -464,6 +488,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 25,
+    block: 'Tangi Choudwar',
     routeId: 'CTANBGSK',
     routeName: 'BERHMAPUR to KARANJI',
     routeAbbreviation: 'BGSK-02',
@@ -482,6 +507,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 26,
+    block: 'Tangi Choudwar',
     routeId: 'CTANKKUM',
     routeName: 'KANHEIPUR to MAGURA DHANAMANDAL',
     routeAbbreviation: 'KKUM-03',
@@ -500,6 +526,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 27,
+    block: 'Tangi Choudwar',
     routeId: 'CTANHANS',
     routeName: 'HARIANTA to SALAGAON',
     routeAbbreviation: 'HANS-04',
@@ -518,6 +545,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 28,
+    block: 'Tangi Choudwar',
     routeId: 'CTANBIKK',
     routeName: 'BANIPADA to KAKHADI',
     routeAbbreviation: 'BIKK-05',
@@ -536,6 +564,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 29,
+    block: 'Tangi Choudwar',
     routeId: 'CTANGJBN',
     routeName: 'GOVINDPUR to NAPANGA',
     routeAbbreviation: 'GJBN-06',

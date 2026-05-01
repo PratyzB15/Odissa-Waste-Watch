@@ -5,6 +5,7 @@ export interface RouteWorker {
 
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -19,9 +20,10 @@ export interface RoutePlanData {
 }
 
 export const routePlanData: RoutePlanData[] = [
-  // BALLIGUDA Block
+  // BALLIGUDA Block Routes
   {
     id: 1,
+    block: 'Balliguda',
     routeId: 'KBALRBPD1',
     routeName: 'RBPD-01',
     routeAbbreviation: 'RBPD-01',
@@ -45,6 +47,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Balliguda',
     routeId: 'KBALSBK2',
     routeName: 'SBK-02',
     routeAbbreviation: 'SBK-02',
@@ -66,6 +69,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Balliguda',
     routeId: 'KBALMRBS3',
     routeName: 'MRBS-03',
     routeAbbreviation: 'MRBS-03',
@@ -89,6 +93,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Balliguda',
     routeId: 'KBASKL4',
     routeName: 'SKL-04',
     routeAbbreviation: 'SKL-04',
@@ -109,9 +114,10 @@ export const routePlanData: RoutePlanData[] = [
     remarks: 'If waste collection not happened during the scheduled day/date due to some issue, then collection will be done in next day/date or any date coordinating with ULB Nodal person'
   },
 
-  // Phulbani Block
+  // Phulbani Block Routes
   {
     id: 5,
+    block: 'Phulbani',
     routeId: 'KPHUTJK1',
     routeName: 'TJK-01',
     routeAbbreviation: 'TJK-01',
@@ -133,6 +139,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Phulbani',
     routeId: 'KPHUDDB2',
     routeName: 'DDB-02',
     routeAbbreviation: 'DDB-02',
@@ -154,6 +161,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Phulbani',
     routeId: 'KPHUAGM3',
     routeName: 'AGM-03',
     routeAbbreviation: 'AGM-03',
@@ -175,6 +183,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Phulbani',
     routeId: 'KPHUKG4',
     routeName: 'KG-04',
     routeAbbreviation: 'KG-04',
@@ -191,9 +200,10 @@ export const routePlanData: RoutePlanData[] = [
     remarks: 'If waste collection not happened during the scheduled day/date due to some issue, then collection will be done in next day/date or any date coordinating with ULB Nodal person'
   },
 
-  // G.UDAYAGIRI Block
+  // G.UDAYAGIRI Block Routes
   {
     id: 9,
+    block: 'G.Udayagiri',
     routeId: 'KGUDKTM-1',
     routeName: 'KTM--01',
     routeAbbreviation: 'KTM--01',
@@ -215,6 +225,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'G.Udayagiri',
     routeId: 'KGUDKLR-2',
     routeName: 'KLR-2',
     routeAbbreviation: 'KLR-2',
@@ -236,6 +247,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'G.Udayagiri',
     routeId: 'KGUDRG-3',
     routeName: 'RG-3',
     routeAbbreviation: 'RG-3',

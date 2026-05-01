@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -16,9 +17,10 @@ export interface RoutePlanData {
 }
 
 export const routePlanData: RoutePlanData[] = [
-  // ODAGAON Block
+  // ODAGAON Block Routes
   {
     id: 1,
+    block: 'Odagaon',
     routeId: 'NODAR1',
     routeName: 'RPR1',
     routeAbbreviation: 'RPR1',
@@ -36,6 +38,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Odagaon',
     routeId: 'NODAK2',
     routeName: 'KSS2',
     routeAbbreviation: 'KSS2',
@@ -53,6 +56,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Odagaon',
     routeId: 'NODAB3',
     routeName: 'BPK3',
     routeAbbreviation: 'BPK3',
@@ -70,6 +74,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Odagaon',
     routeId: 'NODAG4',
     routeName: 'GSK4',
     routeAbbreviation: 'GSK4',
@@ -87,6 +92,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Odagaon',
     routeId: 'NODAR5',
     routeName: 'RRAB5',
     routeAbbreviation: 'RRAB5',
@@ -105,6 +111,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Odagaon',
     routeId: 'NODAN6',
     routeName: 'NGB6',
     routeAbbreviation: 'NGB6',
@@ -122,6 +129,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Odagaon',
     routeId: 'NODAG7',
     routeName: 'GPA7',
     routeAbbreviation: 'GPA7',
@@ -139,6 +147,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Odagaon',
     routeId: 'NODAH8',
     routeName: 'HSD8',
     routeAbbreviation: 'HSD8',
@@ -156,6 +165,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Odagaon',
     routeId: 'NODAB9',
     routeName: 'BGHP9',
     routeAbbreviation: 'BGHP9',
@@ -174,6 +184,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Odagaon',
     routeId: 'NODAB10',
     routeName: 'BGKS10',
     routeAbbreviation: 'BGKS10',
@@ -192,6 +203,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Odagaon',
     routeId: 'NODAM11',
     routeName: 'MGS11',
     routeAbbreviation: 'MGS11',
@@ -208,9 +220,10 @@ export const routePlanData: RoutePlanData[] = [
     scheduledOn: '11th, 26th'
   },
 
-  // RANPUR Block
+  // RANPUR Block Routes
   {
     id: 12,
+    block: 'Ranpur',
     routeId: 'NRANB1',
     routeName: 'BBDKG1',
     routeAbbreviation: 'BBDKG1',
@@ -230,6 +243,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Ranpur',
     routeId: 'NRANR2',
     routeName: 'RDSK2',
     routeAbbreviation: 'RDSK2',
@@ -248,6 +262,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Ranpur',
     routeId: 'NRANR3',
     routeName: 'RNKT3',
     routeAbbreviation: 'RNKT3',

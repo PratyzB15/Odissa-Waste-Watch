@@ -5,6 +5,7 @@ export interface RouteWorker {
 
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -19,9 +20,10 @@ export interface RoutePlanData {
 }
 
 export const routePlanData: RoutePlanData[] = [
-  // BARIPADA Block
+  // BARIPADA Block Routes
   {
     id: 1,
+    block: 'Baripada',
     routeId: 'KMAYBARB-1',
     routeName: 'BBC-01',
     routeAbbreviation: 'BBC-01',
@@ -35,6 +37,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Baripada',
     routeId: 'KMAYBARL-2',
     routeName: 'LRS-02',
     routeAbbreviation: 'LRS-02',
@@ -48,6 +51,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Baripada',
     routeId: 'KMAYBARB-3',
     routeName: 'BB-03',
     routeAbbreviation: 'BB-03',
@@ -61,6 +65,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Baripada',
     routeId: 'KMAYBARB-4',
     routeName: 'BHK-04',
     routeAbbreviation: 'BHK-04',
@@ -73,9 +78,10 @@ export const routePlanData: RoutePlanData[] = [
     workers: [{ name: 'Binay Ku Das', contact: '7077793498' }]
   },
 
-  // UDALA Block
+  // UDALA Block Routes
   {
     id: 5,
+    block: 'Udala',
     routeId: 'KMAYUDAR-1',
     routeName: 'RK-01',
     routeAbbreviation: 'RK-01',
@@ -92,6 +98,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Udala',
     routeId: 'KMAYUDAB-2',
     routeName: 'BB-02',
     routeAbbreviation: 'BB-02',
@@ -108,6 +115,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Udala',
     routeId: 'KMAYUDAB-3',
     routeName: 'BD-03',
     routeAbbreviation: 'BD-03',
@@ -124,6 +132,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Udala',
     routeId: 'KMAYUDAK-4',
     routeName: 'KB-04',
     routeAbbreviation: 'KB-04',
@@ -140,6 +149,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Udala',
     routeId: 'KMAYUDAK-5',
     routeName: 'KN-05',
     routeAbbreviation: 'KN-05',
@@ -156,6 +166,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Udala',
     routeId: 'KMAYUDAP-6',
     routeName: 'PS-06',
     routeAbbreviation: 'PS-06',
@@ -171,9 +182,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // RAIRANGPUR Block
+  // RAIRANGPUR Block Routes
   {
     id: 11,
+    block: 'Rairangpur',
     routeId: 'KMAYRAIBH-1',
     routeName: 'BH-01',
     routeAbbreviation: 'BH-01',
@@ -190,6 +202,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 12,
+    block: 'Rairangpur',
     routeId: 'KMAYRAISB-2',
     routeName: 'SB-02',
     routeAbbreviation: 'SB-02',
@@ -206,6 +219,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Rairangpur',
     routeId: 'KMAYRAIK-3',
     routeName: 'K-03',
     routeAbbreviation: 'K-03',
@@ -221,6 +235,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Rairangpur',
     routeId: 'KMAYRAIS-4',
     routeName: 'S-04',
     routeAbbreviation: 'S-04',
@@ -236,6 +251,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Rairangpur',
     routeId: 'KMAYRAIGH-5',
     routeName: 'GH-05',
     routeAbbreviation: 'GH-05',
@@ -252,6 +268,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 16,
+    block: 'Rairangpur',
     routeId: 'KMAYRAIP-6',
     routeName: 'P-06',
     routeAbbreviation: 'P-06',
@@ -266,9 +283,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // KARANJIA Block
+  // KARANJIA Block Routes
   {
     id: 17,
+    block: 'Karanjia',
     routeId: 'KMAYKARA-1',
     routeName: 'BCG-01',
     routeAbbreviation: 'BCG-01',
@@ -285,6 +303,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 18,
+    block: 'Karanjia',
     routeId: 'KMAYKARA-2',
     routeName: 'KSD-02',
     routeAbbreviation: 'KSD-02',
@@ -302,6 +321,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 19,
+    block: 'Karanjia',
     routeId: 'KMAYKARA-3',
     routeName: 'BT-03',
     routeAbbreviation: 'BT-03',
@@ -318,6 +338,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 20,
+    block: 'Karanjia',
     routeId: 'KMAYKARA-4',
     routeName: 'BBM-04',
     routeAbbreviation: 'BBM-04',
@@ -335,6 +356,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 21,
+    block: 'Karanjia',
     routeId: 'KMAYKARA-5',
     routeName: 'RD-05',
     routeAbbreviation: 'RD-05',
@@ -351,6 +373,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 22,
+    block: 'Karanjia',
     routeId: 'KMAYKARA-6',
     routeName: 'KP-06',
     routeAbbreviation: 'KP-06',

@@ -45,7 +45,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where, onSnapshot, DocumentData } from 'firebase/firestore';
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -113,9 +113,16 @@ interface CollectionSchedule {
   [key: string]: any;
 }
 
-interface Route {
+interface RouteData {
+  id?: string;
+  routeId: string;
+  routeName: string;
+  startingGp: string;
+  finalGp?: string;
   destination: string;
-  workers?: Array<{ name: string; contact?: string }>;
+  scheduledOn: string;
+  block?: string;
+  workers?: { name: string; contact: string }[];
   [key: string]: any;
 }
 
@@ -124,10 +131,31 @@ interface DistrictData {
     gpMappings: GpMapping[];
     wasteGeneration: WasteGeneration[];
     collectionSchedules: CollectionSchedule[];
-    routes: Route[];
+    routes: RouteData[];
   };
   getGpDetails: (gpName: string) => any;
   getBlockDetails: (blockName: string) => any;
+}
+
+interface WasteRecord {
+  id: string;
+  date: string;
+  routeId: string;
+  mrf: string;
+  ulb: string;
+  block: string;
+  district: string;
+  gpName: string;
+  totalGpLoad: number;
+  driverSubmitted: number;
+  plastic: number;
+  paper: number;
+  metal: number;
+  cloth: number;
+  glass: number;
+  sanitation: number;
+  others: number;
+  gpBreakdown?: { name: string; amount: number }[];
 }
 
 interface GpListItem {
@@ -173,7 +201,6 @@ const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed
 const calculateDaysUntilNext = (schedule: string, now: Date): number => {
     if (!schedule || /notified|required|TBD|NA/i.test(schedule)) return 999;
     
-    // Strict temporal normalization (ignore spacing for tuesday/thursday/mon day etc)
     const normalized = schedule.toLowerCase()
         .replace(/thurs\s*day/g, 'thursday')
         .replace(/tues\s*day/g, 'tuesday')
@@ -267,10 +294,81 @@ function GpUlbDashboardContent() {
   const [mounted, setMounted] = useState(false);
   const [solvedAlerts, setSolvedAlerts] = useState<string[]>([]);
   const [lineToggle, setLineToggle] = useState('monthly');
+  const [barToggle, setBarToggle] = useState('top');
 
   const db = useFirestore();
-  const wasteQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'desc')) : null, [db]);
-  const { data: allRecords = [] } = useCollection(wasteQuery);
+  
+  // Real-time waste records state (for graphs)
+  const [wasteRecords, setWasteRecords] = useState<WasteRecord[]>([]);
+  
+  // Listen to waste details from Firestore (for graphs)
+  useEffect(() => {
+    if (!db) return;
+    
+    const wasteQuery = query(collection(db, 'wasteDetails'), orderBy('date', 'desc'));
+    
+    const unsubscribe = onSnapshot(wasteQuery, (snapshot) => {
+      const items: WasteRecord[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        items.push({
+          id: doc.id,
+          date: data.date || '',
+          routeId: data.routeId || '',
+          mrf: data.mrf || '',
+          ulb: data.ulb || '',
+          block: data.block || '',
+          district: data.district || '',
+          gpName: data.gpName || '',
+          totalGpLoad: data.totalGpLoad || 0,
+          driverSubmitted: data.driverSubmitted || 0,
+          plastic: data.plastic || 0,
+          paper: data.paper || 0,
+          metal: data.metal || 0,
+          cloth: data.cloth || 0,
+          glass: data.glass || 0,
+          sanitation: data.sanitation || 0,
+          others: data.others || 0,
+          gpBreakdown: data.gpBreakdown || []
+        });
+      });
+      setWasteRecords(items);
+    });
+    
+    return () => unsubscribe();
+  }, [db]);
+
+  // Listen to route plans from Firestore (for active circuits and workers)
+  const [firestoreRoutes, setFirestoreRoutes] = useState<RouteData[]>([]);
+  useEffect(() => {
+    if (!db) return;
+    const routesQuery = query(collection(db, 'routePlans'), where('isDeleted', '==', false));
+    const unsubscribe = onSnapshot(routesQuery, (snapshot) => {
+      const routes: RouteData[] = [];
+      snapshot.forEach((doc: DocumentData) => {
+        const data = doc.data();
+        routes.push({ id: doc.id, ...data } as RouteData);
+      });
+      setFirestoreRoutes(routes);
+    });
+    return () => unsubscribe();
+  }, [db]);
+
+  // Listen to collection schedules from Firestore (for drivers, PEOs, operators)
+  const [firestoreSchedules, setFirestoreSchedules] = useState<CollectionSchedule[]>([]);
+  useEffect(() => {
+    if (!db) return;
+    const schedulesQuery = query(collection(db, 'collectionSchedules'));
+    const unsubscribe = onSnapshot(schedulesQuery, (snapshot) => {
+      const schedules: CollectionSchedule[] = [];
+      snapshot.forEach((doc: DocumentData) => {
+        const data = doc.data();
+        schedules.push({ id: doc.id, ...data } as CollectionSchedule);
+      });
+      setFirestoreSchedules(schedules);
+    });
+    return () => unsubscribe();
+  }, [db]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -300,6 +398,7 @@ function GpUlbDashboardContent() {
 
   const ulbRealData = useMemo(() => {
     if (!mounted || role !== 'ulb' || !ulbName || !districtSource) return null;
+    
     const ulbRecords = mrfData.filter(m => m.ulbName.toLowerCase().trim() === ulbName.toLowerCase().trim());
     const mrfIds = ulbRecords.map(m => m.mrfId);
     
@@ -308,16 +407,43 @@ function GpUlbDashboardContent() {
         ulbName.toLowerCase().trim().includes(m.taggedUlb.toLowerCase().trim())
     );
 
+    // Get real waste records for this ULB
+    const ulbWasteRecords = wasteRecords.filter(r => 
+      r.ulb?.toLowerCase().trim() === ulbName.toLowerCase().trim() ||
+      r.mrf?.toLowerCase().trim() === ulbName.toLowerCase().trim() ||
+      mrfIds.some(id => r.mrf?.toLowerCase().trim() === id.toLowerCase().trim())
+    );
+    const hasRealData = ulbWasteRecords.length > 0;
+
     const gpsList: GpListItem[] = gpMappings.map((gp: GpMapping) => {
         const wasteInfo = (districtSource as any).data.wasteGeneration.find((w: WasteGeneration) => w.gpName.toLowerCase().trim() === gp.gpName.toLowerCase().trim());
-        const gpVerifiedWaste = allRecords.filter((r: any) => r.gpName === gp.gpName).reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0);
+        const gpVerifiedWaste = ulbWasteRecords.filter(r => r.gpName === gp.gpName).reduce((s: number, r: WasteRecord) => s + (r.driverSubmitted || 0), 0);
         return { name: gp.gpName, households: wasteInfo?.totalHouseholds || 0, surveyedWaste: (wasteInfo?.monthlyWasteTotalGm / 1000) || 0, verifiedWaste: gpVerifiedWaste };
     });
 
-    const schedules: ScheduleItem[] = (districtSource as any).data.collectionSchedules.filter((s: CollectionSchedule) => 
+    // Merge local schedules with Firestore schedules
+    let localSchedules = (districtSource as any).data.collectionSchedules.filter((s: CollectionSchedule) => 
         s.ulb.toLowerCase().trim().includes(ulbName.toLowerCase().trim()) ||
         mrfIds.some(mId => s.mrf.toLowerCase().includes(mId.toLowerCase()))
-    ).map((s: CollectionSchedule) => {
+    );
+    
+    const mergedSchedulesMap = new Map<string, CollectionSchedule>();
+    firestoreSchedules.forEach(schedule => {
+      if (schedule.ulb?.toLowerCase().trim() === ulbName.toLowerCase().trim() ||
+          mrfIds.some(mId => schedule.mrf?.toLowerCase().includes(mId.toLowerCase()))) {
+        mergedSchedulesMap.set(schedule.gpName || schedule.routeId || '', schedule);
+      }
+    });
+    
+    localSchedules.forEach((schedule: CollectionSchedule) => {
+      if (!mergedSchedulesMap.has(schedule.gpName || schedule.routeId || '')) {
+        mergedSchedulesMap.set(schedule.gpName || schedule.routeId || '', schedule);
+      }
+    });
+    
+    const mergedSchedules = Array.from(mergedSchedulesMap.values());
+    
+    const schedules: ScheduleItem[] = mergedSchedules.map((s: CollectionSchedule) => {
         const days = calculateDaysUntilNext(s.collectionSchedule, new Date());
         return { 
             ...s, 
@@ -326,40 +452,98 @@ function GpUlbDashboardContent() {
         };
     }).sort((a: ScheduleItem, b: ScheduleItem) => a.days - b.days);
 
+    // Helper function to safely parse JSON strings
+    const safeJsonParse = (jsonStr: unknown): any => {
+      try {
+        return JSON.parse(jsonStr as string);
+      } catch {
+        return null;
+      }
+    };
+
     const peos = Array.from(new Set(schedules.map((s: ScheduleItem) => JSON.stringify({ name: (s.gpNodalPerson || "").split(',')[0].trim(), contact: (s.gpNodalContact || "").split(',')[0].trim() }))))
-        .map((s: string) => JSON.parse(s)).filter((p: any) => p.name !== '-');
+        .map((s: unknown) => safeJsonParse(s))
+        .filter((p: any) => p && p.name !== '-');
 
     const ulbOperators = Array.from(new Set(schedules.map((s: ScheduleItem) => JSON.stringify({ name: (s.ulbNodalPerson || "").split('&')[0].trim(), contact: (s.ulbNodalContact || "").split(',')[0].trim() }))))
-        .map((s: string) => JSON.parse(s)).filter((u: any) => u.name !== '-');
+        .map((s: unknown) => safeJsonParse(s))
+        .filter((u: any) => u && u.name !== '-');
 
     const drivers = Array.from(new Set(schedules.map((s: ScheduleItem) => JSON.stringify({ name: s.driverName, contact: s.driverContact }))))
-        .map((s: string) => JSON.parse(s)).filter((d: any) => d.name !== '-');
+        .map((s: unknown) => safeJsonParse(s))
+        .filter((d: any) => d && d.name !== '-');
 
-    const relevantRoutes = (districtSource as any).data.routes.filter((r: Route) => 
+    // Get workers from Firestore routes that are relevant to this ULB
+    const ulbRoutes = firestoreRoutes.filter(r => 
+      r.destination?.toLowerCase().includes(ulbName.toLowerCase()) ||
+      r.block?.toLowerCase() === blockName?.toLowerCase()
+    );
+    const localRoutes = (districtSource as any).data.routes.filter((r: RouteData) => 
         mrfIds.includes(r.destination) || r.destination.toLowerCase().includes(ulbName.toLowerCase())
     );
-    const workers = relevantRoutes.flatMap((r: Route) => r.workers || []);
+    const allRelevantRoutes = [...ulbRoutes, ...localRoutes];
+    const workers = allRelevantRoutes.flatMap((r: RouteData) => r.workers || []);
 
-    const hasData = allRecords.filter((r: any) => r.mrf.toLowerCase().trim() === ulbName.toLowerCase().trim()).length > 0;
-    
-    const lineData: LineDataItem[] = gpsList.map((g: GpListItem) => ({
-        name: g.name,
-        weekly: hasData ? allRecords.filter((r: any) => r.gpName === g.name && new Date(r.date) > new Date(Date.now() - 7*24*60*60*1000)).reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : Math.random() * 50 + 20,
-        monthly: hasData ? g.verifiedWaste : Math.random() * 200 + 100
-    }));
+    // Nodal Recovery Trend (Kg) - connected to GP waste details
+    const lineData: LineDataItem[] = gpsList.map((g: GpListItem) => {
+        const gpRecords = wasteRecords.filter(r => r.gpName === g.name);
+        return {
+            name: g.name,
+            weekly: hasRealData ? gpRecords.filter(r => new Date(r.date) > new Date(Date.now() - 7*24*60*60*1000)).reduce((s: number, r: WasteRecord) => s + (r.driverSubmitted || 0), 0) : Math.random() * 50 + 20,
+            monthly: hasRealData ? gpRecords.reduce((s: number, r: WasteRecord) => s + (r.driverSubmitted || 0), 0) : Math.random() * 200 + 100
+        };
+    });
 
+    // Nodal Performance Rankings - connected to GP waste details
+    const gpRankingsData = [...gpsList].map(g => ({ name: g.name, verifiedWaste: g.verifiedWaste }));
+
+    // Facility Inventory (All Time) - connected to ULB waste details
     const mrfTonnage: MrfTonnageItem[] = mrfIds.map((id: string) => ({
         name: id,
-        value: hasData ? allRecords.filter((r: any) => r.mrf === id).reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 500 + Math.random() * 1000
+        value: hasRealData ? wasteRecords.filter((r: WasteRecord) => r.mrf === id).reduce((s: number, r: WasteRecord) => s + (r.driverSubmitted || 0), 0) : 500 + Math.random() * 1000
     }));
 
-    const streamData: StreamDataItem[] = hasData ? [
-        { name: 'Plastic', value: allRecords.filter((r: any) => r.mrf.toLowerCase().includes(ulbName.toLowerCase())).reduce((s: number, r: any) => s + (r.plastic || 0), 0) },
-        { name: 'Paper', value: allRecords.filter((r: any) => r.mrf.toLowerCase().includes(ulbName.toLowerCase())).reduce((s: number, r: any) => s + (r.paper || 0), 0) },
-        { name: 'Metal', value: allRecords.filter((r: any) => r.mrf.toLowerCase().includes(ulbName.toLowerCase())).reduce((s: number, r: any) => s + (r.metal || 0), 0) },
-        { name: 'Glass', value: allRecords.filter((r: any) => r.mrf.toLowerCase().includes(ulbName.toLowerCase())).reduce((s: number, r: any) => s + (r.glass || 0), 0) },
-        { name: 'Sanitation', value: allRecords.filter((r: any) => r.mrf.toLowerCase().includes(ulbName.toLowerCase())).reduce((s: number, r: any) => s + (r.sanitation || 0), 0) },
-        { name: 'Others', value: allRecords.filter((r: any) => r.mrf.toLowerCase().includes(ulbName.toLowerCase())).reduce((s: number, r: any) => s + (r.others || 0), 0) },
+    // Nodal Recovery (Last 5 Months) - connected to ULB waste details
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    let monthlyRecoveryData: any[] = [];
+    
+    if (hasRealData && ulbWasteRecords.length > 0) {
+        const monthMap = new Map<string, number>();
+        for (let i = 4; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthName = monthNames[d.getMonth()];
+            monthMap.set(monthName, 0);
+        }
+        
+        ulbWasteRecords.forEach(record => {
+            const date = new Date(record.date);
+            const monthName = monthNames[date.getMonth()];
+            const recordYear = date.getFullYear();
+            const recordMonth = date.getMonth();
+            
+            for (let i = 0; i < 5; i++) {
+                const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                if (recordYear === targetDate.getFullYear() && recordMonth === targetDate.getMonth()) {
+                    monthMap.set(monthName, (monthMap.get(monthName) || 0) + (record.driverSubmitted || 0));
+                    break;
+                }
+            }
+        });
+        
+        monthlyRecoveryData = Array.from(monthMap.entries()).map(([month, val]) => ({ month, val }));
+    } else {
+        monthlyRecoveryData = [{month: 'Mar', val: 12000}, {month: 'Apr', val: 14500}, {month: 'May', val: 18000}, {month: 'Jun', val: 16200}, {month: 'Jul', val: 21600}];
+    }
+
+    // Nodal Stream Composition - connected to ULB waste details
+    const streamData: StreamDataItem[] = hasRealData ? [
+        { name: 'Plastic', value: ulbWasteRecords.reduce((s: number, r: WasteRecord) => s + (r.plastic || 0), 0) },
+        { name: 'Paper', value: ulbWasteRecords.reduce((s: number, r: WasteRecord) => s + (r.paper || 0), 0) },
+        { name: 'Metal', value: ulbWasteRecords.reduce((s: number, r: WasteRecord) => s + (r.metal || 0), 0) },
+        { name: 'Glass', value: ulbWasteRecords.reduce((s: number, r: WasteRecord) => s + (r.glass || 0), 0) },
+        { name: 'Sanitation', value: ulbWasteRecords.reduce((s: number, r: WasteRecord) => s + (r.sanitation || 0), 0) },
+        { name: 'Others', value: ulbWasteRecords.reduce((s: number, r: WasteRecord) => s + (r.others || 0), 0) },
     ] : [
         { name: 'Plastic', value: 450 }, { name: 'Paper', value: 300 }, { name: 'Metal', value: 120 }, 
         { name: 'Glass', value: 80 }, { name: 'Sanitation', value: 150 }, { name: 'Others', value: 100 }
@@ -368,7 +552,7 @@ function GpUlbDashboardContent() {
     const discrepancies: DiscrepancyItem[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
     schedules.filter((s: ScheduleItem) => s.isActiveToday).forEach((s: ScheduleItem, idx: number) => {
-        const hasReceipt = allRecords.some((r: any) => r.date === todayStr && (r.routeId === s.routeId || r.gpName === s.gpName));
+        const hasReceipt = wasteRecords.some((r: WasteRecord) => r.date === todayStr && (r.routeId === s.routeId || r.gpName === s.gpName));
         if (!hasReceipt) {
             discrepancies.push({ 
                 id: `miss-${districtName}-${blockName}-${s.routeId}-${s.gpName}-${idx}`.replace(/\s+/g, '-'), 
@@ -379,86 +563,202 @@ function GpUlbDashboardContent() {
 
     return { 
         primaryRecord: ulbRecords[0], gpsList, activeCircuits: schedules, lineData, mrfTonnage, streamData, discrepancies,
-        mrfCount: mrfIds.length, mrfList: mrfIds, workers, drivers, peos, ulbOperators
+        mrfCount: mrfIds.length, mrfList: mrfIds, workers, drivers, peos, ulbOperators,
+        gpRankingsData, monthlyRecoveryData, hasRealData
     };
-  }, [role, ulbName, districtSource, mounted, allRecords, blockName, districtName]);
+  }, [role, ulbName, districtSource, mounted, wasteRecords, blockName, districtName, firestoreSchedules, firestoreRoutes]);
 
   const gpRealData = useMemo(() => {
     if (!mounted || role !== 'gp' || !gpName || !districtSource) return null;
     const details = (districtSource as any).getGpDetails(gpName);
     
-    const gpRecords = allRecords.filter((r: any) => r.gpName === gpName || r.gpBreakdown?.some((g: any) => g.name === gpName));
-    const hasData = gpRecords.length > 0;
+    // Get real waste records for this GP
+    const gpRecords = wasteRecords.filter((r: WasteRecord) => r.gpName === gpName || (r.gpBreakdown?.some((g: any) => g.name === gpName)));
+    const hasRealData = gpRecords.length > 0;
+    
+    // Get the total driver submitted amount
+    const totalVerified = gpRecords.reduce((s: number, r: WasteRecord) => s + (r.driverSubmitted || 0), 0);
+    const surveyedWaste = details.waste?.monthlyWasteTotalGm ? details.waste.monthlyWasteTotalGm / 1000 : 0;
+    const recoveryRate = surveyedWaste > 0 ? (totalVerified / surveyedWaste) * 100 : 94.5;
 
-    const lineData: LineDataItem[] = [
-        { name: 'Week 1', weekly: hasData ? gpRecords.slice(0, 1).reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 45, monthly: hasData ? gpRecords.reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 180 },
-        { name: 'Week 2', weekly: hasData ? gpRecords.slice(1, 2).reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 52, monthly: hasData ? gpRecords.reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 210 },
-        { name: 'Week 3', weekly: hasData ? gpRecords.slice(2, 3).reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 38, monthly: hasData ? gpRecords.reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 190 },
-        { name: 'Week 4', weekly: hasData ? gpRecords.slice(3, 4).reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 65, monthly: hasData ? gpRecords.reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 240 },
-    ];
+    // Nodal Recovery Trend (Kg) - connected to GP waste details
+    const weekNames = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+    let lineData: LineDataItem[] = [];
+    
+    if (hasRealData && gpRecords.length > 0) {
+        const now = new Date();
+        const weeks: number[][] = [[], [], [], []];
+        gpRecords.forEach(record => {
+            const date = new Date(record.date);
+            const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+            const weekIndex = Math.floor(diffDays / 7);
+            if (weekIndex >= 0 && weekIndex < 4) {
+                weeks[weekIndex].push(record.driverSubmitted);
+            }
+        });
+        
+        lineData = weekNames.map((name, idx) => ({
+            name,
+            weekly: weeks[idx].reduce((s: number, v: number) => s + v, 0),
+            monthly: totalVerified
+        }));
+    } else {
+        lineData = weekNames.map((name, idx) => ({
+            name,
+            weekly: [45, 52, 38, 65][idx],
+            monthly: 180 + idx * 20
+        }));
+    }
 
-    const monthlyTonnage = [
-        { month: 'Mar', value: 1200 },
-        { month: 'Apr', value: 1450 },
-        { month: 'May', value: 1800 },
-        { month: 'Jun', value: 1620 },
-        { month: 'Jul', value: hasData ? gpRecords.reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 1900 },
-    ];
+    // Waste Collected (Last 5 Months) - connected to GP waste details
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    let monthlyTonnage: any[] = [];
+    
+    if (hasRealData && gpRecords.length > 0) {
+        const monthMap = new Map<string, number>();
+        for (let i = 4; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthName = monthNames[d.getMonth()];
+            monthMap.set(monthName, 0);
+        }
+        
+        gpRecords.forEach(record => {
+            const date = new Date(record.date);
+            const monthName = monthNames[date.getMonth()];
+            monthMap.set(monthName, (monthMap.get(monthName) || 0) + (record.driverSubmitted || 0));
+        });
+        
+        monthlyTonnage = Array.from(monthMap.entries()).map(([month, val]) => ({ month, value: val }));
+    } else {
+        monthlyTonnage = [
+            { month: 'Mar', value: 1200 },
+            { month: 'Apr', value: 1450 },
+            { month: 'May', value: 1800 },
+            { month: 'Jun', value: 1620 },
+            { month: 'Jul', value: 1900 },
+        ];
+    }
 
-    const streamData: StreamDataItem[] = hasData ? [
-        { name: 'Plastic', value: gpRecords.reduce((s: number, r: any) => s + (r.plastic || 0), 0) },
-        { name: 'Paper', value: gpRecords.reduce((s: number, r: any) => s + (r.paper || 0), 0) },
-        { name: 'Metal', value: gpRecords.reduce((s: number, r: any) => s + (r.metal || 0), 0) },
-        { name: 'Glass', value: gpRecords.reduce((s: number, r: any) => s + (r.glass || 0), 0) },
-        { name: 'Sanitation', value: gpRecords.reduce((s: number, r: any) => s + (r.sanitation || 0), 0) },
-        { name: 'Others', value: gpRecords.reduce((s: number, r: any) => s + (r.others || 0), 0) },
+    // Nodal Stream Composition - connected to GP waste details
+    const streamData: StreamDataItem[] = hasRealData ? [
+        { name: 'Plastic', value: gpRecords.reduce((s: number, r: WasteRecord) => s + (r.plastic || 0), 0) },
+        { name: 'Paper', value: gpRecords.reduce((s: number, r: WasteRecord) => s + (r.paper || 0), 0) },
+        { name: 'Metal', value: gpRecords.reduce((s: number, r: WasteRecord) => s + (r.metal || 0), 0) },
+        { name: 'Glass', value: gpRecords.reduce((s: number, r: WasteRecord) => s + (r.glass || 0), 0) },
+        { name: 'Sanitation', value: gpRecords.reduce((s: number, r: WasteRecord) => s + (r.sanitation || 0), 0) },
+        { name: 'Others', value: gpRecords.reduce((s: number, r: WasteRecord) => s + (r.others || 0), 0) },
     ] : [
         { name: 'Plastic', value: 450 }, { name: 'Paper', value: 300 }, { name: 'Metal', value: 120 }, 
         { name: 'Glass', value: 80 }, { name: 'Sanitation', value: 150 }, { name: 'Others', value: 100 }
     ];
 
-    const scheduleStr = details.schedule?.collectionSchedule || details.routes[0]?.scheduledOn || 'Scheduled';
+    // Get schedule from Firestore or local data
+    let scheduleStr = details.schedule?.collectionSchedule;
+    let driverName = details.schedule?.driverName;
+    let driverContact = details.schedule?.driverContact;
+    let vehicleType = details.schedule?.vehicleType;
+    let routeId = details.routes?.[0]?.routeId;
+    let routeName = details.routes?.[0]?.routeName;
+    let destination = details.routes?.[0]?.destination;
+    
+    // Check Firestore for overrides
+    const firestoreSchedule = firestoreSchedules.find((s: CollectionSchedule) => s.gpName?.toLowerCase() === gpName.toLowerCase());
+    if (firestoreSchedule) {
+        scheduleStr = firestoreSchedule.collectionSchedule || scheduleStr;
+        driverName = firestoreSchedule.driverName || driverName;
+        driverContact = firestoreSchedule.driverContact || driverContact;
+        vehicleType = firestoreSchedule.vehicleType || vehicleType;
+    }
+    
+    const firestoreRoute = firestoreRoutes.find((r: RouteData) => 
+      r.startingGp?.toLowerCase() === gpName.toLowerCase() ||
+      r.intermediateGps?.some((igp: string) => igp.toLowerCase() === gpName.toLowerCase()) ||
+      r.finalGp?.toLowerCase() === gpName.toLowerCase()
+    );
+    if (firestoreRoute) {
+        routeId = firestoreRoute.routeId || routeId;
+        routeName = firestoreRoute.routeName || routeName;
+        destination = firestoreRoute.destination || destination;
+    }
+    
+    scheduleStr = scheduleStr || details.routes?.[0]?.scheduledOn || 'Scheduled';
     const daysLeft = calculateDaysUntilNext(scheduleStr, new Date());
 
     const circuit = {
         ulb: details.mapping?.taggedUlb || 'N/A',
-        mrf: details.mapping?.taggedMrf || 'N/A',
-        id: details.routes?.[0]?.routeId || 'TBD',
-        name: details.routes?.[0]?.routeName || 'Verified Circuit',
-        vehicle: details.schedule?.vehicleType || 'Motorised',
-        driver: (details.schedule?.driverName && details.schedule.driverName !== '-') ? details.schedule.driverName : 'Verified',
-        driverContact: details.schedule?.driverContact || '9437XXXXXX',
+        mrf: details.mapping?.taggedMrf || destination || 'N/A',
+        id: routeId || 'TBD',
+        name: routeName || 'Verified Circuit',
+        vehicle: vehicleType || 'Motorised',
+        driver: (driverName && driverName !== '-') ? driverName : 'Verified',
+        driverContact: driverContact || '9437XXXXXX',
         scheduleDay: scheduleStr,
         isActiveToday: daysLeft === 0,
         countdown: daysLeft === 0 ? "Active Today" : `Arrival in ${daysLeft} days`
     };
 
     const targetUlb = details.mapping?.taggedUlb || '';
-    const siblingSchedules = (districtSource as any).data.collectionSchedules.filter((s: CollectionSchedule) => 
+    
+    // Get schedules from Firestore and local
+    let siblingSchedules = (districtSource as any).data.collectionSchedules.filter((s: CollectionSchedule) => 
         s.ulb.toLowerCase().trim().includes(targetUlb.toLowerCase().trim()) ||
         targetUlb.toLowerCase().trim().includes(s.ulb.toLowerCase().trim())
     );
+    
+    firestoreSchedules.forEach(schedule => {
+      if (schedule.ulb?.toLowerCase().trim().includes(targetUlb.toLowerCase().trim()) ||
+          targetUlb.toLowerCase().trim().includes(schedule.ulb?.toLowerCase().trim() || '')) {
+        if (!siblingSchedules.some((s: CollectionSchedule) => s.gpName === schedule.gpName)) {
+          siblingSchedules.push(schedule);
+        }
+      }
+    });
+    
+    // Helper function to safely parse JSON strings - for GP section
+    const safeJsonParseGp = (jsonStr: unknown): any => {
+      try {
+        return JSON.parse(jsonStr as string);
+      } catch {
+        return null;
+      }
+    };
+
+    // Use siblingSchedules for GP section (not schedules)
     const peos = Array.from(new Set(siblingSchedules.map((s: CollectionSchedule) => JSON.stringify({ name: (s.gpNodalPerson || "").split(',')[0].trim(), contact: (s.gpNodalContact || "").split(',')[0].trim() }))))
-        .map((s: unknown) => JSON.parse(s as string))
-        .filter((p: any) => p.name !== '-');
+        .map((s: unknown) => safeJsonParseGp(s))
+        .filter((p: any) => p && p.name !== '-');
 
-    const ulbOperators = Array.from(new Set(siblingSchedules.map((s: CollectionSchedule) => JSON.stringify({ name: (s?.ulbNodalPerson || "").split('&')[0].trim(), contact: (s?.ulbNodalContact || "").split(',')[0].trim() }))))
-        .map((s: unknown) => JSON.parse(s as string)).filter((u: any) => u.name !== '' && u.name !== '-');
+    const ulbOperators = Array.from(new Set(siblingSchedules.map((s: CollectionSchedule) => JSON.stringify({ name: (s.ulbNodalPerson || "").split('&')[0].trim(), contact: (s.ulbNodalContact || "").split(',')[0].trim() }))))
+        .map((s: unknown) => safeJsonParseGp(s))
+        .filter((u: any) => u && u.name !== '-');
 
-    const drivers = Array.from(new Set(siblingSchedules.map((s: CollectionSchedule) => JSON.stringify({ name: s?.driverName || 'Verified', contact: s?.driverContact || '9437XXXXXX' }))))
-        .map((s: unknown) => JSON.parse(s as string)).filter((d: any) => d.name !== '' && d.name !== '-');
+    const drivers = Array.from(new Set(siblingSchedules.map((s: CollectionSchedule) => JSON.stringify({ name: s.driverName, contact: s.driverContact }))))
+        .map((s: unknown) => safeJsonParseGp(s))
+        .filter((d: any) => d && d.name !== '-');
 
     const blockDetails = (districtSource as any).getBlockDetails(blockName);
-    const relevantRoute = (blockDetails.routes || []).find((r: any) => 
+    let relevantRoute = (blockDetails.routes || []).find((r: any) => 
         r.startingGp.toLowerCase().trim() === gpName.toLowerCase().trim() ||
         (r.intermediateGps || []).some((igp: string) => igp.toLowerCase().trim() === gpName.toLowerCase().trim()) ||
         (r.finalGp && r.finalGp.toLowerCase().trim() === gpName.toLowerCase().trim())
     );
+    
+    // Check Firestore for route workers
+    const firestoreRouteForWorkers = firestoreRoutes.find((r: RouteData) => 
+      r.startingGp?.toLowerCase() === gpName.toLowerCase() ||
+      r.intermediateGps?.some((igp: string) => igp.toLowerCase() === gpName.toLowerCase()) ||
+      r.finalGp?.toLowerCase() === gpName.toLowerCase()
+    );
+    if (firestoreRouteForWorkers && firestoreRouteForWorkers.workers) {
+      relevantRoute = firestoreRouteForWorkers;
+    }
+    
     const workers = relevantRoute?.workers || [];
 
     const discrepancies: DiscrepancyItem[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
-    if (daysLeft === 0 && !gpRecords.some((r: any) => r.date === todayStr)) {
+    if (daysLeft === 0 && !gpRecords.some((r: WasteRecord) => r.date === todayStr)) {
         discrepancies.push({ 
             id: `miss-${districtName}-${blockName}-${circuit.id}-${gpName}`.replace(/\s+/g, '-'), 
             msg: `Route ${circuit.id} active today - Receipt not submitted.` 
@@ -472,9 +772,13 @@ function GpUlbDashboardContent() {
         scheduleStr,
         discrepancies: discrepancies || [],
         dailyWaste: details.waste?.dailyWasteTotalGm || 0,
-        monthlyWaste: details.waste?.monthlyWasteTotalGm || 0
+        monthlyWaste: details.waste?.monthlyWasteTotalGm || 0,
+        totalVerified,
+        surveyedWaste,
+        recoveryRate,
+        hasRealData
     };
-  }, [role, gpName, districtSource, mounted, allRecords, districtName, blockName]);
+  }, [role, gpName, districtSource, mounted, wasteRecords, districtName, blockName, firestoreSchedules, firestoreRoutes]);
 
   if (!mounted) return <div className="p-12 text-center animate-pulse">Syncing nodal analytics...</div>;
 
@@ -491,6 +795,7 @@ function GpUlbDashboardContent() {
                             <CardDescription className="font-bold flex gap-4 mt-1 uppercase text-[10px]">
                                 <span>Category: {ulbRealData.primaryRecord?.categoryOfUlb || 'NAC'}</span>
                                 <span>Functionality: {ulbRealData.primaryRecord?.functionality || 'Functional'}</span>
+                                <span>Status: {ulbRealData.hasRealData ? 'LIVE DATA ACTIVE' : 'MOCK DATA MODE'}</span>
                             </CardDescription>
                         </div>
                         <Badge className="bg-primary font-black uppercase text-[10px]">ULB COMMAND CENTRE</Badge>
@@ -637,13 +942,13 @@ function GpUlbDashboardContent() {
                 <Card className="border-2 shadow-sm">
                     <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between pb-3">
                         <CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Performance Rankings</CardTitle>
-                        <Tabs defaultValue="top">
+                        <Tabs value={barToggle} onValueChange={setBarToggle}>
                             <TabsList className="h-7"><TabsTrigger value="top" className="text-[8px] font-black px-2">Top 5</TabsTrigger><TabsTrigger value="low" className="text-[8px] font-black px-2">Lowest 5</TabsTrigger></TabsList>
                         </Tabs>
                     </CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={[...ulbRealData.gpsList].sort((a: GpListItem, b: GpListItem) => b.verifiedWaste - a.verifiedWaste).slice(0, 5)} layout="vertical">
+                            <BarChart data={[...ulbRealData.gpRankingsData].sort((a: any, b: any) => barToggle === 'top' ? b.verifiedWaste - a.verifiedWaste : a.verifiedWaste - b.verifiedWaste).slice(0, 5)} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
                                 <XAxis type="number" fontSize={10} />
                                 <YAxis dataKey="name" type="category" fontSize={9} width={80} fontWeight="bold" />
@@ -674,14 +979,14 @@ function GpUlbDashboardContent() {
 
             <div className="grid md:grid-cols-2 gap-6">
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="bg-muted/10 border-b pb-3"><Activity className="h-4 w-4 text-primary" /> Nodal Recovery (Last 5 Months)</CardHeader>
+                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Nodal Recovery (Last 5 Months)</CardTitle></CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={[{month: 'Mar', val: 12000}, {month: 'Apr', val: 14500}, {month: 'May', val: 18000}, {month: 'Jun', val: 16200}, {month: 'Jul', val: 21600}]}>
+                            <BarChart data={ulbRealData.monthlyRecoveryData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
                                 <XAxis dataKey="month" fontSize={10} fontWeight="bold" />
-                                <YAxis fontSize={10} tickFormatter={(v) => `${(v/1000).toFixed(0)}T`} />
-                                <Tooltip />
+                                <YAxis fontSize={10} tickFormatter={(v: number) => `${(v/1000).toFixed(0)}T`} />
+                                <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(1)} Tons`} />
                                 <Bar dataKey="val" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
                             </BarChart>
                         </ResponsiveContainer>
@@ -689,14 +994,14 @@ function GpUlbDashboardContent() {
                 </Card>
 
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="bg-muted/10 border-b pb-3"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Stream Composition</CardHeader>
+                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Stream Composition</CardTitle></CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie data={ulbRealData.streamData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                                     {ulbRealData.streamData.map((_: StreamDataItem, i: number) => (<Cell key={`cell-${i}`} fill={COMPOSITION_COLORS[i % COMPOSITION_COLORS.length]} />))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(1)} Tons`} />
                                 <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase'}} />
                             </PieChart>
                         </ResponsiveContainer>
@@ -791,7 +1096,7 @@ function GpUlbDashboardContent() {
                     <div className="flex justify-between items-center">
                         <div>
                             <CardTitle className="text-2xl font-black uppercase tracking-tight text-primary">GP Portal: {gpName}</CardTitle>
-                            <CardDescription className="font-bold">Official nodal workspace for jurisdictional waste tracking.</CardDescription>
+                            <CardDescription className="font-bold">Official nodal workspace for jurisdictional waste tracking. {gpRealData.hasRealData ? '(LIVE DATA ACTIVE)' : '(MOCK DATA MODE)'}</CardDescription>
                         </div>
                         <Badge className="bg-primary font-black uppercase text-[10px]">GP COMMAND POST</Badge>
                     </div>
@@ -816,7 +1121,10 @@ function GpUlbDashboardContent() {
                     <p className="text-lg font-black text-primary">{(gpRealData.monthlyWaste || 0).toLocaleString()}</p>
                 </Card>
 
-                <Card className="border-2 shadow-sm p-4 text-center bg-primary/5 border-primary/20"><p className="text-[9px] font-black uppercase text-primary mb-1">Efficiency</p><p className="text-lg font-black text-primary">94.5%</p></Card>
+                <Card className="border-2 shadow-sm p-4 text-center bg-primary/5 border-primary/20">
+                    <p className="text-[9px] font-black uppercase text-primary mb-1">Recovery Rate</p>
+                    <p className="text-lg font-black text-primary">{gpRealData.recoveryRate.toFixed(1)}%</p>
+                </Card>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -897,14 +1205,14 @@ function GpUlbDashboardContent() {
 
             <div className="grid md:grid-cols-2 gap-6">
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="bg-muted/10 border-b pb-3"><Activity className="h-4 w-4 text-primary" /> Waste Collected (Last 5 Months)</CardHeader>
+                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Waste Collected (Last 5 Months)</CardTitle></CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={gpRealData.monthlyTonnage}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
                                 <XAxis dataKey="month" fontSize={10} fontWeight="bold" />
-                                <YAxis fontSize={10} />
-                                <Tooltip />
+                                <YAxis fontSize={10} tickFormatter={(v: number) => `${(v/1000).toFixed(1)}T`} />
+                                <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(1)} Tons`} />
                                 <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
                             </BarChart>
                         </ResponsiveContainer>
@@ -912,14 +1220,14 @@ function GpUlbDashboardContent() {
                 </Card>
 
                 <Card className="border-2 shadow-sm">
-                    <CardHeader className="bg-muted/10 border-b pb-3"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Stream Composition</CardHeader>
+                    <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> Nodal Stream Composition</CardTitle></CardHeader>
                     <CardContent className="h-[300px] pt-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie data={gpRealData.streamData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                                     {gpRealData.streamData.map((_: StreamDataItem, i: number) => (<Cell key={`cell-${i}`} fill={COMPOSITION_COLORS[i % COMPOSITION_COLORS.length]} />))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(1)} Tons`} />
                                 <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase'}} />
                             </PieChart>
                         </ResponsiveContainer>

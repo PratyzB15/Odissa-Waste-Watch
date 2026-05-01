@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,14 +13,18 @@ import {
     Save,
     Phone,
     User,
-    Users
+    Users,
+    Loader2,
+    RefreshCw
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useMemo, Suspense, useState, useEffect } from "react";
+import { useMemo, Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useFirestore } from "@/firebase";
+import { collection, doc, setDoc, query, where, onSnapshot, deleteDoc } from "firebase/firestore";
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -55,29 +58,88 @@ import { nuapadaDistrictData } from "@/lib/disNuapada";
 import { puriDistrictData } from "@/lib/disPuri";
 import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
+interface CollectionRecord {
+  id: string;
+  block: string;
+  ulb: string;
+  mrf: string;
+  vehicleType: string;
+  vehicleNo: string;
+  vehicleCapacity: string;
+  driverName: string;
+  driverContact: string;
+  collectionSchedule: string;
+  gpName: string;
+  actualWasteKg: number;
+  gpNodalPerson: string;
+  gpNodalContact: string;
+  ulbNodalPerson: string;
+  ulbNodalContact: string;
+  district?: string;
+  lastUpdated?: string;
+  isFromFirestore?: boolean;
+  firestoreId?: string;
+  isDeleted?: boolean;
+}
+
 function GpUlbWasteCollectionContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const ulbParam = searchParams.get('ulb') || '';
   const districtParam = searchParams.get('district') || '';
+  const role = searchParams.get('role');
+  const isAuthorized = role === 'ulb' || role === 'block' || role === 'district';
 
-  const [mounted, setMounted] = useState(false);
-  const [collectionRows, setCollectionRows] = useState<any[]>([]);
+  const db = useFirestore();
+  const [firestoreRecords, setFirestoreRecords] = useState<CollectionRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingRow, setEditingRow] = useState<any | null>(null);
+  const [editingRow, setEditingRow] = useState<CollectionRecord | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [dataInitialized, setDataInitialized] = useState(false);
+  const syncCompletedRef = useRef(false);
 
   const [formData, setFormData] = useState({
     block: '',
-    vehicleInfo: '',
-    driverDetails: '',
+    ulb: '',
+    mrf: '',
+    vehicleType: '',
+    vehicleNo: '',
+    vehicleCapacity: '',
+    driverName: '',
+    driverContact: '',
     collectionSchedule: '',
-    loadKg: '',
-    peoDetails: '',
-    ulbOperator: ''
+    gpName: '',
+    actualWasteKg: '',
+    gpNodalPerson: '',
+    gpNodalContact: '',
+    ulbNodalPerson: '',
+    ulbNodalContact: ''
   });
 
-  useEffect(() => {
-    setMounted(true);
+  // Helper function to split multiple names and contacts
+  const formatNamesWithContacts = (names: string, contacts: string): { name: string; contact: string }[] => {
+    if (!names || names === '-' || names === 'N/A') return [];
+    
+    const nameList = names.split(/[,&/]/).map(n => n.trim()).filter(n => n && n !== '-');
+    const contactList = contacts ? contacts.split(/[,&/]/).map(c => c.trim()).filter(c => c && c !== '-') : [];
+    
+    const result: { name: string; contact: string }[] = [];
+    for (let i = 0; i < nameList.length; i++) {
+      result.push({
+        name: nameList[i],
+        contact: contactList[i] || 'N/A'
+      });
+    }
+    return result;
+  };
+
+  // Get local records based on district and ULB (Fallback data)
+  const localRecords = useMemo((): CollectionRecord[] => {
+    if (!districtParam || !ulbParam) return [];
+    
     const districtsSourceMap: Record<string, any> = {
       'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData,
       'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData,
@@ -92,57 +154,358 @@ function GpUlbWasteCollectionContent() {
     };
 
     const source = districtsSourceMap[districtParam.toLowerCase()];
-    if (!source) return;
+    if (!source) return [];
 
-    const filtered = (source.data.collectionSchedules || []).filter((item: any) => 
-        (item.ulb.toLowerCase().trim().includes(ulbParam.toLowerCase().trim()) || ulbParam.toLowerCase().trim().includes(item.ulb.toLowerCase().trim()))
+    const schedules = source.data?.collectionSchedules || [];
+    
+    const filtered = schedules.filter((item: any) => 
+        (item.ulb?.toLowerCase().trim().includes(ulbParam.toLowerCase().trim()) || 
+         ulbParam.toLowerCase().trim().includes(item.ulb?.toLowerCase().trim()))
     );
 
-    const formatted = filtered.map((item: any, idx: number) => ({
-        id: idx,
-        block: item.block,
-        vehicleInfo: `${item.vehicleType} | ${item.vehicleNo || '-'} | ${item.vehicleCapacity || '-'} Kg`,
-        driverName: item.driverName || '-',
-        driverContact: item.driverContact || '-',
-        collectionSchedule: item.collectionSchedule,
-        loadKg: item.wasteGeneratedKg || 0,
-        gpNodalPerson: (item.gpNodalPerson || "").split(',')[0],
-        gpNodalContact: (item.gpNodalContact || "").split(',')[0],
-        ulbNodalPerson: (item.ulbNodalPerson || "").split(',')[0],
-        ulbNodalContact: (item.ulbNodalContact || "").split(',')[0]
+    return filtered.map((item: any, idx: number): CollectionRecord => ({
+      id: `local-${item.gpName || idx}-${idx}`,
+      block: item.block || 'Other',
+      ulb: item.ulb || ulbParam,
+      mrf: item.mrf || '',
+      vehicleType: item.vehicleType || '',
+      vehicleNo: item.vehicleNo || '-',
+      vehicleCapacity: item.vehicleCapacity || '-',
+      driverName: item.driverName || '-',
+      driverContact: item.driverContact || '-',
+      collectionSchedule: item.collectionSchedule || '',
+      gpName: item.gpName || '',
+      actualWasteKg: item.wasteGeneratedKg || 0,
+      gpNodalPerson: item.gpNodalPerson || '',
+      gpNodalContact: item.gpNodalContact || '',
+      ulbNodalPerson: item.ulbNodalPerson || '',
+      ulbNodalContact: item.ulbNodalContact || '',
+      district: districtParam,
+      isFromFirestore: false,
+      firestoreId: undefined
     }));
-    setCollectionRows(formatted);
-  }, [ulbParam, districtParam]);
+  }, [districtParam, ulbParam]);
+
+  // Real-time Firestore listener
+  useEffect(() => {
+    if (!db || !districtParam || !ulbParam) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    
+    const recordsQuery = query(
+      collection(db, 'collectionSchedules'),
+      where('district', '==', districtParam),
+      where('ulb', '==', ulbParam)
+    );
+
+    const unsubscribe = onSnapshot(recordsQuery,
+      (snapshot) => {
+        const records: CollectionRecord[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          records.push({
+            id: doc.id,
+            firestoreId: doc.id,
+            block: data.block || '',
+            ulb: data.ulb || '',
+            mrf: data.mrf || '',
+            vehicleType: data.vehicleType || '',
+            vehicleNo: data.vehicleNo || '-',
+            vehicleCapacity: data.vehicleCapacity || '-',
+            driverName: data.driverName || '-',
+            driverContact: data.driverContact || '-',
+            collectionSchedule: data.collectionSchedule || '',
+            gpName: data.gpName || '',
+            actualWasteKg: data.actualWasteKg || 0,
+            gpNodalPerson: data.gpNodalPerson || '',
+            gpNodalContact: data.gpNodalContact || '',
+            ulbNodalPerson: data.ulbNodalPerson || '',
+            ulbNodalContact: data.ulbNodalContact || '',
+            district: data.district || '',
+            lastUpdated: data.lastUpdated || '',
+            isFromFirestore: true
+          });
+        });
+        
+        setFirestoreRecords(records);
+        setLoading(false);
+        
+        if (!dataInitialized) {
+          setDataInitialized(true);
+        }
+      },
+      (error) => {
+        console.error("Firestore listener error:", error);
+        setLoading(false);
+        toast({
+          title: "Connection Error",
+          description: "Unable to sync with server. Using local data.",
+          variant: "destructive"
+        });
+      }
+    );
+
+    return () => unsubscribe();
+  }, [db, districtParam, ulbParam, toast, dataInitialized]);
+
+  // Merge local records with Firestore data
+  const allRecords = useMemo((): CollectionRecord[] => {
+    const firestoreMap = new Map();
+    firestoreRecords.forEach(record => {
+      firestoreMap.set(record.gpName?.toLowerCase(), record);
+    });
+    
+    const mergedRecords: CollectionRecord[] = [...firestoreRecords];
+    
+    localRecords.forEach((localRecord: CollectionRecord) => {
+      if (!firestoreMap.has(localRecord.gpName?.toLowerCase())) {
+        mergedRecords.push(localRecord);
+      }
+    });
+    
+    return mergedRecords.sort((a, b) => (a.block || '').localeCompare(b.block || ''));
+  }, [localRecords, firestoreRecords]);
+
+  // Sync local records to Firestore on first load (only once)
+  const syncLocalToFirestore = useCallback(async () => {
+    if (!db || !districtParam || !ulbParam || syncing || firestoreRecords.length > 0 || syncCompletedRef.current) return;
+    
+    setSyncing(true);
+    try {
+      for (const localRecord of localRecords) {
+        const documentId = `${districtParam}-${ulbParam}-${localRecord.gpName}`.toLowerCase().replace(/\s+/g, '-');
+        const recordRef = doc(db, 'collectionSchedules', documentId);
+        
+        const recordData = {
+          block: localRecord.block,
+          ulb: localRecord.ulb,
+          mrf: localRecord.mrf,
+          vehicleType: localRecord.vehicleType,
+          vehicleNo: localRecord.vehicleNo,
+          vehicleCapacity: localRecord.vehicleCapacity,
+          driverName: localRecord.driverName,
+          driverContact: localRecord.driverContact,
+          collectionSchedule: localRecord.collectionSchedule,
+          gpName: localRecord.gpName,
+          actualWasteKg: localRecord.actualWasteKg,
+          gpNodalPerson: localRecord.gpNodalPerson,
+          gpNodalContact: localRecord.gpNodalContact,
+          ulbNodalPerson: localRecord.ulbNodalPerson,
+          ulbNodalContact: localRecord.ulbNodalContact,
+          district: districtParam,
+          lastUpdated: new Date().toISOString(),
+          syncedFromLocal: true
+        };
+        
+        await setDoc(recordRef, recordData, { merge: true });
+      }
+      
+      syncCompletedRef.current = true;
+      
+      toast({ 
+        title: "Data Synced", 
+        description: `Successfully synced ${localRecords.length} collection records to database.`,
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Sync error:", error);
+      toast({ 
+        title: "Sync Failed", 
+        description: "Failed to sync local data.",
+        variant: "destructive"
+      });
+    } finally {
+      setSyncing(false);
+    }
+  }, [db, districtParam, ulbParam, localRecords, firestoreRecords.length, syncing, toast]);
+
+  // Auto-sync local data to Firestore only once
+  useEffect(() => {
+    if (!loading && dataInitialized && firestoreRecords.length === 0 && localRecords.length > 0 && !syncing && !syncCompletedRef.current) {
+      syncLocalToFirestore();
+    }
+  }, [loading, dataInitialized, firestoreRecords.length, localRecords.length, syncLocalToFirestore, syncing]);
 
   const handleOpenAddDialog = () => {
     setEditingRow(null);
-    setFormData({ 
-        block: '', vehicleInfo: '', driverDetails: '', collectionSchedule: '', 
-        loadKg: '', peoDetails: '', ulbOperator: '' 
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleOpenEditDialog = (row: any) => {
-    setEditingRow(row);
     setFormData({
-        block: row.block,
-        vehicleInfo: row.vehicleInfo,
-        driverDetails: `${row.driverName} (${row.driverContact})`,
-        collectionSchedule: row.collectionSchedule,
-        loadKg: row.loadKg.toString(),
-        peoDetails: `${row.gpNodalPerson} (${row.gpNodalContact})`,
-        ulbOperator: `${row.ulbNodalPerson} (${row.ulbNodalContact})`
+      block: '', ulb: ulbParam, mrf: '', vehicleType: '', vehicleNo: '',
+      vehicleCapacity: '', driverName: '', driverContact: '', collectionSchedule: '',
+      gpName: '', actualWasteKg: '', gpNodalPerson: '', gpNodalContact: '',
+      ulbNodalPerson: '', ulbNodalContact: ''
     });
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = () => {
-    toast({ title: "Update Successful", description: "Collection record synchronized." });
-    setIsDialogOpen(false);
+  const handleOpenEditDialog = (record: CollectionRecord) => {
+    setEditingRow(record);
+    setFormData({
+      block: record.block,
+      ulb: record.ulb,
+      mrf: record.mrf,
+      vehicleType: record.vehicleType,
+      vehicleNo: record.vehicleNo,
+      vehicleCapacity: record.vehicleCapacity,
+      driverName: record.driverName,
+      driverContact: record.driverContact,
+      collectionSchedule: record.collectionSchedule,
+      gpName: record.gpName,
+      actualWasteKg: record.actualWasteKg.toString(),
+      gpNodalPerson: record.gpNodalPerson,
+      gpNodalContact: record.gpNodalContact,
+      ulbNodalPerson: record.ulbNodalPerson,
+      ulbNodalContact: record.ulbNodalContact
+    });
+    setIsDialogOpen(true);
   };
 
-  if (!mounted) return <div className="p-12 text-center animate-pulse">Loading facility logistics...</div>;
+  const handleDelete = async (record: CollectionRecord) => {
+    if (!db) return;
+    
+    const confirmDelete = confirm(`Are you sure you want to delete collection record for ${record.gpName}? This will affect all portals.`);
+    if (!confirmDelete) return;
+    
+    setIsDeleting(record.id);
+    
+    try {
+      if (!record.isFromFirestore) {
+        const documentId = `${districtParam}-${ulbParam}-${record.gpName}`.toLowerCase().replace(/\s+/g, '-');
+        const recordRef = doc(db, 'collectionSchedules', documentId);
+        
+        const recordData = {
+          ...record,
+          district: districtParam,
+          ulb: ulbParam,
+          isDeleted: true,
+          deletedAt: new Date().toISOString(),
+          lastUpdated: new Date().toISOString()
+        };
+        
+        await setDoc(recordRef, recordData, { merge: true });
+        
+        toast({ 
+          title: "Record Deleted", 
+          description: `Collection record for ${record.gpName} has been removed from all portals.`,
+          variant: "default" 
+        });
+        setIsDeleting(null);
+        return;
+      }
+      
+      const recordRef = doc(db, 'collectionSchedules', record.id);
+      await deleteDoc(recordRef);
+      
+      toast({ 
+        title: "Record Deleted", 
+        description: `Collection record for ${record.gpName} has been removed from all portals.`,
+        variant: "default" 
+      });
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      toast({ 
+        title: "Delete Failed", 
+        description: "Failed to delete record. Please try again.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!db) {
+      toast({ title: "Error", description: "Database connection not available.", variant: "destructive" });
+      return;
+    }
+
+    if (!formData.gpName || !formData.ulb) {
+      toast({ title: "Validation Error", description: "GP Name and ULB are required.", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      const documentId = editingRow?.firestoreId || (editingRow?.id?.startsWith('local-') ?
+        `${districtParam}-${ulbParam}-${formData.gpName}`.toLowerCase().replace(/\s+/g, '-') :
+        editingRow?.id || `${districtParam}-${ulbParam}-${formData.gpName}`.toLowerCase().replace(/\s+/g, '-'));
+      
+      const now = new Date().toISOString();
+      
+      const recordData = {
+        block: formData.block || 'Other',
+        ulb: formData.ulb || ulbParam,
+        mrf: formData.mrf,
+        vehicleType: formData.vehicleType,
+        vehicleNo: formData.vehicleNo,
+        vehicleCapacity: formData.vehicleCapacity,
+        driverName: formData.driverName,
+        driverContact: formData.driverContact,
+        collectionSchedule: formData.collectionSchedule,
+        gpName: formData.gpName,
+        actualWasteKg: parseFloat(formData.actualWasteKg) || 0,
+        gpNodalPerson: formData.gpNodalPerson,
+        gpNodalContact: formData.gpNodalContact,
+        ulbNodalPerson: formData.ulbNodalPerson,
+        ulbNodalContact: formData.ulbNodalContact,
+        district: districtParam,
+        lastUpdated: now,
+        updatedBy: role || 'unknown'
+      };
+      
+      if (!editingRow) {
+        Object.assign(recordData, { createdAt: now });
+      }
+      
+      const recordRef = doc(db, 'collectionSchedules', documentId);
+      await setDoc(recordRef, recordData, { merge: true });
+
+      toast({ 
+        title: editingRow ? "Record Updated" : "New Record Added", 
+        description: `Collection record for ${formData.gpName} has been synchronized across all portals.`,
+        variant: "default" 
+      });
+      
+      setIsDialogOpen(false);
+      setEditingRow(null);
+      
+    } catch (error) {
+      console.error('Error saving record:', error);
+      toast({ 
+        title: "Sync Failed", 
+        description: "Failed to save collection record. Please try again.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleManualRefresh = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+    toast({ 
+      title: "Refreshing", 
+      description: "Syncing latest data from database...",
+      variant: "default"
+    });
+  };
+
+  if (loading && !dataInitialized) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Loading waste collection data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -152,13 +515,26 @@ function GpUlbWasteCollectionContent() {
             <div className="flex items-center gap-3">
                 <ClipboardCheck className="text-primary h-8 w-8" />
                 <div>
-                <CardTitle>Waste Collection Details: {ulbParam}</CardTitle>
-                <CardDescription>Verified chronological audit of logistical circuits linking GP nodes to this facility.</CardDescription>
+                <CardTitle className="text-2xl font-black uppercase">Waste Collection Details: {ulbParam}</CardTitle>
+                <CardDescription>Verified chronological audit of logistical circuits linking GP nodes to this facility. Changes sync across all portals instantly.</CardDescription>
                 </div>
             </div>
-            <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
-                <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleManualRefresh} 
+                variant="outline"
+                className="font-black uppercase tracking-widest h-11"
+                disabled={syncing}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} /> 
+                Sync Now
+              </Button>
+              {isAuthorized && (
+                <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
+                  <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-6">
@@ -169,49 +545,115 @@ function GpUlbWasteCollectionContent() {
                   <TableRow>
                     <TableHead className="w-[50px] border uppercase font-black text-[9px]">S.No.</TableHead>
                     <TableHead className="w-[150px] border uppercase font-black text-[9px]">Block</TableHead>
-                    <TableHead className="w-[300px] border uppercase font-black text-[9px] text-center">Vehicle (Type, No, Cap.)</TableHead>
+                    <TableHead className="w-[280px] border uppercase font-black text-[9px] text-center">Vehicle Details</TableHead>
                     <TableHead className="w-[200px] border uppercase font-black text-[9px] text-center">Driver Details</TableHead>
                     <TableHead className="w-[150px] border uppercase font-black text-[9px]">Collection Day</TableHead>
-                    <TableHead className="w-[120px] border uppercase font-black text-[9px] text-right">Load (Kg)</TableHead>
-                    <TableHead className="w-[300px] border uppercase font-black text-[9px]">PEO Details (GP)</TableHead>
+                    <TableHead className="w-[100px] border uppercase font-black text-[9px] text-right">Load (Kg)</TableHead>
+                    <TableHead className="w-[220px] border uppercase font-black text-[9px]">PEO Details (GP)</TableHead>
                     <TableHead className="w-[200px] border uppercase font-black text-[9px]">ULB Operator</TableHead>
-                    <TableHead className="w-[120px] border uppercase font-black text-[9px] text-center">Actions</TableHead>
+                    {isAuthorized && <TableHead className="w-[120px] border uppercase font-black text-[9px] text-center">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {collectionRows.map((item, idx) => (
-                    <TableRow key={idx} className="hover:bg-primary/[0.01] border-b last:border-0 h-auto min-h-20">
-                      <TableCell className="border text-center font-mono text-xs">{idx + 1}</TableCell>
-                      <TableCell className="border font-black text-[10px] uppercase">{item.block}</TableCell>
-                      <TableCell className="border text-[10px] text-center">{item.vehicleInfo}</TableCell>
-                      <TableCell className="border text-center">
-                         <div className="space-y-0.5 text-[10px] font-bold uppercase">
-                           <p className="flex items-center justify-center gap-1"><User className="h-2.5 w-2.5" /> {item.driverName}</p>
-                           <p className="flex items-center justify-center gap-1 font-mono text-[9px] text-primary"><Phone className="h-2.5 w-2.5" /> {item.driverContact}</p>
-                         </div>
-                      </TableCell>
-                      <TableCell className="border text-[10px] font-black text-blue-700 uppercase">{item.collectionSchedule}</TableCell>
-                      <TableCell className="border text-right font-mono font-black text-primary text-xs">{item.loadKg.toLocaleString()}</TableCell>
-                      <TableCell className="border bg-blue-50/10 p-2">
-                         <div className="space-y-0.5 text-[9px] font-bold uppercase">
-                           <p className="flex items-center gap-1"><Users className="h-2.5 w-2.5" /> {item.gpNodalPerson}</p>
-                           <p className="flex items-center gap-1 font-mono text-primary"><Phone className="h-2.5 w-2.5" /> {item.gpNodalContact}</p>
-                         </div>
-                      </TableCell>
-                      <TableCell className="border bg-orange-50/5">
-                        <div className="space-y-0.5 text-[9px] font-bold uppercase">
-                           <p className="flex items-center gap-1 text-blue-700"><User className="h-2.5 w-2.5" /> {item.ulbNodalPerson}</p>
-                           <p className="flex items-center gap-1 font-mono text-primary"><Phone className="h-2.5 w-2.5" /> {item.ulbNodalContact}</p>
-                         </div>
-                      </TableCell>
-                      <TableCell className="border text-center">
-                          <div className="flex justify-center gap-1">
-                              <Button size="icon" variant="outline" className="h-7 w-7 text-primary" onClick={() => handleOpenEditDialog(item)}><Edit className="h-3 w-3" /></Button>
-                              <Button size="icon" variant="outline" className="h-7 w-7 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                          </div>
+                  {allRecords.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={isAuthorized ? 9 : 8} className="text-center py-12 text-muted-foreground">
+                        <ClipboardCheck className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        No collection records found for {ulbParam}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    allRecords.map((item, idx) => {
+                      const driverItems = formatNamesWithContacts(item.driverName, item.driverContact);
+                      const peoItems = formatNamesWithContacts(item.gpNodalPerson, item.gpNodalContact);
+                      const operatorItems = formatNamesWithContacts(item.ulbNodalPerson, item.ulbNodalContact);
+                      
+                      return (
+                        <TableRow key={item.id || idx} className="hover:bg-primary/[0.01] border-b h-auto min-h-20">
+                          <TableCell className="border text-center font-mono text-xs">{idx + 1}</TableCell>
+                          <TableCell className="border font-black text-[10px] uppercase">{item.block}</TableCell>
+                          <TableCell className="border text-[10px] text-center">
+                            <div className="space-y-0.5">
+                              <p className="font-bold uppercase text-foreground">{item.vehicleType}</p>
+                              <p className="font-mono text-[9px] text-muted-foreground">{item.vehicleNo} | {item.vehicleCapacity} Kg</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="border text-center">
+                            <div className="space-y-1">
+                              {driverItems.length > 0 ? (
+                                driverItems.map((d, i) => (
+                                  <div key={i} className="text-[9px] font-bold">
+                                    <span className="uppercase">{d.name}</span>
+                                    <span className="text-primary font-mono ml-1">({d.contact})</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="text-[9px] text-muted-foreground italic">No driver assigned</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="border text-[10px] font-black text-blue-700 uppercase">{item.collectionSchedule}</TableCell>
+                          <TableCell className="border text-right font-mono font-black text-primary text-xs">{item.actualWasteKg.toLocaleString()}</TableCell>
+                          <TableCell className="border bg-blue-50/10 p-2">
+                            <div className="space-y-1">
+                              {peoItems.length > 0 ? (
+                                peoItems.map((p, i) => (
+                                  <div key={i} className="text-[9px] font-bold">
+                                    <span className="uppercase text-primary">{p.name}</span>
+                                    <span className="text-muted-foreground font-mono ml-1">({p.contact})</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="text-[9px] text-muted-foreground italic">No PEO assigned</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="border bg-orange-50/5 p-2">
+                            <div className="space-y-1">
+                              {operatorItems.length > 0 ? (
+                                operatorItems.map((o, i) => (
+                                  <div key={i} className="text-[9px] font-bold">
+                                    <span className="uppercase text-primary">{o.name}</span>
+                                    <span className="text-muted-foreground font-mono ml-1">({o.contact})</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="text-[9px] text-muted-foreground italic">No operator assigned</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          {isAuthorized && (
+                            <TableCell className="border text-center">
+                              <div className="flex justify-center gap-1">
+                                <Button 
+                                  size="icon" 
+                                  variant="outline" 
+                                  className="h-7 w-7 text-primary hover:bg-primary/10" 
+                                  onClick={() => handleOpenEditDialog(item)}
+                                  disabled={isSubmitting}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  variant="outline" 
+                                  className="h-7 w-7 text-destructive hover:bg-destructive/10" 
+                                  onClick={() => handleDelete(item)}
+                                  disabled={isDeleting === item.id}
+                                >
+                                  {isDeleting === item.id ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -221,16 +663,170 @@ function GpUlbWasteCollectionContent() {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl border-2">
-            <DialogHeader><DialogTitle className="text-xl font-black uppercase text-primary">Log Collection Entry</DialogTitle></DialogHeader>
-            <div className="grid grid-cols-2 gap-4 py-6">
-                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Block</Label><Input value={formData.block} onChange={(e) => setFormData({...formData, block: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Vehicle Info</Label><Input value={formData.vehicleInfo} onChange={(e) => setFormData({...formData, vehicleInfo: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Driver Details</Label><Input value={formData.driverDetails} onChange={(e) => setFormData({...formData, driverDetails: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-bold uppercase">Verified Load (Kg)</Label><Input type="number" value={formData.loadKg} onChange={(e) => setFormData({...formData, loadKg: e.target.value})} /></div>
-                <div className="space-y-2 col-span-2"><Label className="text-[10px] font-bold uppercase">ULB Operator</Label><Input value={formData.ulbOperator} onChange={(e) => setFormData({...formData, ulbOperator: e.target.value})} /></div>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-2">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black uppercase text-primary flex items-center gap-2">
+              {editingRow ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
+              {editingRow ? 'Edit Collection Record' : 'Add Collection Record'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingRow 
+                ? `Editing record for ${editingRow.gpName}. Changes will sync across all portals.`
+                : 'Add new waste collection record for ULB-wide synchronization.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-6">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">Block Name *</Label>
+              <Input 
+                value={formData.block} 
+                onChange={e => setFormData({...formData, block: e.target.value})} 
+                placeholder="Enter block name"
+                disabled={!!editingRow}
+              />
+              {editingRow && <p className="text-[8px] text-muted-foreground">Block cannot be changed after creation</p>}
             </div>
-            <DialogFooter><Button onClick={handleSubmit} className="font-black uppercase px-8">Sync Entry</Button></DialogFooter>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">ULB Name *</Label>
+              <Input 
+                value={formData.ulb || ulbParam} 
+                onChange={e => setFormData({...formData, ulb: e.target.value})} 
+                placeholder="Urban Local Body name"
+                disabled={!!editingRow}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">MRF Node</Label>
+              <Input 
+                value={formData.mrf} 
+                onChange={e => setFormData({...formData, mrf: e.target.value})} 
+                placeholder="Material Recovery Facility"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">GP Name *</Label>
+              <Input 
+                value={formData.gpName} 
+                onChange={e => setFormData({...formData, gpName: e.target.value})} 
+                placeholder="Gram Panchayat name"
+                disabled={!!editingRow}
+              />
+              {editingRow && <p className="text-[8px] text-muted-foreground">GP Name cannot be changed after creation</p>}
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">Vehicle Type</Label>
+              <Input 
+                value={formData.vehicleType} 
+                onChange={e => setFormData({...formData, vehicleType: e.target.value})} 
+                placeholder="e.g., Mini Truck, Dumper"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">Vehicle Number</Label>
+              <Input 
+                value={formData.vehicleNo} 
+                onChange={e => setFormData({...formData, vehicleNo: e.target.value})} 
+                placeholder="OD-01-AB-1234"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">Vehicle Capacity (Kg)</Label>
+              <Input 
+                value={formData.vehicleCapacity} 
+                onChange={e => setFormData({...formData, vehicleCapacity: e.target.value})} 
+                placeholder="e.g., 5000"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">Driver Name</Label>
+              <Input 
+                value={formData.driverName} 
+                onChange={e => setFormData({...formData, driverName: e.target.value})} 
+                placeholder="Driver full name"
+              />
+              <p className="text-[8px] text-muted-foreground">Separate multiple names with comma (,)</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">Driver Contact</Label>
+              <Input 
+                value={formData.driverContact} 
+                onChange={e => setFormData({...formData, driverContact: e.target.value})} 
+                placeholder="Driver phone number"
+              />
+              <p className="text-[8px] text-muted-foreground">Separate multiple contacts with comma (,) in same order as names</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">Collection Schedule</Label>
+              <Input 
+                value={formData.collectionSchedule} 
+                onChange={e => setFormData({...formData, collectionSchedule: e.target.value})} 
+                placeholder="e.g., Monday, Wednesday, Friday, 1st, 15th"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">Actual Waste (Kg)</Label>
+              <Input 
+                type="number" 
+                value={formData.actualWasteKg} 
+                onChange={e => setFormData({...formData, actualWasteKg: e.target.value})} 
+                placeholder="Weight in kilograms"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">GP Nodal Person</Label>
+              <Input 
+                value={formData.gpNodalPerson} 
+                onChange={e => setFormData({...formData, gpNodalPerson: e.target.value})} 
+                placeholder="PEO name"
+              />
+              <p className="text-[8px] text-muted-foreground">Separate multiple names with comma (,)</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">GP Nodal Contact</Label>
+              <Input 
+                value={formData.gpNodalContact} 
+                onChange={e => setFormData({...formData, gpNodalContact: e.target.value})} 
+                placeholder="PEO phone number"
+              />
+              <p className="text-[8px] text-muted-foreground">Separate multiple contacts with comma (,) in same order as names</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">ULB Operator Name</Label>
+              <Input 
+                value={formData.ulbNodalPerson} 
+                onChange={e => setFormData({...formData, ulbNodalPerson: e.target.value})} 
+                placeholder="ULB operator name"
+              />
+              <p className="text-[8px] text-muted-foreground">Separate multiple names with comma (,)</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase">ULB Operator Contact</Label>
+              <Input 
+                value={formData.ulbNodalContact} 
+                onChange={e => setFormData({...formData, ulbNodalContact: e.target.value})} 
+                placeholder="ULB operator phone"
+              />
+              <p className="text-[8px] text-muted-foreground">Separate multiple contacts with comma (,) in same order as names</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="font-black uppercase px-8">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  {editingRow ? 'Update Record' : 'Save & Sync'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -238,5 +834,16 @@ function GpUlbWasteCollectionContent() {
 }
 
 export default function GpUlbWasteCollectionDetailsPage() {
-    return (<Suspense fallback={<div className="p-12 text-center">Loading logistics...</div>}><GpUlbWasteCollectionContent /></Suspense>);
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Loading waste collection portal...</p>
+        </div>
+      </div>
+    }>
+      <GpUlbWasteCollectionContent />
+    </Suspense>
+  );
 }

@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -19,6 +20,7 @@ export const routePlanData: RoutePlanData[] = [
   // Block: BINIKA (ULB: BINIKA NAC)
   {
     id: 1,
+    block: 'Binika',
     routeId: 'S-BIN-SB-1',
     routeName: 'SINGHIJUBA-BHANDAR',
     routeAbbreviation: 'SB-1',
@@ -35,6 +37,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Binika',
     routeId: 'S-BIN-SM-2',
     routeName: 'SILATI-MEGHALA',
     routeAbbreviation: 'SM-2',
@@ -51,6 +54,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Binika',
     routeId: 'S-BIN-CS-3',
     routeName: 'CHARDA-SANKARA',
     routeAbbreviation: 'CS-3',
@@ -67,6 +71,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Binika',
     routeId: 'S-BIN-BK-4',
     routeName: 'BAUNSUNI-KAINTARA',
     routeAbbreviation: 'BK-4',
@@ -83,6 +88,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Binika',
     routeId: 'S-BIN-JKM-5',
     routeName: 'JULLUNDA-KUHIBAHAL-MAHADA',
     routeAbbreviation: 'JKM-5',
@@ -100,6 +106,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Binika',
     routeId: 'S-BIN-SM-6',
     routeName: 'SELEDI-MAHADEVPALI',
     routeAbbreviation: 'SM-6',
@@ -116,6 +123,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Binika',
     routeId: 'S-BIN-BB-7',
     routeName: 'BABUPALI-BANKIGHIRDI',
     routeAbbreviation: 'BB-7',
@@ -132,6 +140,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Binika',
     routeId: 'S-BIN-S-8',
     routeName: 'SINDURPUR',
     routeAbbreviation: 'S-8',
@@ -149,6 +158,7 @@ export const routePlanData: RoutePlanData[] = [
   // Block: SONEPUR (ULB: Sonepur M)
   {
     id: 9,
+    block: 'Sonepur',
     routeId: 'S-SON-KJ-1',
     routeName: 'Kalapathar-Janmura',
     routeAbbreviation: 'KJ-1',
@@ -165,6 +175,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Sonepur',
     routeId: 'S-SON-MH-2',
     routeName: 'Mayurudan-Haradakhol',
     routeAbbreviation: 'MH-2',
@@ -181,6 +192,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Sonepur',
     routeId: 'S-SON-MB-3',
     routeName: 'Mallikmunda-Bishimunda',
     routeAbbreviation: 'MB-3',
@@ -197,6 +209,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 12,
+    block: 'Sonepur',
     routeId: 'S-SON-KK-4',
     routeName: 'Kharjhura-Khari',
     routeAbbreviation: 'KK-4',
@@ -213,6 +226,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Sonepur',
     routeId: 'S-SON-BN-5',
     routeName: 'Baladi-Narayapur',
     routeAbbreviation: 'BN-5',
@@ -229,6 +243,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Sonepur',
     routeId: 'S-SON-KR-6',
     routeName: 'Khaliapali-Rengali',
     routeAbbreviation: 'KR-6',
@@ -245,6 +260,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Sonepur',
     routeId: 'S-SON-LC-7',
     routeName: 'Lachhipur-Chhakormal',
     routeAbbreviation: 'LC-7',
@@ -263,6 +279,7 @@ export const routePlanData: RoutePlanData[] = [
   // Block: TARBHA (ULB: Tarbha NAC)
   {
     id: 16,
+    block: 'Tarbha',
     routeId: 'S-TAR-JK-1',
     routeName: 'Jhartarbha-Katapali',
     routeAbbreviation: 'JK-1',
@@ -279,6 +296,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 17,
+    block: 'Tarbha',
     routeId: 'S-TAR-BM-2',
     routeName: 'Badbhairo-Maraduguchha',
     routeAbbreviation: 'BM-2',
@@ -295,6 +313,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 18,
+    block: 'Tarbha',
     routeId: 'S-TAR-SJ-3',
     routeName: 'Sibtula-Jarajaring',
     routeAbbreviation: 'SJ-3',
@@ -311,6 +330,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 19,
+    block: 'Tarbha',
     routeId: 'S-TAR-PD-4',
     routeName: 'Pua-Deulpadar',
     routeAbbreviation: 'PD-4',
@@ -327,6 +347,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 20,
+    block: 'Tarbha',
     routeId: 'S-TAR-PMR-5',
     routeName: 'Paikbahal-Ranisarda',
     routeAbbreviation: 'PMR-5',
@@ -344,6 +365,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 21,
+    block: 'Tarbha',
     routeId: 'S-TAR-SB-6',
     routeName: 'Sargaj-Brahmani',
     routeAbbreviation: 'SB-6',
@@ -360,6 +382,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 22,
+    block: 'Tarbha',
     routeId: 'S-TAR-SB-7',
     routeName: 'Singhari-Baghia',
     routeAbbreviation: 'SB-7',
@@ -376,6 +399,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 23,
+    block: 'Tarbha',
     routeId: 'S-TAR-DT-8',
     routeName: 'Dubula-Tulunda',
     routeAbbreviation: 'DT-8',
@@ -392,6 +416,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 24,
+    block: 'Tarbha',
     routeId: 'S-TAR-CB-9',
     routeName: 'Charvata-Balikhamar',
     routeAbbreviation: 'CB-9',
@@ -408,6 +433,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 25,
+    block: 'Tarbha',
     routeId: 'S-TAR-KK-10',
     routeName: 'Kamsara-Kumbharmunda',
     routeAbbreviation: 'KK-10',

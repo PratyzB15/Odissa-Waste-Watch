@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -17,9 +18,10 @@ export interface RoutePlanData {
 }
 
 export const routePlanData: RoutePlanData[] = [
-  // Bhuban Block
+  // Bhuban Block Routes
   {
     id: 1,
+    block: 'Bhuban',
     routeId: 'DBHUBEMMBK',
     routeName: 'Balibo to Kuninda',
     routeAbbreviation: 'BEMMBK-01',
@@ -39,6 +41,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Bhuban',
     routeId: 'DBHUDBOGDS',
     routeName: 'Dhalapada to Surapratappur',
     routeAbbreviation: 'DBOGDS-02',
@@ -57,6 +60,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Bhuban',
     routeId: 'DBHUJMDJAM',
     routeName: 'Jamunakote to Mathakaragola',
     routeAbbreviation: 'JMDJAM-03',
@@ -75,9 +79,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // Dhenkanal Sadar Block
+  // Dhenkanal Sadar Block Routes
   {
     id: 4,
+    block: 'Dhenkanal Sadar',
     routeId: 'DSADBGNTM',
     routeName: 'Baladiabandha to Manipur',
     routeAbbreviation: 'BGNTM-01',
@@ -97,6 +102,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Dhenkanal Sadar',
     routeId: 'DSADBGSTB',
     routeName: 'Barada to Banasingh',
     routeAbbreviation: 'BGSTB-02',
@@ -121,6 +127,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Dhenkanal Sadar',
     routeId: 'DSADCSRBN',
     routeName: 'Chaulia to Nuagaon',
     routeAbbreviation: 'CSRBN-03',
@@ -140,6 +147,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Dhenkanal Sadar',
     routeId: 'DSADKNSK',
     routeName: 'Kankadapal to Nagiapasi',
     routeAbbreviation: 'KNSK-04',
@@ -158,6 +166,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Dhenkanal Sadar',
     routeId: 'DSADKMBKM',
     routeName: 'Kankadahad to Madhu Sahu patna',
     routeAbbreviation: 'KMBKM-05',
@@ -177,6 +186,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Dhenkanal Sadar',
     routeId: 'DSADBCBDSS',
     routeName: 'Bhapur to Saptasajya',
     routeAbbreviation: 'BCBDSS-06',
@@ -196,9 +206,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // Hindol Block
+  // Hindol Block Routes
   {
     id: 10,
+    block: 'Hindol',
     routeId: 'DHINNMRJKC',
     routeName: 'Nuabaga to Chitalpur',
     routeAbbreviation: 'NMRJKC-01',
@@ -217,6 +228,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Hindol',
     routeId: 'DHINDGMHP',
     routeName: 'Dudurkote to Patala',
     routeAbbreviation: 'DGMHP-02',
@@ -236,6 +248,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 12,
+    block: 'Hindol',
     routeId: 'DHINARKTKK',
     routeName: 'Asarada to Kadala',
     routeAbbreviation: 'ARKTKK-03',
@@ -253,6 +266,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Hindol',
     routeId: 'DHINKBGBK',
     routeName: 'Karanda to Kutunia',
     routeAbbreviation: 'KBGBK-04',
@@ -266,6 +280,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Hindol',
     routeId: 'DHINNPSGKKB',
     routeName: 'Nuagaon to Baunsapokhari',
     routeAbbreviation: 'NPSGKKB-05',
@@ -284,6 +299,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Hindol',
     routeId: 'DHINKBGKND',
     routeName: 'Kunua to Dandiri',
     routeAbbreviation: 'KBGKND-06',
@@ -299,9 +315,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // Kamakhyanagar Block
+  // Kamakhyanagar Block Routes
   {
     id: 16,
+    block: 'Kamakhyanagar',
     routeId: 'DKAMBBBJBBBS',
     routeName: 'Baisinga to Saruali',
     routeAbbreviation: 'BBBJBBBS-01',
@@ -321,6 +338,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 17,
+    block: 'Kamakhyanagar',
     routeId: 'DKAMKBKMAKKR',
     routeName: 'Kanpura to R N PUR',
     routeAbbreviation: 'KBKMAKKR-02',
@@ -342,6 +360,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 18,
+    block: 'Kamakhyanagar',
     routeId: 'DKAMTKKKSB',
     routeName: 'Tumusinga to Baruan',
     routeAbbreviation: 'TKKKSB-03',

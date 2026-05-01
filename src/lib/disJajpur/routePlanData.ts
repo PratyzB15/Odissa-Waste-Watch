@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -20,6 +21,7 @@ export const routePlanData: RoutePlanData[] = [
   // Jajpur Block (Jajpur Municipality)
   {
     id: 1,
+    block: 'Jajpur',
     routeId: 'JJAJPCMBN',
     routeName: 'PCMBN-01',
     routeAbbreviation: 'PCMBN-01',
@@ -42,6 +44,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Jajpur',
     routeId: 'JJAJSKJBB',
     routeName: 'SKJBB-02',
     routeAbbreviation: 'SKJBB-02',
@@ -60,6 +63,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Jajpur',
     routeId: 'JJAJSSESC',
     routeName: 'SSESC-03',
     routeAbbreviation: 'SSESC-03',
@@ -80,6 +84,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Jajpur',
     routeId: 'JJAJBJBMSB',
     routeName: 'BJBMSB-04',
     routeAbbreviation: 'BJBMSB-04',
@@ -100,6 +105,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Jajpur',
     routeId: 'JJAJUMJJR',
     routeName: 'UMJJR-05',
     routeAbbreviation: 'UMJJR-05',
@@ -118,9 +124,11 @@ export const routePlanData: RoutePlanData[] = [
       { name: 'Sumitra Mallick', contact: '9348868929' }
     ]
   },
+
   // Korei Block (Vysanagar Municipality)
   {
     id: 6,
+    block: 'Korei',
     routeId: 'JKORMKPPG',
     routeName: 'MKPPG-01',
     routeAbbreviation: 'MKPPG-01',
@@ -140,6 +148,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Korei',
     routeId: 'JKORABMBT',
     routeName: 'ABMBT-02',
     routeAbbreviation: 'ABMBT-02',
@@ -159,6 +168,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Korei',
     routeId: 'JKORGRAKP',
     routeName: 'GRAKP-03',
     routeAbbreviation: 'GRAKP-03',
@@ -178,6 +188,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Korei',
     routeId: 'JKORJKTB',
     routeName: 'JKTB-04',
     routeAbbreviation: 'JKTB-04',
@@ -196,6 +207,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Korei',
     routeId: 'JKORDSHTK',
     routeName: 'DSHTK-05',
     routeAbbreviation: 'DSHTK-05',
@@ -215,6 +227,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Korei',
     routeId: 'JKORTTPA',
     routeName: 'TTPA-06',
     routeAbbreviation: 'TTPA-06',

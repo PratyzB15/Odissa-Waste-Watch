@@ -45,7 +45,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -82,6 +82,27 @@ import { baleswarDistrictData } from "@/lib/disBaleswar";
 import { mrfData } from "@/lib/mrf-data";
 
 const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed', '#64748b'];
+
+// Waste Record Interface
+interface WasteRecord {
+  id: string;
+  date: string;
+  routeId: string;
+  mrf: string;
+  ulb: string;
+  block: string;
+  district: string;
+  gpName: string;
+  totalGpLoad: number;
+  driverSubmitted: number;
+  plastic: number;
+  paper: number;
+  metal: number;
+  cloth: number;
+  glass: number;
+  sanitation: number;
+  others: number;
+}
 
 /**
  * HIGH PRECISION TEMPORAL ENGINE
@@ -184,10 +205,63 @@ function StateAdminDashboardContent() {
   const [lineToggle, setLineToggle] = useState('monthly');
   const [barToggle, setBarToggle] = useState('top');
   const [mrfUlbToggle, setMrfUlbToggle] = useState('mrf');
+  const [wasteRecords, setWasteRecords] = useState<WasteRecord[]>([]);
+  const [firestoreRoutes, setFirestoreRoutes] = useState<any[]>([]);
 
   const db = useFirestore();
-  const wasteQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), orderBy('date', 'desc')) : null, [db]);
-  const { data: allRecords = [] } = useCollection(wasteQuery);
+
+  // Real-time listener for wasteDetails
+  useEffect(() => {
+    if (!db) return;
+    
+    const wasteQuery = query(collection(db, 'wasteDetails'), orderBy('date', 'desc'));
+    
+    const unsubscribe = onSnapshot(wasteQuery, (snapshot) => {
+      const items: WasteRecord[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        items.push({
+          id: doc.id,
+          date: data.date || '',
+          routeId: data.routeId || '',
+          mrf: data.mrf || '',
+          ulb: data.ulb || '',
+          block: data.block || '',
+          district: data.district || '',
+          gpName: data.gpName || '',
+          totalGpLoad: data.totalGpLoad || 0,
+          driverSubmitted: data.driverSubmitted || 0,
+          plastic: data.plastic || 0,
+          paper: data.paper || 0,
+          metal: data.metal || 0,
+          cloth: data.cloth || 0,
+          glass: data.glass || 0,
+          sanitation: data.sanitation || 0,
+          others: data.others || 0,
+        });
+      });
+      setWasteRecords(items);
+    });
+    
+    return () => unsubscribe();
+  }, [db]);
+
+  // Real-time listener for routePlans (for overrides)
+  useEffect(() => {
+    if (!db) return;
+    
+    const routesQuery = query(collection(db, 'routePlans'));
+    
+    const unsubscribe = onSnapshot(routesQuery, (snapshot) => {
+      const items: any[] = [];
+      snapshot.forEach((doc) => {
+        items.push({ id: doc.id, ...doc.data() });
+      });
+      setFirestoreRoutes(items);
+    });
+    
+    return () => unsubscribe();
+  }, [db]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -212,37 +286,50 @@ function StateAdminDashboardContent() {
     const allMrfs: string[] = [];
     let surveyedTotal = 0;
 
+    // Build routes with overrides from firestoreRoutes
     districtSources.forEach(source => {
         if (!source.data) return;
+        
+        // Get overrides for this district
+        const districtOverrides = firestoreRoutes.filter((r: any) => r.district === source.district);
+        
         source.data.gpMappings.forEach(gp => {
-            const w = source.data.wasteGeneration.find(wg => wg.gpName.toLowerCase() === gp.gpName.toLowerCase());
+            const w = source.data.wasteGeneration.find((wg: any) => wg.gpName.toLowerCase() === gp.gpName.toLowerCase());
             const surveyed = w ? (w.totalWasteKg || (w.monthlyWasteTotalGm / 1000) || 0) : 0;
             surveyedTotal += surveyed;
             allGps.push({ ...gp, district: source.district, households: w?.totalHouseholds || 0, surveyed });
         });
-        source.blocks.forEach(b => allBlocks.push(`${source.district} - ${b}`));
-        source.data.routes.forEach(route => {
-            const sched = source.data.collectionSchedules.find(s => s.gpName.toLowerCase().includes(route.routeId.toLowerCase()) || s.gpName.toLowerCase().includes(route.startingGp.toLowerCase()));
-            const scheduleStr = sched?.collectionSchedule || route.scheduledOn || 'Scheduled';
+        source.blocks.forEach((b: string) => allBlocks.push(`${source.district} - ${b}`));
+        
+        source.data.routes.forEach((route: any) => {
+            // Apply override if exists
+            const override = districtOverrides.find((o: any) => o.routeId === route.routeId);
+            const finalRoute = override ? { ...route, ...override } : route;
+            
+            const sched = source.data.collectionSchedules.find((s: any) => 
+                s.gpName.toLowerCase().includes(finalRoute.routeId.toLowerCase()) || 
+                s.gpName.toLowerCase().includes(finalRoute.startingGp.toLowerCase())
+            );
+            const scheduleStr = sched?.collectionSchedule || finalRoute.scheduledOn || 'Scheduled';
             const daysLeft = calculateDaysUntilNext(scheduleStr, new Date());
             allRoutes.push({ 
-                ...route, 
+                ...finalRoute, 
                 district: source.district,
-                block: sched?.block || route.block || source.district,
-                mrf: sched?.mrf || route.destination,
+                block: sched?.block || finalRoute.block || source.district,
+                mrf: sched?.mrf || finalRoute.destination,
                 daysLeft,
                 scheduleStr,
                 isActiveToday: daysLeft === 0,
-                driver: (sched?.driverName && sched.driverName !== '-') ? sched.driverName : 'Verified',
-                contact: (sched?.driverContact && sched.driverContact !== '-') ? sched.driverContact : '9437XXXXXX',
-                vehicle: sched?.vehicleType || 'TATA ACE',
-                startGp: route.startingGp,
-                endGp: route.finalGp || route.destination
+                driver: (sched?.driverName && sched.driverName !== '-') ? sched.driverName : (finalRoute.driverName || 'Verified'),
+                contact: (sched?.driverContact && sched.driverContact !== '-') ? sched.driverContact : (finalRoute.driverContact || '9437XXXXXX'),
+                vehicle: sched?.vehicleType || finalRoute.vehicleType || 'TATA ACE',
+                startGp: finalRoute.startingGp,
+                endGp: finalRoute.finalGp || finalRoute.destination
             });
         });
     });
 
-    mrfData.forEach(m => {
+    mrfData.forEach((m: any) => {
         allUlbs.push(m.ulbName);
         allMrfs.push(m.mrfId);
     });
@@ -253,66 +340,175 @@ function StateAdminDashboardContent() {
     const uniqueUlbs = Array.from(new Set(allUlbs)).sort();
     const uniqueMrfs = Array.from(new Set(allMrfs)).sort();
 
-    const hasData = allRecords.length > 0;
-    const verifiedTotal = allRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0);
+    const hasRealData = wasteRecords.length > 0;
+    
+    // Calculate surveyed total from district sources (mock baseline)
+    const mockSurveyedTotal = districtSources.reduce((sum, source) => {
+        if (!source.data?.wasteGeneration) return sum;
+        return sum + source.data.wasteGeneration.reduce((s: number, w: any) => s + (w.totalWasteKg || (w.monthlyWasteTotalGm / 1000) || 0), 0);
+    }, 0);
+    
+    // Calculate verified total from real waste records
+    const verifiedTotal = wasteRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0);
+    const surveyedTotalForEfficiency = hasRealData ? mockSurveyedTotal : mockSurveyedTotal;
+    const efficiency = surveyedTotalForEfficiency > 0 ? (verifiedTotal / surveyedTotalForEfficiency) * 100 : 94.2;
 
+    // Block-level Recovery Trend - Real data when available
     const lineData: any[] = [];
-    districtSources.forEach(source => {
-        source.blocks.forEach(blockName => {
-            const blockVerifiedWeekly = hasData ? allRecords.filter(r => r.district === source.district && r.block === blockName && new Date(r.date) > new Date(Date.now() - 7*24*60*60*1000)).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : Math.random() * 100 + 50;
-            const blockVerifiedMonthly = hasData ? allRecords.filter(r => r.district === source.district && r.block === blockName).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : Math.random() * 400 + 200;
-            lineData.push({
-                name: `${source.district}-${blockName}`,
-                weekly: blockVerifiedWeekly,
-                monthly: blockVerifiedMonthly
+    if (hasRealData && wasteRecords.length > 0) {
+        // Group by district-block combination
+        const blockMap = new Map<string, { weekly: number; monthly: number }>();
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        
+        wasteRecords.forEach(record => {
+            const key = `${record.district}-${record.block}`;
+            const recordDate = new Date(record.date);
+            if (!blockMap.has(key)) {
+                blockMap.set(key, { weekly: 0, monthly: 0 });
+            }
+            const stats = blockMap.get(key)!;
+            stats.monthly += record.driverSubmitted || 0;
+            if (recordDate >= oneWeekAgo) {
+                stats.weekly += record.driverSubmitted || 0;
+            }
+        });
+        
+        blockMap.forEach((stats, key) => {
+            lineData.push({ name: key, weekly: stats.weekly, monthly: stats.monthly });
+        });
+    } else {
+        // Mock data
+        districtSources.forEach(source => {
+            source.blocks.forEach((blockName: string) => {
+                lineData.push({
+                    name: `${source.district}-${blockName}`,
+                    weekly: Math.random() * 100 + 50,
+                    monthly: Math.random() * 400 + 200
+                });
             });
         });
-    });
-
-    const districtTonnage = districtSources.map(s => ({
-        name: s.district,
-        value: hasData ? allRecords.filter(r => r.district === s.district).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 1000 + Math.random() * 5000
-    }));
-
-    const mrfMap = new Map();
-    uniqueMrfs.forEach(m => mrfMap.set(m, 0));
-    if (hasData) {
-      allRecords.forEach(r => {
-        mrfMap.set(r.mrf, (mrfMap.get(r.mrf) || 0) + (r.driverSubmitted || 0));
-      });
-    } else {
-      uniqueMrfs.forEach(m => mrfMap.set(m, 500 + Math.random() * 1000));
     }
+
+    // District-wise Verified Inventory - Real data when available
+    let districtTonnage: any[] = [];
+    if (hasRealData && wasteRecords.length > 0) {
+        const districtMap = new Map<string, number>();
+        wasteRecords.forEach(record => {
+            const district = record.district;
+            districtMap.set(district, (districtMap.get(district) || 0) + (record.driverSubmitted || 0));
+        });
+        districtTonnage = Array.from(districtMap.entries()).map(([name, value]) => ({ name, value }));
+    } else {
+        districtTonnage = districtSources.map(s => ({
+            name: s.district,
+            value: 1000 + Math.random() * 5000
+        }));
+    }
+
+    // Top 5 MRFs and ULBs - Real data when available
+    const mrfMap = new Map<string, number>();
+    const ulbMap = new Map<string, number>();
+    
+    if (hasRealData && wasteRecords.length > 0) {
+        wasteRecords.forEach(r => {
+            mrfMap.set(r.mrf, (mrfMap.get(r.mrf) || 0) + (r.driverSubmitted || 0));
+            const mInfo = mrfData.find(m => m.mrfId === r.mrf);
+            const uName = mInfo ? mInfo.ulbName : r.ulb;
+            ulbMap.set(uName, (ulbMap.get(uName) || 0) + (r.driverSubmitted || 0));
+        });
+    } else {
+        uniqueMrfs.forEach(m => mrfMap.set(m, 500 + Math.random() * 1000));
+        uniqueUlbs.forEach(u => ulbMap.set(u, 1000 + Math.random() * 2000));
+    }
+    
     const top5Mrfs = Array.from(mrfMap.entries()).map(([name, val]) => ({ name, val })).sort((a, b) => b.val - a.val).slice(0, 5);
-
-    const ulbMap = new Map();
-    uniqueUlbs.forEach(u => ulbMap.set(u, 0));
-    if (hasData) {
-      allRecords.forEach(r => {
-        const mInfo = mrfData.find(m => m.mrfId === r.mrf);
-        const uName = mInfo ? mInfo.ulbName : r.mrf;
-        ulbMap.set(uName, (ulbMap.get(uName) || 0) + (r.driverSubmitted || 0));
-      });
-    } else {
-      uniqueUlbs.forEach(u => ulbMap.set(u, 1000 + Math.random() * 2000));
-    }
     const top5Ulbs = Array.from(ulbMap.entries()).map(([name, val]) => ({ name, val })).sort((a, b) => b.val - a.val).slice(0, 5);
 
-    const streamData = hasData ? [
-        { name: 'Plastic', value: allRecords.reduce((s, r) => s + (r.plastic || 0), 0) },
-        { name: 'Paper', value: allRecords.reduce((s, r) => s + (r.paper || 0), 0) },
-        { name: 'Metal', value: allRecords.reduce((s, r) => s + (r.metal || 0), 0) },
-        { name: 'Glass', value: allRecords.reduce((s, r) => s + (r.glass || 0), 0) },
-        { name: 'Sanitation', value: allRecords.reduce((s, r) => s + (r.sanitation || 0), 0) },
-        { name: 'Others', value: allRecords.reduce((s, r) => s + (r.others || 0), 0) },
-    ] : [
-        { name: 'Plastic', value: 45000 }, { name: 'Paper', value: 32000 }, { name: 'Metal', value: 12000 }, { name: 'Glass', value: 8000 }, { name: 'Sanitation', value: 1500 }, { name: 'Others', value: 9000 }
-    ];
+    // GP Nodal Rankings - Real data when available (top GPs by waste collected)
+    let gpRankingsData: any[] = [];
+    if (hasRealData && wasteRecords.length > 0) {
+        const gpMap = new Map<string, number>();
+        wasteRecords.forEach(record => {
+            if (record.gpName) {
+                gpMap.set(record.gpName, (gpMap.get(record.gpName) || 0) + (record.driverSubmitted || 0));
+            }
+        });
+        gpRankingsData = Array.from(gpMap.entries()).map(([name, val]) => ({ gpName: name, surveyed: val }));
+    } else {
+        gpRankingsData = allGps;
+    }
 
+    // Stream Composition - Real data when available
+    let streamData: any[] = [];
+    if (hasRealData && wasteRecords.length > 0) {
+        const totals = wasteRecords.reduce((acc, r) => ({
+            plastic: acc.plastic + (r.plastic || 0),
+            paper: acc.paper + (r.paper || 0),
+            metal: acc.metal + (r.metal || 0),
+            glass: acc.glass + (r.glass || 0),
+            sanitation: acc.sanitation + (r.sanitation || 0),
+            others: acc.others + (r.others || 0)
+        }), { plastic: 0, paper: 0, metal: 0, glass: 0, sanitation: 0, others: 0 });
+        
+        streamData = [
+            { name: 'Plastic', value: totals.plastic },
+            { name: 'Paper', value: totals.paper },
+            { name: 'Metal', value: totals.metal },
+            { name: 'Glass', value: totals.glass },
+            { name: 'Sanitation', value: totals.sanitation },
+            { name: 'Others', value: totals.others }
+        ];
+    } else {
+        streamData = [
+            { name: 'Plastic', value: 45000 }, { name: 'Paper', value: 32000 }, 
+            { name: 'Metal', value: 12000 }, { name: 'Glass', value: 8000 }, 
+            { name: 'Sanitation', value: 1500 }, { name: 'Others', value: 9000 }
+        ];
+    }
+
+    // Last 5 Months Recovery - Real data when available
+    let monthlyRecoveryData: any[] = [];
+    if (hasRealData && wasteRecords.length > 0) {
+        const monthMap = new Map<string, number>();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const now = new Date();
+        
+        for (let i = 4; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+            const monthName = monthNames[d.getMonth()];
+            monthMap.set(monthName, 0);
+        }
+        
+        wasteRecords.forEach(record => {
+            const date = new Date(record.date);
+            const monthName = monthNames[date.getMonth()];
+            const nowMonth = now.getMonth();
+            const nowYear = now.getFullYear();
+            const recordYear = date.getFullYear();
+            const recordMonth = date.getMonth();
+            
+            // Check if within last 5 months
+            for (let i = 0; i < 5; i++) {
+                const targetDate = new Date(nowYear, nowMonth - i, 1);
+                if (recordYear === targetDate.getFullYear() && recordMonth === targetDate.getMonth()) {
+                    monthMap.set(monthName, (monthMap.get(monthName) || 0) + (record.driverSubmitted || 0));
+                    break;
+                }
+            }
+        });
+        
+        monthlyRecoveryData = Array.from(monthMap.entries()).map(([month, val]) => ({ month, val }));
+    } else {
+        monthlyRecoveryData = [{month: 'Mar', val: 12000}, {month: 'Apr', val: 14500}, {month: 'May', val: 18000}, {month: 'Jun', val: 16200}, {month: 'Jul', val: 21600}];
+    }
+
+    // Discrepancies - Real time
     const discrepancies: any[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
     allRoutes.filter(r => r.isActiveToday).forEach((c, idx) => {
-        if (!allRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startGp))) {
+        if (!wasteRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startGp))) {
             discrepancies.push({ 
                 id: `miss-${c.district}-${c.block}-${c.routeId}-${c.startGp}-${idx}`.replace(/\s+/g, '-'), 
                 msg: `[${c.district}] Circuit ${c.routeId} active - No receipt synced for ${c.startGp}.` 
@@ -320,23 +516,28 @@ function StateAdminDashboardContent() {
         }
     });
 
-    const peos = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map(c => JSON.stringify({ name: (c.gpNodalPerson || "").split(',')[0].trim(), contact: (c.gpNodalContact || "").split(',')[0].trim() })))))
-        .map(s => JSON.parse(s)).filter(p => p.name !== '-' && p.name !== '');
+    // Registry Data - From collectionSchedules and routes (live from district sources + overrides)
+    const peos = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map((c: any) => JSON.stringify({ name: (c.gpNodalPerson || "").split(',')[0].trim(), contact: (c.gpNodalContact || "").split(',')[0].trim() })))))
+        .map(s => JSON.parse(s)).filter((p: any) => p.name !== '-' && p.name !== '');
     
-    const operators = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map(c => JSON.stringify({ name: (c.ulbNodalPerson || "").split('&')[0].trim(), contact: (c.ulbNodalContact || "").split(',')[0].trim() })))))
-        .map(s => JSON.parse(s)).filter(p => p.name !== '-' && p.name !== '');
+    const operators = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map((c: any) => JSON.stringify({ name: (c.ulbNodalPerson || "").split('&')[0].trim(), contact: (c.ulbNodalContact || "").split(',')[0].trim() })))))
+        .map(s => JSON.parse(s)).filter((p: any) => p.name !== '-' && p.name !== '');
 
-    const stateDrivers = Array.from(new Set(districtSources.flatMap(s => s.data.collectionSchedules.map(c => JSON.stringify({ name: c.driverName, contact: c.driverContact })))))
-        .map(s => JSON.parse(s)).filter(d => d.name !== '-' && d.name !== '');
+    // Drivers from both collectionSchedules and route overrides
+    const scheduleDrivers = districtSources.flatMap(s => s.data.collectionSchedules.map((c: any) => ({ name: c.driverName, contact: c.driverContact })));
+    const routeDrivers = allRoutes.map(r => ({ name: r.driver, contact: r.contact }));
+    const allDrivers = [...scheduleDrivers, ...routeDrivers];
+    const stateDrivers = Array.from(new Set(allDrivers.map(d => JSON.stringify({ name: d.name, contact: d.contact }))))
+        .map(s => JSON.parse(s)).filter((d: any) => d.name !== '-' && d.name !== '' && d.name !== 'Verified');
 
-    const workers = districtSources.flatMap(s => s.data.routes.flatMap(r => r.workers || []));
+    const workers = districtSources.flatMap(s => s.data.routes.flatMap((r: any) => r.workers || []));
 
     return { 
         districtsList, blocksList: uniqueBlocks, ulbsList: uniqueUlbs, mrfsList: uniqueMrfs, allGps, activeToday, lineData, districtTonnage, streamData, discrepancies,
-        surveyedTotal, verifiedTotal, efficiency: surveyedTotal > 0 ? (verifiedTotal / surveyedTotal) * 100 : 94.2,
-        top5Mrfs, top5Ulbs, peos, operators, stateDrivers, workers
+        surveyedTotal: mockSurveyedTotal, verifiedTotal, efficiency: efficiency,
+        top5Mrfs, top5Ulbs, peos, operators, stateDrivers, workers, gpRankingsData, monthlyRecoveryData, hasRealData
     };
-  }, [mounted, allRecords]);
+  }, [mounted, wasteRecords, firestoreRoutes]);
 
   if (!mounted || !stateData) return <div className="p-12 text-center animate-pulse">Syncing state command center...</div>;
 
@@ -349,7 +550,7 @@ function StateAdminDashboardContent() {
                 <CardTitle className="text-3xl font-black uppercase text-primary">Odisha State Command Center</CardTitle>
                 <CardDescription className="font-bold text-muted-foreground italic">Consolidated administrative monitoring of all 30 districts.</CardDescription>
             </div>
-            <Badge className="bg-primary font-black uppercase text-[10px]">LIVE STATE AUDIT</Badge>
+            <Badge className="bg-primary font-black uppercase text-[10px]">{stateData.hasRealData ? 'LIVE DATA ACTIVE' : 'MOCK DATA MODE'}</Badge>
           </div>
         </CardHeader>
       </Card>
@@ -437,13 +638,13 @@ function StateAdminDashboardContent() {
                 <CardContent className="p-0">
                     <ScrollArea className="h-[250px]">
                         <div className="divide-y">
-                            {stateData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
+                            {stateData.discrepancies.filter((d: any) => !solvedAlerts.includes(d.id)).map((alert: any) => (
                                 <div key={alert.id} className="p-4 flex items-center justify-between group">
                                     <p className="text-[10px] font-bold text-foreground uppercase italic">{alert.msg}</p>
                                     <Button size="sm" variant="outline" className="h-7 text-[8px] font-black uppercase hover:bg-green-600 hover:text-white" onClick={() => setSolvedAlerts([...solvedAlerts, alert.id])}>Mark Solved</Button>
                                 </div>
                             ))}
-                            {stateData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
+                            {stateData.discrepancies.filter((d: any) => !solvedAlerts.includes(d.id)).length === 0 && (
                                 <div className="p-12 text-center text-muted-foreground opacity-30 italic uppercase font-black text-xs">No active state-wide alerts.</div>
                             )}
                         </div>
@@ -459,7 +660,7 @@ function StateAdminDashboardContent() {
                 <CardContent className="p-0">
                     <ScrollArea className="h-[250px]">
                         <div className="grid divide-y">
-                            {stateData.activeToday.map((log, i) => (
+                            {stateData.activeToday.map((log: any, i: number) => (
                                 <div key={i} className={`p-4 flex items-center justify-between border-l-4 border-l-green-600 bg-green-50/10`}>
                                     <div className="flex-[1.5] space-y-0.5 border-r border-dashed pr-6">
                                         <p className="font-black text-[9px] uppercase text-primary leading-none">{log.district} | {log.block}</p>
@@ -499,7 +700,7 @@ function StateAdminDashboardContent() {
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={stateData.lineData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                    <XAxis dataKey="name" fontSize={8} fontWeights="bold" angle={-45} textAnchor="end" height={100} interval={0} />
+                    <XAxis dataKey="name" fontSize={8} fontWeight="bold" angle={-45} textAnchor="end" height={100} interval={0} />
                     <YAxis fontSize={10} tickFormatter={(v) => `${(v/1000).toFixed(1)}T`} />
                     <Tooltip />
                     <Line type="monotone" dataKey={lineToggle === 'monthly' ? 'monthly' : 'weekly'} stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 2, fill: "hsl(var(--primary))" }} />
@@ -514,7 +715,7 @@ function StateAdminDashboardContent() {
             <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stateData.districtTonnage}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                    <XAxis dataKey="name" fontSize={8} fontWeights="black" angle={-45} textAnchor="end" height={80} interval={0} />
+                    <XAxis dataKey="name" fontSize={8} fontWeight="bold" angle={-45} textAnchor="end" height={80} interval={0} />
                     <YAxis fontSize={10} tickFormatter={(v) => `${(v/1000).toFixed(1)}T`} />
                     <Tooltip />
                     <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={20} />
@@ -533,10 +734,10 @@ function StateAdminDashboardContent() {
             </CardHeader>
             <CardContent className="h-[300px] pt-6">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stateData.allGps.sort((a,b) => barToggle === 'top' ? b.surveyed - a.surveyed : a.surveyed - b.surveyed).slice(0, 5)} layout="vertical">
+                    <BarChart data={stateData.gpRankingsData.sort((a: any, b: any) => barToggle === 'top' ? b.surveyed - a.surveyed : a.surveyed - b.surveyed).slice(0, 5)} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
                         <XAxis type="number" fontSize={10} />
-                        <YAxis dataKey="gpName" type="category" fontSize={9} width={80} fontWeights="black" />
+                        <YAxis dataKey="gpName" type="category" fontSize={9} width={80} fontWeight="bold" />
                         <Tooltip />
                         <Bar dataKey="surveyed" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={30} />
                     </BarChart>
@@ -555,7 +756,7 @@ function StateAdminDashboardContent() {
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={mrfUlbToggle === 'mrf' ? stateData.top5Mrfs : stateData.top5Ulbs}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                        <XAxis dataKey="name" fontSize={8} fontWeights="black" angle={-45} textAnchor="end" height={80} interval={0} />
+                        <XAxis dataKey="name" fontSize={8} fontWeight="bold" angle={-45} textAnchor="end" height={80} interval={0} />
                         <YAxis fontSize={10} />
                         <Tooltip />
                         <Bar dataKey="val" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={30} />
@@ -570,9 +771,9 @@ function StateAdminDashboardContent() {
             <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> State Recovery (Last 5 Months)</CardTitle></CardHeader>
             <CardContent className="h-[300px] pt-6">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={[{month: 'Mar', val: 12000}, {month: 'Apr', val: 14500}, {month: 'May', val: 18000}, {month: 'Jun', val: 16200}, {month: 'Jul', val: 21600}]}>
+                    <BarChart data={stateData.monthlyRecoveryData}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                        <XAxis dataKey="month" fontSize={10} fontWeights="black" />
+                        <XAxis dataKey="month" fontSize={10} fontWeight="bold" />
                         <YAxis fontSize={10} tickFormatter={(v) => `${(v/1000).toFixed(0)}T`} />
                         <Tooltip />
                         <Bar dataKey="val" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
@@ -587,7 +788,7 @@ function StateAdminDashboardContent() {
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie data={stateData.streamData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                            {stateData.streamData.map((_, i) => (<Cell key={`cell-${i}`} fill={COMPOSITION_COLORS[i % COMPOSITION_COLORS.length]} />))}
+                            {stateData.streamData.map((_: any, i: number) => (<Cell key={`cell-${i}`} fill={COMPOSITION_COLORS[i % COMPOSITION_COLORS.length]} />))}
                         </Pie>
                         <Tooltip />
                         <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '9px', fontWeight: 'black', textTransform: 'uppercase'}} />
@@ -613,7 +814,7 @@ function StateAdminDashboardContent() {
                         <Table>
                             <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {stateData.workers.map((n, i) => (
+                                {stateData.workers.map((n: any, i: number) => (
                                     <TableRow key={i} className="border-b border-dashed">
                                         <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
                                         <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact || '9437XXXXXX'}</TableCell>
@@ -638,7 +839,7 @@ function StateAdminDashboardContent() {
                         <Table>
                             <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {stateData.peos.map((n, i) => (
+                                {stateData.peos.map((n: any, i: number) => (
                                     <TableRow key={i} className="border-b border-dashed">
                                         <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
                                         <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
@@ -663,7 +864,7 @@ function StateAdminDashboardContent() {
                         <Table>
                             <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {stateData.operators.map((n, i) => (
+                                {stateData.operators.map((n: any, i: number) => (
                                     <TableRow key={i} className="border-b border-dashed">
                                         <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
                                         <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>
@@ -688,7 +889,7 @@ function StateAdminDashboardContent() {
                         <Table>
                             <TableHeader className="bg-muted"><TableRow><TableHead className="text-[9px] font-black uppercase">Name</TableHead><TableHead className="text-[9px] font-black uppercase text-right">Contact</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {stateData.stateDrivers.map((n, i) => (
+                                {stateData.stateDrivers.map((n: any, i: number) => (
                                     <TableRow key={i} className="border-b border-dashed">
                                         <TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell>
                                         <TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell>

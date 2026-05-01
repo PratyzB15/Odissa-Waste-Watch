@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -19,6 +20,7 @@ export const routePlanData: RoutePlanData[] = [
   // Block Khariar (Khariar MRF)
   {
     id: 1,
+    block: 'Khariar',
     routeId: 'NKHAR1',
     routeName: 'Route-1',
     routeAbbreviation: 'ABBBFBC-01',
@@ -32,6 +34,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Khariar',
     routeId: 'NKHAR2',
     routeName: 'Route-2',
     routeAbbreviation: 'BKKDM-02',
@@ -47,6 +50,7 @@ export const routePlanData: RoutePlanData[] = [
   // Block Sinapali
   {
     id: 3,
+    block: 'Sinapali',
     routeId: 'NSINB3',
     routeName: 'Route-3',
     routeAbbreviation: 'BBCHGH-03',
@@ -60,6 +64,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Sinapali',
     routeId: 'NSINK4',
     routeName: 'Route-4',
     routeAbbreviation: 'KJKKK-04',
@@ -73,6 +78,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Sinapali',
     routeId: 'NSING5',
     routeName: 'Route-5',
     routeAbbreviation: 'GNNNR-05',
@@ -88,6 +94,7 @@ export const routePlanData: RoutePlanData[] = [
   // Block Boden
   {
     id: 6,
+    block: 'Boden',
     routeId: 'NBODB6',
     routeName: 'Route-6',
     routeAbbreviation: 'BDFPL-06',
@@ -101,6 +108,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Boden',
     routeId: 'NBODB7',
     routeName: 'Route-7',
     routeAbbreviation: 'BKSUKN-07',
@@ -116,6 +124,7 @@ export const routePlanData: RoutePlanData[] = [
   // Block Komna
   {
     id: 8,
+    block: 'Komna',
     routeId: 'NKOMA8',
     routeName: 'Route-8',
     routeAbbreviation: 'AKRD-08',
@@ -129,6 +138,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Komna',
     routeId: 'NKOMS9',
     routeName: 'Route-9',
     routeAbbreviation: 'SSM-09',

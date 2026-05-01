@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -17,9 +18,10 @@ export interface RoutePlanData {
 }
 
 export const routePlanData: RoutePlanData[] = [
-  // Bhabanipatna Block
+  // Bhabanipatna Block Routes
   {
     id: 1,
+    block: 'Bhabanipatna',
     routeId: 'KBHAB',
     routeName: 'BSDAPGK-01',
     routeAbbreviation: 'BSDAPGK-01',
@@ -43,6 +45,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Bhabanipatna',
     routeId: 'KBHAS',
     routeName: 'SBMMCKC-02',
     routeAbbreviation: 'SBMMCKC-02',
@@ -65,6 +68,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Bhabanipatna',
     routeId: 'KBHAK',
     routeName: 'KPKKT-03',
     routeAbbreviation: 'KPKKT-03',
@@ -85,6 +89,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Bhabanipatna',
     routeId: 'KBHAD',
     routeName: 'DCTJS-04',
     routeAbbreviation: 'DCTJS-04',
@@ -104,6 +109,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Bhabanipatna',
     routeId: 'KBHAR',
     routeName: 'RMKGK-O5',
     routeAbbreviation: 'RMKGK-O5',
@@ -124,6 +130,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Bhabanipatna',
     routeId: 'KBHAD',
     routeName: 'DDUGMLS-06',
     routeAbbreviation: 'DDUGMLS-06',
@@ -144,9 +151,10 @@ export const routePlanData: RoutePlanData[] = [
     remarks: 'If waste collection not happened during the scheduled day/date due to some issue, then collection will be done in next day/date or any date coordinating with ULB Nodal person'
   },
 
-  // Dharamgarh Block
+  // Dharamgarh Block Routes
   {
     id: 7,
+    block: 'Dharamgarh',
     routeId: 'KDHAT',
     routeName: 'TBBBNBB-01',
     routeAbbreviation: 'TBBBNBB-01',
@@ -168,6 +176,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Dharamgarh',
     routeId: 'KDHAT',
     routeName: 'TBDCJPKG-02',
     routeAbbreviation: 'TBDCJPKG-02',
@@ -190,6 +199,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Dharamgarh',
     routeId: 'KDHAK',
     routeName: 'KSC-03',
     routeAbbreviation: 'KSC-03',
@@ -208,6 +218,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Dharamgarh',
     routeId: 'KDHAT',
     routeName: 'TDKB-04',
     routeAbbreviation: 'TDKB-04',
@@ -227,6 +238,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Dharamgarh',
     routeId: 'KDHAT',
     routeName: 'TKB-O5',
     routeAbbreviation: 'TKB-O5',
@@ -244,9 +256,10 @@ export const routePlanData: RoutePlanData[] = [
     remarks: 'If waste collection not happened during the scheduled day/date due to some issue, then collection will be done in next day/date or any date coordinating with ULB Nodal person'
   },
 
-  // Junagarh Block
+  // Junagarh Block Routes
   {
     id: 12,
+    block: 'Junagarh',
     routeId: 'KJUNT',
     routeName: 'TAKPCNCPB-01',
     routeAbbreviation: 'TAKPCNCPB-01',
@@ -271,6 +284,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Junagarh',
     routeId: 'KJUNC',
     routeName: 'CKMSMHG-02',
     routeAbbreviation: 'CKMSMHG-02',
@@ -292,6 +306,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Junagarh',
     routeId: 'KJUND',
     routeName: 'DMRBM-03',
     routeAbbreviation: 'DMRBM-03',
@@ -311,6 +326,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Junagarh',
     routeId: 'KJUNT',
     routeName: 'TNKCBMB-04',
     routeAbbreviation: 'TNKCBMB-04',
@@ -332,6 +348,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 16,
+    block: 'Junagarh',
     routeId: 'KJUND',
     routeName: 'DDKCBB-05',
     routeAbbreviation: 'DDKCBB-05',
@@ -351,9 +368,10 @@ export const routePlanData: RoutePlanData[] = [
     remarks: 'If waste collection not happened during the scheduled day/date due to some issue, then collection will be done in next day/date or any date coordinating with ULB Nodal person'
   },
 
-  // Kesinga Block
+  // Kesinga Block Routes
   {
     id: 17,
+    block: 'Kesinga',
     routeId: 'KKESN',
     routeName: 'NPFA-01',
     routeAbbreviation: 'NPFA-01',
@@ -373,6 +391,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 18,
+    block: 'Kesinga',
     routeId: 'KKESG',
     routeName: 'GGD-02',
     routeAbbreviation: 'GGD-02',
@@ -391,6 +410,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 19,
+    block: 'Kesinga',
     routeId: 'KKESC',
     routeName: 'CUKK-03',
     routeAbbreviation: 'CUKK-03',
@@ -410,6 +430,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 20,
+    block: 'Kesinga',
     routeId: 'KKESP',
     routeName: 'PBLK-04',
     routeAbbreviation: 'PBLK-04',
@@ -429,6 +450,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 21,
+    block: 'Kesinga',
     routeId: 'KKESB',
     routeName: 'BPS-05',
     routeAbbreviation: 'BPS-05',
@@ -447,6 +469,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 22,
+    block: 'Kesinga',
     routeId: 'KKESN',
     routeName: 'NKK-06',
     routeAbbreviation: 'NKK-06',
@@ -465,6 +488,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 23,
+    block: 'Kesinga',
     routeId: 'KKESB',
     routeName: 'BHSTT-07',
     routeAbbreviation: 'BHSTT-07',

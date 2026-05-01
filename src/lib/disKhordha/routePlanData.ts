@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -16,9 +17,10 @@ export interface RoutePlanData {
 }
 
 export const routePlanData: RoutePlanData[] = [
-  // BALIANTA Block
+  // BALIANTA Block Routes
   {
     id: 1,
+    block: 'Balianta',
     routeId: 'KBALB-1',
     routeName: 'BBBB-01',
     routeAbbreviation: 'BBBB-01',
@@ -32,6 +34,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Balianta',
     routeId: 'KBALB-2',
     routeName: 'BBBB-02',
     routeAbbreviation: 'BBBB-02',
@@ -45,6 +48,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Balianta',
     routeId: 'KBALB-3',
     routeName: 'BBBB-03',
     routeAbbreviation: 'BBBB-03',
@@ -58,6 +62,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Balianta',
     routeId: 'KBALJ-1',
     routeName: 'BBBB-04',
     routeAbbreviation: 'BBBB-04',
@@ -71,6 +76,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Balianta',
     routeId: 'KBALB-4',
     routeName: 'BBBB-05',
     routeAbbreviation: 'BBBB-05',
@@ -84,6 +90,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Balianta',
     routeId: 'KBALP-1',
     routeName: 'BBBB-06',
     routeAbbreviation: 'BBBB-06',
@@ -97,6 +104,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Balianta',
     routeId: 'KBALP-2',
     routeName: 'BBBB-07',
     routeAbbreviation: 'BBBB-07',
@@ -110,6 +118,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Balianta',
     routeId: 'KBALS-1',
     routeName: 'BBBB-08',
     routeAbbreviation: 'BBBB-08',
@@ -123,6 +132,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Balianta',
     routeId: 'KBALS-2',
     routeName: 'BBBB-09',
     routeAbbreviation: 'BBBB-09',
@@ -136,6 +146,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Balianta',
     routeId: 'KBALU-1',
     routeName: 'BBBB-10',
     routeAbbreviation: 'BBBB-10',
@@ -148,9 +159,10 @@ export const routePlanData: RoutePlanData[] = [
     scheduledOn: 'To be notified'
   },
 
-  // BALIPATNA Block
+  // BALIPATNA Block Routes
   {
     id: 11,
+    block: 'Balipatna',
     routeId: 'KBALB-1',
     routeName: 'BBBB-11',
     routeAbbreviation: 'BBBB-11',
@@ -163,9 +175,10 @@ export const routePlanData: RoutePlanData[] = [
     scheduledOn: 'To be notified'
   },
 
-  // BANPUR Block
+  // BANPUR Block Routes
   {
     id: 12,
+    block: 'Banpur',
     routeId: 'KBANG-1',
     routeName: 'BGGG-12',
     routeAbbreviation: 'BGGG-12',
@@ -179,6 +192,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Banpur',
     routeId: 'KBANN-2',
     routeName: 'BNNN-13',
     routeAbbreviation: 'BNNN-13',
@@ -191,9 +205,10 @@ export const routePlanData: RoutePlanData[] = [
     scheduledOn: 'To be notified'
   },
 
-  // BEGUNIA Block
+  // BEGUNIA Block Routes
   {
     id: 14,
+    block: 'Begunia',
     routeId: 'KBEGS-1',
     routeName: 'BSSS-14',
     routeAbbreviation: 'BSSS-14',
@@ -207,6 +222,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Begunia',
     routeId: 'KBEGB-2',
     routeName: 'BBBB-15',
     routeAbbreviation: 'BBBB-15',
@@ -219,9 +235,10 @@ export const routePlanData: RoutePlanData[] = [
     scheduledOn: 'To be notified'
   },
 
-  // Bhubaneswar Block
+  // Bhubaneswar Block Routes
   {
     id: 16,
+    block: 'Bhubaneswar',
     routeId: 'KBHUB-1',
     routeName: 'BBBB-16',
     routeAbbreviation: 'BBBB-16',
@@ -235,6 +252,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 17,
+    block: 'Bhubaneswar',
     routeId: 'KBHUS-2',
     routeName: 'BSSS-17',
     routeAbbreviation: 'BSSS-17',
@@ -248,6 +266,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 18,
+    block: 'Bhubaneswar',
     routeId: 'KBHUD-3',
     routeName: 'BDDD-18',
     routeAbbreviation: 'BDDD-18',
@@ -261,6 +280,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 19,
+    block: 'Bhubaneswar',
     routeId: 'KBHUI-4',
     routeName: 'BIII-19',
     routeAbbreviation: 'BIII-19',
@@ -274,6 +294,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 20,
+    block: 'Bhubaneswar',
     routeId: 'KBHUL-5',
     routeName: 'BLLL-20',
     routeAbbreviation: 'BLLL-20',
@@ -287,6 +308,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 21,
+    block: 'Bhubaneswar',
     routeId: 'KBHUT-6',
     routeName: 'BTTT-21',
     routeAbbreviation: 'BTTT-21',
@@ -300,6 +322,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 22,
+    block: 'Bhubaneswar',
     routeId: 'KBHUB-7',
     routeName: 'BBBB-22',
     routeAbbreviation: 'BBBB-22',
@@ -313,6 +336,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 23,
+    block: 'Bhubaneswar',
     routeId: 'KBHUK-8',
     routeName: 'BKKK-23',
     routeAbbreviation: 'BKKK-23',
@@ -326,6 +350,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 24,
+    block: 'Bhubaneswar',
     routeId: 'KBHUD-9',
     routeName: 'BDDD-24',
     routeAbbreviation: 'BDDD-24',
@@ -339,6 +364,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 25,
+    block: 'Bhubaneswar',
     routeId: 'KBHUI-10',
     routeName: 'BIII-25',
     routeAbbreviation: 'BIII-25',
@@ -352,6 +378,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 26,
+    block: 'Bhubaneswar',
     routeId: 'KBHUR-11',
     routeName: 'BRRR-26',
     routeAbbreviation: 'BRRR-26',
@@ -365,6 +392,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 27,
+    block: 'Bhubaneswar',
     routeId: 'KBHUA-12',
     routeName: 'BAAA-27',
     routeAbbreviation: 'BAAA-27',
@@ -378,6 +406,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 28,
+    block: 'Bhubaneswar',
     routeId: 'KBHUM-13',
     routeName: 'BMMM-28',
     routeAbbreviation: 'BMMM-28',
@@ -391,6 +420,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 29,
+    block: 'Bhubaneswar',
     routeId: 'KBHUC-14',
     routeName: 'BCCC-29',
     routeAbbreviation: 'BCCC-29',
@@ -404,6 +434,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 30,
+    block: 'Bhubaneswar',
     routeId: 'KBHUK-15',
     routeName: 'BKKK-30',
     routeAbbreviation: 'BKKK-30',
@@ -417,6 +448,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 31,
+    block: 'Bhubaneswar',
     routeId: 'KBHUD-16',
     routeName: 'BDDD-31',
     routeAbbreviation: 'BDDD-31',
@@ -430,6 +462,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 32,
+    block: 'Bhubaneswar',
     routeId: 'KBHUR-17',
     routeName: 'BRRR-32',
     routeAbbreviation: 'BRRR-32',
@@ -443,6 +476,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 33,
+    block: 'Bhubaneswar',
     routeId: 'KBHUT-18',
     routeName: 'BTTT-33',
     routeAbbreviation: 'BTTT-33',
@@ -456,6 +490,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 34,
+    block: 'Bhubaneswar',
     routeId: 'KBHUN-19',
     routeName: 'BNNN-34',
     routeAbbreviation: 'BNNN-34',
@@ -469,6 +504,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 35,
+    block: 'Bhubaneswar',
     routeId: 'KBHUM-20',
     routeName: 'BMMM-35',
     routeAbbreviation: 'BMMM-35',
@@ -481,9 +517,10 @@ export const routePlanData: RoutePlanData[] = [
     scheduledOn: 'To be notified'
   },
 
-  // CHILIKA Block
+  // CHILIKA Block Routes
   {
     id: 36,
+    block: 'Chilika',
     routeId: 'KCHID-1',
     routeName: 'BDDD-36',
     routeAbbreviation: 'BDDD-36',
@@ -497,6 +534,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 37,
+    block: 'Chilika',
     routeId: 'KCHIB-2',
     routeName: 'BBBB-37',
     routeAbbreviation: 'BBBB-37',
@@ -509,9 +547,10 @@ export const routePlanData: RoutePlanData[] = [
     scheduledOn: 'To be notified'
   },
 
-  // JATNI Block
+  // JATNI Block Routes
   {
     id: 38,
+    block: 'Jatni',
     routeId: 'KJATJ-1',
     routeName: 'BJJJ-38',
     routeAbbreviation: 'BJJJ-38',
@@ -525,6 +564,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 39,
+    block: 'Jatni',
     routeId: 'KJATB-2',
     routeName: 'BBBB-39',
     routeAbbreviation: 'BBBB-39',
@@ -537,9 +577,10 @@ export const routePlanData: RoutePlanData[] = [
     scheduledOn: 'To be notified'
   },
 
-  // KHORDHA Block
+  // KHORDHA Block Routes
   {
     id: 40,
+    block: 'Khordha',
     routeId: 'KKHON-1',
     routeName: 'BNNN-40',
     routeAbbreviation: 'BNNN-40',
@@ -553,6 +594,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 41,
+    block: 'Khordha',
     routeId: 'KKHOG-2',
     routeName: 'BGGG-41',
     routeAbbreviation: 'BGGG-41',
@@ -565,9 +607,10 @@ export const routePlanData: RoutePlanData[] = [
     scheduledOn: 'To be notified'
   },
 
-  // TANGI Block
+  // TANGI Block Routes
   {
     id: 42,
+    block: 'Tangi',
     routeId: 'KTANB-1',
     routeName: 'BBBB-42',
     routeAbbreviation: 'BBBB-42',

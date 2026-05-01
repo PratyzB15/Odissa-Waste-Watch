@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -20,6 +21,7 @@ export const routePlanData: RoutePlanData[] = [
   // Titlagarh Block - Tagged with Titlagarh MRF
   {
     id: 1,
+    block: 'Titlagarh',
     routeId: 'B-Tit-BGKMSS-1',
     routeName: 'Kuskela-Binekela-Ghodar-Kuskela-Marlad-Sijuan-Sihini',
     routeAbbreviation: 'KSBMGS-1',
@@ -40,6 +42,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Titlagarh',
     routeId: 'B-Tit-ADKKPS-2',
     routeName: 'Kursud-Adabahal-Digsira-Kholan-Kursud-Parasara-Surda-Bandupala-Jagua',
     routeAbbreviation: 'KDSAPK-2',
@@ -62,6 +65,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Titlagarh',
     routeId: 'B-Tit-MMNS-3',
     routeName: 'Mahulpada-Manigaon-Naren-Sagadghat',
     routeAbbreviation: 'MSNMGSN-3',
@@ -80,6 +84,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Titlagarh',
     routeId: 'B-Tit-BBBGKL-4',
     routeName: 'Ghantabahali-Banjipadar-Bhalegaon-Bijepur-Ghantabahali-Katarkela-Luthurbandh',
     routeAbbreviation: 'GBLBK-4',
@@ -102,6 +107,7 @@ export const routePlanData: RoutePlanData[] = [
   // Turekela Block - Tagged with Kantabanji MRF
   {
     id: 5,
+    block: 'Turekela',
     routeId: 'B-Kan-BCCDKK-1',
     routeName: 'Chaulsukha-Buromal-Chaulsukha-Chatuanka-Dhamandanga-Karuanmunda-Khagsa',
     routeAbbreviation: 'CKKDBC-1',
@@ -122,6 +128,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Turekela',
     routeId: 'B-Kan-HJKKT-2',
     routeName: 'Turekela-Hial-Jharani-Kambimunda-Kuibahal',
     routeAbbreviation: 'TKKJH-2',
@@ -141,6 +148,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Turekela',
     routeId: 'B-Kan-BGKM-3',
     routeName: 'Kandei-Badbanki-Ghunesh-Mahakhand',
     routeAbbreviation: 'KMBG-3',
@@ -159,6 +167,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Turekela',
     routeId: 'B-Kan-BDHM-4',
     routeName: 'Halanbhata-Baddhakla-Dholmandal-Mahulpati',
     routeAbbreviation: 'HDBM-4',
@@ -179,6 +188,7 @@ export const routePlanData: RoutePlanData[] = [
   // Balangir Block - Tagged with Balangir MRF
   {
     id: 9,
+    block: 'Balangir',
     routeId: 'B-Bal-CKMMS-1',
     routeName: 'Manhira-Chandanbhati-Khaliapali-Manhira-Sakma-Mirdhpali',
     routeAbbreviation: 'MKSCM-1',
@@ -198,6 +208,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Balangir',
     routeId: 'B-Bal-BKMS-2',
     routeName: 'Barkani-Barkani-Khujenpali-Madhiapali-Sadeipali',
     routeAbbreviation: 'BKMS-2',
@@ -216,6 +227,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Balangir',
     routeId: 'B-Bal-BCKSS-3',
     routeName: 'Bhutiarbahal-Chikalbahal-Kudasingha-Sahabahal-Sikachhida',
     routeAbbreviation: 'BSKCS-3',
@@ -235,6 +247,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 12,
+    block: 'Balangir',
     routeId: 'B-Bal-BBBST-4',
     routeName: 'Sibtala-Baidipali-Barapudgia-Bidikhat-Sibtala-Tusurabahal',
     routeAbbreviation: 'STBBB-4',
@@ -254,6 +267,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Balangir',
     routeId: 'B-Bal-BCJKM-5',
     routeName: 'Mayabarha-Bhundimuhan-Chudapali-Jhankarpali-Khuntpali-Kutumdola-Mayabarha',
     routeAbbreviation: 'MBCKKJ-5',
@@ -276,6 +290,7 @@ export const routePlanData: RoutePlanData[] = [
   // Patnagarh Block - Tagged with Patnagarh MRF
   {
     id: 14,
+    block: 'Patnagarh',
     routeId: 'B-Pat-BDSTU-1',
     routeName: 'Dubhalapada-Bhainsa-Dhatuk-Sunamudi-Tendapadar-Ulba',
     routeAbbreviation: 'DBSTU-1',
@@ -295,6 +310,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Patnagarh',
     routeId: 'B-Pat-GGKMS-2',
     routeName: 'Mundomahul-Gangasagar-Ghuche Pali-Kendumundi-Mundomahul-Salepali',
     routeAbbreviation: 'MSGKG-2',
@@ -314,6 +330,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 16,
+    block: 'Patnagarh',
     routeId: 'B-Pat-BBDJP-3',
     routeName: 'Dhatuk-Balipata-Batharla-Dhatuk-Jogimunda-Pandamunda',
     routeAbbreviation: 'DPJBB-3',
@@ -333,6 +350,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 17,
+    block: 'Patnagarh',
     routeId: 'B-Pat-BBKMS-4',
     routeName: 'Kerbeda-Baneimunda-Barpadar-Kerbeda-Maruan-Solebandh',
     routeAbbreviation: 'KSBMB-4',
@@ -352,6 +370,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 18,
+    block: 'Patnagarh',
     routeId: 'B-Pat-GGKXL-5',
     routeName: 'Khursel-Gerda-Ghasian-Khuntsamal-Khursel-Larambha',
     routeAbbreviation: 'KLGGK-5',
@@ -370,6 +389,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 19,
+    block: 'Patnagarh',
     routeId: 'B-Pat-BDOFT-6',
     routeName: 'Dangbahal-Bharatbahal-Dangbahal-Deulgaon-Fatamunda-Tamian',
     routeAbbreviation: 'DFBTD-6',
@@ -391,6 +411,7 @@ export const routePlanData: RoutePlanData[] = [
   // Gudvella Block - Tagged with Tusura MRF
   {
     id: 20,
+    block: 'Gudvella',
     routeId: 'B-Tus-BCNRS-1',
     routeName: 'Chinched-Badamounda-Chinched-Nuapada-Rusuda-Samara',
     routeAbbreviation: 'CBNRS-1',
@@ -410,6 +431,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 21,
+    block: 'Gudvella',
     routeId: 'B-Tus-BGGG-2',
     routeName: 'Gambhariguda-Biramunda-Gambhariguda-Ghuna-Gudvela',
     routeAbbreviation: 'GBGG-2',
@@ -428,6 +450,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 22,
+    block: 'Gudvella',
     routeId: 'B-Tus-DJMT-3',
     routeName: 'Jamut-Deuligudi-Jamut-Madhekela-Tentulikhunti',
     routeAbbreviation: 'JDMT-3',

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,21 @@ import { Separator } from '@/components/ui/separator';
 import { extractWasteReceiptData } from '@/ai/flows/invoice-data-extraction';
 import { useFirestore } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+
+// Define the expected return type from AI extraction
+interface ExtractedReceiptData {
+  dateOfCollection?: string;
+  taggedUlb?: string;
+  plastic?: string;
+  paper?: string;
+  metal?: string;
+  glass?: string;
+  cloth?: string;
+  sanitation?: string;
+  others?: string;
+  gpWeights?: Record<string, string>;
+  totalWaste?: string;
+}
 
 // District Data Imports for Logistical Resolution
 import { angulDistrictData } from "@/lib/disAngul";
@@ -63,10 +77,12 @@ function WasteReceiptGenerationContent() {
   
   const [formData, setFormData] = useState({
     dateOfCollection: new Date().toISOString().split('T')[0],
+    taggedUlb: '',
     plastic: '',
     paper: '',
     metal: '',
     glass: '',
+    cloth: '',
     sanitation: '',
     others: '',
   });
@@ -118,7 +134,8 @@ function WasteReceiptGenerationContent() {
         mrf: schedule?.mrf || route?.destination || 'Mapped Facility',
         routeId: route?.routeId || 'TBD',
         routeName: route?.routeName || 'Assigned Circuit',
-        gps: gpList
+        gps: gpList,
+        ulb: schedule?.ulb || ''
     };
   }, [mounted, district, block, name]);
 
@@ -143,13 +160,15 @@ function WasteReceiptGenerationContent() {
     reader.onload = async () => {
       const base64 = reader.result as string;
       try {
-        const result = await extractWasteReceiptData({ receiptImage: base64 });
+        const result = await extractWasteReceiptData({ receiptImage: base64 }) as ExtractedReceiptData;
         if (result) {
           if (result.dateOfCollection) setFormData(prev => ({ ...prev, dateOfCollection: result.dateOfCollection! }));
+          if (result.taggedUlb) setFormData(prev => ({ ...prev, taggedUlb: result.taggedUlb! }));
           if (result.plastic) setFormData(prev => ({ ...prev, plastic: result.plastic! }));
           if (result.paper) setFormData(prev => ({ ...prev, paper: result.paper! }));
           if (result.metal) setFormData(prev => ({ ...prev, metal: result.metal! }));
           if (result.glass) setFormData(prev => ({ ...prev, glass: result.glass! }));
+          if (result.cloth) setFormData(prev => ({ ...prev, cloth: result.cloth! }));
           if (result.sanitation) setFormData(prev => ({ ...prev, sanitation: result.sanitation! }));
           if (result.others) setFormData(prev => ({ ...prev, others: result.others! }));
           
@@ -188,6 +207,7 @@ function WasteReceiptGenerationContent() {
       mrf: routeData.mrf,
       block: routeData.block,
       district: routeData.district,
+      ulb: formData.taggedUlb || routeData.ulb,
       submittedByRole: 'driver',
       driverName: name,
       driverContact: phone,
@@ -197,6 +217,7 @@ function WasteReceiptGenerationContent() {
       paper: parseFloat(formData.paper) || 0,
       metal: parseFloat(formData.metal) || 0,
       glass: parseFloat(formData.glass) || 0,
+      cloth: parseFloat(formData.cloth) || 0,
       sanitation: parseFloat(formData.sanitation) || 0,
       others: parseFloat(formData.others) || 0,
       gpBreakdown: gpList,
@@ -287,6 +308,30 @@ function WasteReceiptGenerationContent() {
 
                     <div className="space-y-4">
                         <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
+                            <Building className="h-3 w-3 text-primary" /> Administrative Context
+                        </h3>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Tagged ULB</Label>
+                                <Input 
+                                    id="taggedUlb"
+                                    type="text" 
+                                    value={formData.taggedUlb} 
+                                    onChange={handleInputChange}
+                                    placeholder="e.g., Boudh Municipality"
+                                    className="font-bold" 
+                                />
+                                <p className="text-[8px] text-muted-foreground">Urban Local Body associated with this collection</p>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-60">Tagged MRF</Label>
+                                <Input value={routeData.mrf} disabled className="font-mono font-bold bg-muted/20" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
                             <MapPin className="h-3 w-3 text-primary" /> GP-wise Collection Breakdown (Kg)
                         </h3>
                         <div className="bg-muted/10 border-2 border-dashed rounded-2xl p-6 space-y-4">
@@ -317,8 +362,8 @@ function WasteReceiptGenerationContent() {
                         <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] border-b pb-2 flex items-center gap-2">
                             <ListPlus className="h-3 w-3 text-primary" /> Material Stream Distribution (Kg)
                         </h3>
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                            {['plastic', 'paper', 'metal', 'glass', 'sanitation', 'others'].map(item => (
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            {['plastic', 'paper', 'metal', 'glass', 'cloth', 'sanitation', 'others'].map(item => (
                                 <div key={item} className="space-y-1.5">
                                     <Label htmlFor={item} className="text-[9px] font-black uppercase opacity-60">{item}</Label>
                                     <Input id={item} type="number" placeholder="0.0" value={formData[item as keyof typeof formData]} onChange={handleInputChange} className="font-mono font-bold" />

@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -19,6 +20,7 @@ export const routePlanData: RoutePlanData[] = [
   // Block Jagatsinghpur
   {
     id: 1,
+    block: 'Jagatsinghpur',
     routeId: 'J/J/P',
     routeName: 'P →B→M→P→ULB',
     routeAbbreviation: 'PBM-01',
@@ -32,6 +34,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Jagatsinghpur',
     routeId: 'J/J/A',
     routeName: 'G →P →S →A →ULB',
     routeAbbreviation: 'GPSA-02',
@@ -45,6 +48,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Jagatsinghpur',
     routeId: 'J/J/T',
     routeName: 'T→P→ULB',
     routeAbbreviation: 'TPU-03',
@@ -56,9 +60,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [{ name: 'Renubala Parida', contact: '9667688678' }],
     scheduledOn: '29.04.2026'
   },
+
   // Block Paradeep (Kujanga)
   {
     id: 4,
+    block: 'Paradeep',
     routeId: 'J/P/P',
     routeName: 'P→N→R→C',
     routeAbbreviation: 'PNRC-04',
@@ -72,6 +78,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Paradeep',
     routeId: 'J/P/N',
     routeName: 'N→B→S',
     routeAbbreviation: 'NBS-05',
@@ -85,6 +92,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Paradeep',
     routeId: 'J/P/B',
     routeName: 'B→J',
     routeAbbreviation: 'BJ-06',

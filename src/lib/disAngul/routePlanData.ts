@@ -1,6 +1,7 @@
 
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -20,6 +21,7 @@ export const routePlanData: RoutePlanData[] = [
   // Angul Block
   {
     id: 1,
+    block: 'Angul',
     routeId: 'AANGN1',
     routeName: 'NBKBSDPB-01',
     routeAbbreviation: 'NBKBSDPB-01',
@@ -42,6 +44,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Angul',
     routeId: 'AANGT2',
     routeName: 'TLAGARH-02',
     routeAbbreviation: 'TLAGARH-02',
@@ -62,6 +65,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Angul',
     routeId: 'AANGR3',
     routeName: 'RBMSMAKT-03',
     routeAbbreviation: 'RBMSMAKT-03',
@@ -84,6 +88,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Angul',
     routeId: 'AANGK4',
     routeName: 'KSKCBIBBKGAB-04',
     routeAbbreviation: 'KSKCBIBBKGAB-04',
@@ -111,6 +116,7 @@ export const routePlanData: RoutePlanData[] = [
   // Talcher Block
   {
     id: 5,
+    block: 'Talcher',
     routeId: 'ATALK1',
     routeName: 'KKGDB-01',
     routeAbbreviation: 'KKGDB-01',
@@ -130,6 +136,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Talcher',
     routeId: 'ATALS2',
     routeName: 'SGJB-02',
     routeAbbreviation: 'SGJB-02',
@@ -148,6 +155,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Talcher',
     routeId: 'ATALT3',
     routeName: 'TGBPK-03',
     routeAbbreviation: 'TGBPK-03',
@@ -167,6 +175,7 @@ export const routePlanData: RoutePlanData[] = [
   // Athamallik Block
   {
     id: 8,
+    block: 'Athamallik',
     routeId: 'AATHN1',
     routeName: 'NALJ-01',
     routeAbbreviation: 'NALJ-01',
@@ -184,6 +193,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Athamallik',
     routeId: 'AATHP2',
     routeName: 'PKMLKKBKT-02',
     routeAbbreviation: 'PKMLKKBKT-02',
@@ -207,6 +217,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Athamallik',
     routeId: 'AATHT3',
     routeName: 'TAKKSP-03',
     routeAbbreviation: 'TAKKSP-03',
@@ -227,6 +238,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Athamallik',
     routeId: 'AATHS4',
     routeName: 'SPTKM-04',
     routeAbbreviation: 'SPTKM-04',

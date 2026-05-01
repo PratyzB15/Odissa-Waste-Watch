@@ -5,6 +5,7 @@ export interface RouteWorker {
 
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -22,6 +23,7 @@ export const routePlanData: RoutePlanData[] = [
   // Kendrapara Block (ULB Kendrapara)
   {
     id: 1,
+    block: 'Kendrapara',
     routeId: 'KKEN-01',
     routeName: 'AYEBA → PUROSATAMPUR → KANSAR → OSTAPUR → KALAPADA',
     routeAbbreviation: 'APKOK-01',
@@ -41,6 +43,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Kendrapara',
     routeId: 'KKEN-02',
     routeName: 'BAGADA → SYAMSUNDARPUR → BHARTAPUR → CHAKRADA → BHAGABATPUR',
     routeAbbreviation: 'BSBCB-02',
@@ -60,6 +63,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Kendrapara',
     routeId: 'KKEN-03',
     routeName: 'JAMDHAR → GULNAGAR → KAPALESWAR → KUTURAN → DHOLO',
     routeAbbreviation: 'JGKKD-03',
@@ -79,6 +83,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Kendrapara',
     routeId: 'KKEN-04',
     routeName: 'NIKIREI → INDUPUR → DHUMATA → CHARIGAON → GHAGARA',
     routeAbbreviation: 'NIDHG-04',
@@ -98,6 +103,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Kendrapara',
     routeId: 'KKEN-05',
     routeName: 'SANAMANATIA → CHANDANPUR → KESPUR → GANGAPADA → PALASINGHA → BARO → KORO',
     routeAbbreviation: 'SCKGPBK-05',
@@ -121,6 +127,7 @@ export const routePlanData: RoutePlanData[] = [
   // Pattamundei Block (ULB Pattamundei)
   {
     id: 6,
+    block: 'Pattamundei',
     routeId: 'KPAT-01',
     routeName: 'BADAMULABASANTA → BADAPADA → BALABHADRAPUR → BALIPATANA → BALURIA → BILIKANA',
     routeAbbreviation: 'BDNBBN-01',
@@ -141,6 +148,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Pattamundei',
     routeId: 'KPAT-02',
     routeName: 'KAKHARUNI → KHADIANTA → KHANATA → NARASINGHPUR → NILAKANTHAPUR → OUPADA',
     routeAbbreviation: 'KKGSAB-02',
@@ -160,6 +168,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Pattamundei',
     routeId: 'KPAT-03',
     routeName: 'PENTHAPAL → SANJARIA → SANSARFAL → SASANA → SINGHAGAN → SRIRAMPUR → TARADIPAL',
     routeAbbreviation: 'BDDSSB-03',
@@ -178,6 +187,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Pattamundei',
     routeId: 'KPAT-04',
     routeName: 'CHANDANAGAR → DHAMARPUR → DIHAPADA → DIHUDIPUR → DOSIA → GANGARAMPUR',
     routeAbbreviation: 'DSKOBC-04',
@@ -197,6 +207,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Pattamundei',
     routeId: 'KPAT-05',
     routeName: 'ALAPUA → AMRUTAMANOHI → ANDARA → ARADAPALLI → BACHHARA → BADAMOHANPUR',
     routeAbbreviation: 'ATPAABS-05',

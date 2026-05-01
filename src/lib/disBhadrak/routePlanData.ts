@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -20,6 +21,7 @@ export const routePlanData: RoutePlanData[] = [
   // Basudevpur Block Routes
   {
     id: 1,
+    block: 'Basudevpur',
     routeId: 'BBASC-1',
     routeName: 'Chudamani to Sudarsanpur',
     routeAbbreviation: 'CSAENKPJASB-01',
@@ -58,6 +60,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Basudevpur',
     routeId: 'BBASN-2',
     routeName: 'Narsinghpur to Arandua',
     routeAbbreviation: 'NABSBAB-02',
@@ -92,6 +95,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Basudevpur',
     routeId: 'BBASK-3',
     routeName: 'K Binayakpur to Padmapur',
     routeAbbreviation: 'KGLEPB-03',
@@ -118,6 +122,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Basudevpur',
     routeId: 'BBASL-4',
     routeName: 'Laxmidaspur to Rajgharpokhari',
     routeAbbreviation: 'LJBAKNGRB-04',
@@ -152,6 +157,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Basudevpur',
     routeId: 'BBASK-5',
     routeName: 'Kismatkrushnapur to Balimunda',
     routeAbbreviation: 'KSBBBGBB-05',
@@ -180,6 +186,7 @@ export const routePlanData: RoutePlanData[] = [
   // Bhadrak Block Routes
   {
     id: 6,
+    block: 'Bhadrak',
     routeId: 'BBHAC1',
     routeName: 'Charampa to Jagdalpur',
     routeAbbreviation: 'CGDKBABRJB-01',
@@ -230,6 +237,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Bhadrak',
     routeId: 'BBHAE2',
     routeName: 'Erein to Rahanja',
     routeAbbreviation: 'EPBKCERB-02',
@@ -268,6 +276,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Bhadrak',
     routeId: 'BBHAB3',
     routeName: 'Baudpur to Gelpur',
     routeAbbreviation: 'BORABBKGB-03',
@@ -313,6 +322,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Bhadrak',
     routeId: 'BBHAK4',
     routeName: 'Korkora to Gujidarada',
     routeAbbreviation: 'KHABKGM-04',
@@ -350,6 +360,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Bhadrak',
     routeId: 'BBHAB-5',
     routeName: 'Bental to Barahampur',
     routeAbbreviation: 'BSSGKBM-05',
@@ -389,6 +400,7 @@ export const routePlanData: RoutePlanData[] = [
   // Chandbali Block Routes
   {
     id: 11,
+    block: 'Chandbali',
     routeId: 'BCHAB-01',
     routeName: 'Badaostia to Olaga Cluster',
     routeAbbreviation: 'BABBBMNSTOKK01',
@@ -416,6 +428,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 12,
+    block: 'Chandbali',
     routeId: 'BCHAM-02',
     routeName: 'Motto to Nalagohira Cluster',
     routeAbbreviation: 'MNKMGCMNK02',
@@ -438,6 +451,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Chandbali',
     routeId: 'BCHAK-03',
     routeName: 'Khadalpokhari to Gopinathapur Cluster',
     routeAbbreviation: 'KTUJJBGK03',
@@ -462,6 +476,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Chandbali',
     routeId: 'BCHAN-04',
     routeName: 'Nuagaon to Panchutikiri Cluster',
     routeAbbreviation: 'NBDDJKKKPK04',
@@ -488,6 +503,7 @@ export const routePlanData: RoutePlanData[] = [
   // Dhamnagar Block Routes
   {
     id: 15,
+    block: 'Dhamnagar',
     routeId: 'BDHAS-1',
     routeName: 'Sarei Chudakuti to Asurali',
     routeAbbreviation: 'SDGKKKFBAW-01',
@@ -523,6 +539,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 16,
+    block: 'Dhamnagar',
     routeId: 'BDHAB-2',
     routeName: 'Bhagabanpur to Sohada',
     routeAbbreviation: 'BDMKASW-02',
@@ -558,6 +575,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 17,
+    block: 'Dhamnagar',
     routeId: 'BDHAR-3',
     routeName: 'Radhaballavpur to Raipur',
     routeAbbreviation: 'RBGKKSDPRW-03',
@@ -600,6 +618,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 18,
+    block: 'Dhamnagar',
     routeId: 'BDHAK-4',
     routeName: 'Karada to Hasanabad',
     routeAbbreviation: 'KDPNBAHW-04',

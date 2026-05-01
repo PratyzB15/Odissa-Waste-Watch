@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -17,9 +18,10 @@ export interface RoutePlanData {
 }
 
 export const routePlanData: RoutePlanData[] = [
-  // Anandapur Block
+  // Anandapur Block Routes
   {
     id: 1,
+    block: 'Anandapur',
     routeId: 'KANABBDJHKP-01',
     routeName: 'PBBHJDK-01',
     routeAbbreviation: 'PBBHJDK-01',
@@ -41,6 +43,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Anandapur',
     routeId: 'KANABKKMST-02',
     routeName: 'SMTKKB-02',
     routeAbbreviation: 'SMTKKB-02',
@@ -61,6 +64,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Anandapur',
     routeId: 'KANABGKMP-03',
     routeName: 'KBGPM-03',
     routeAbbreviation: 'KBGPM-03',
@@ -79,9 +83,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // Champua Block
+  // Champua Block Routes
   {
     id: 4,
+    block: 'Champua',
     routeId: 'KCHABKPRR-01',
     routeName: 'RKBPR-01',
     routeAbbreviation: 'RKBPR-01',
@@ -100,6 +105,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Champua',
     routeId: 'KCHAJKKS-02',
     routeName: 'SJKK-02',
     routeAbbreviation: 'SJKK-02',
@@ -116,6 +122,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Champua',
     routeId: 'KCHACKKPSU-03',
     routeName: 'SKCKPU-03',
     routeAbbreviation: 'SKCKPU-03',
@@ -136,6 +143,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Champua',
     routeId: 'KCHABBJJJSR-04',
     routeName: 'JBJSJBR-04',
     routeAbbreviation: 'JBJSJBR-04',
@@ -155,9 +163,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // Joda Block
+  // Joda Block Routes
   {
     id: 8,
+    block: 'Joda',
     routeId: 'KJODBBKS-01',
     routeName: 'KBSB-01',
     routeAbbreviation: 'KBSB-01',
@@ -176,6 +185,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Joda',
     routeId: 'KJODBBJJJP-02',
     routeName: 'JJJBPB-02',
     routeAbbreviation: 'JJJBPB-02',
@@ -196,6 +206,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Joda',
     routeId: 'KJODABBCDK-03',
     routeName: 'ABBCDK-03',
     routeAbbreviation: 'ABBCDK-03',
@@ -216,6 +227,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Joda',
     routeId: 'KJODBGL-04',
     routeName: 'BGL-04',
     routeAbbreviation: 'BGL-04',
@@ -232,9 +244,10 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
 
-  // Kendujhar Sadar Block
+  // Kendujhar Sadar Block Routes
   {
     id: 12,
+    block: 'Kendujhar Sadar',
     routeId: 'KKENBGJMR-01',
     routeName: 'JRGMB-01',
     routeAbbreviation: 'JRGMB-01',
@@ -254,6 +267,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Kendujhar Sadar',
     routeId: 'KKENKNPPP-02',
     routeName: 'PNPPK-02',
     routeAbbreviation: 'PNPPK-02',
@@ -273,6 +287,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Kendujhar Sadar',
     routeId: 'KKENBBGHKRS-03',
     routeName: 'BBGKSHR-03',
     routeAbbreviation: 'BBGKSHR-03',
@@ -294,6 +309,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Kendujhar Sadar',
     routeId: 'KKENDKMMNNRS-04',
     routeName: 'MNDSNRKM-04',
     routeAbbreviation: 'MNDSNRKM-04',

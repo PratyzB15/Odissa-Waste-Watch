@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -19,6 +20,7 @@ export const routePlanData: RoutePlanData[] = [
   // Block RAYAGADA (ULB ANTARIGUDA)
   {
     id: 1,
+    block: 'Rayagada',
     routeId: 'RRAYB02',
     routeName: 'RRAYBK',
     routeAbbreviation: 'RRAYBK',
@@ -32,6 +34,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Rayagada',
     routeId: 'RRAYB04',
     routeName: 'RRAYBG',
     routeAbbreviation: 'RRAYBG',
@@ -45,6 +48,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Rayagada',
     routeId: 'RRAYB4',
     routeName: 'RRAYBJ',
     routeAbbreviation: 'RRAYBJ',
@@ -58,6 +62,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Rayagada',
     routeId: 'RRAYB3',
     routeName: 'RRAYBK',
     routeAbbreviation: 'RRAYBK',
@@ -71,6 +76,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Rayagada',
     routeId: 'RRAYC01',
     routeName: 'RRAYCK',
     routeAbbreviation: 'RRAYCK',
@@ -84,6 +90,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Rayagada',
     routeId: 'RRAYD03',
     routeName: 'RRAYDK',
     routeAbbreviation: 'RRAYDK',
@@ -97,6 +104,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Rayagada',
     routeId: 'RRAYD03',
     routeName: 'RRAYDM',
     routeAbbreviation: 'RRAYDM',
@@ -110,6 +118,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Rayagada',
     routeId: 'RRAYG4',
     routeName: 'RRAYGB',
     routeAbbreviation: 'RRAYGB',
@@ -123,6 +132,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Rayagada',
     routeId: 'RRAYG5',
     routeName: 'RRAYGH',
     routeAbbreviation: 'RRAYGH',
@@ -136,6 +146,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Rayagada',
     routeId: 'RRAYH05',
     routeName: 'RRAYHT',
     routeAbbreviation: 'RRAYHT',
@@ -149,6 +160,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Rayagada',
     routeId: 'RRAYH04',
     routeName: 'RRAYHK',
     routeAbbreviation: 'RRAYHK',
@@ -162,6 +174,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 12,
+    block: 'Rayagada',
     routeId: 'RRAYJ04',
     routeName: 'RRAYJB',
     routeAbbreviation: 'RRAYJB',
@@ -175,6 +188,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Rayagada',
     routeId: 'RRAYK02',
     routeName: 'RRAYKK',
     routeAbbreviation: 'RRAYKK',
@@ -188,6 +202,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Rayagada',
     routeId: 'RRAYK01',
     routeName: 'RRAYKC',
     routeAbbreviation: 'RRAYKC',
@@ -201,6 +216,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Rayagada',
     routeId: 'RRAYK03',
     routeName: 'RRAYKB',
     routeAbbreviation: 'RRAYKB',
@@ -214,6 +230,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 16,
+    block: 'Rayagada',
     routeId: 'RRAYK04',
     routeName: 'RRAYKJ',
     routeAbbreviation: 'RRAYKJ',
@@ -227,6 +244,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 17,
+    block: 'Rayagada',
     routeId: 'RRAYK01',
     routeName: 'RRAYKB',
     routeAbbreviation: 'RRAYKB',
@@ -240,6 +258,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 18,
+    block: 'Rayagada',
     routeId: 'RRAYK02',
     routeName: 'RRAYKC',
     routeAbbreviation: 'RRAYKC',
@@ -253,6 +272,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 19,
+    block: 'Rayagada',
     routeId: 'RRAYK01',
     routeName: 'RRAYKK',
     routeAbbreviation: 'RRAYKK',
@@ -266,6 +286,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 20,
+    block: 'Rayagada',
     routeId: 'RRAYJK05',
     routeName: 'RRAYKK',
     routeAbbreviation: 'RRAYKK',
@@ -279,6 +300,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 21,
+    block: 'Rayagada',
     routeId: 'RRAYK5',
     routeName: 'RRAYKK',
     routeAbbreviation: 'RRAYKK',
@@ -292,6 +314,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 22,
+    block: 'Rayagada',
     routeId: 'RRAYM02',
     routeName: 'RRAYMK',
     routeAbbreviation: 'RRAYMK',
@@ -305,6 +328,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 23,
+    block: 'Rayagada',
     routeId: 'RRAYM03',
     routeName: 'RRAYMD',
     routeAbbreviation: 'RRAYMD',
@@ -318,6 +342,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 24,
+    block: 'Rayagada',
     routeId: 'RRAYN05',
     routeName: 'RRAYNK',
     routeAbbreviation: 'RRAYNK',
@@ -331,6 +356,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 25,
+    block: 'Rayagada',
     routeId: 'RRAYP01',
     routeName: 'RRAYPC',
     routeAbbreviation: 'RRAYPC',
@@ -344,6 +370,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 26,
+    block: 'Rayagada',
     routeId: 'RRAYP01',
     routeName: 'RRAYPD',
     routeAbbreviation: 'RRAYPD',
@@ -357,6 +384,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 27,
+    block: 'Rayagada',
     routeId: 'RRAYP04',
     routeName: 'RRAYPT',
     routeAbbreviation: 'RRAYPT',
@@ -370,6 +398,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 28,
+    block: 'Rayagada',
     routeId: 'RRAYT05',
     routeName: 'RRAYTH',
     routeAbbreviation: 'RRAYTH',
@@ -385,6 +414,7 @@ export const routePlanData: RoutePlanData[] = [
   // Block Gunupur (ULB Kothaluguda)
   {
     id: 29,
+    block: 'Gunupur',
     routeId: 'RGUNT01',
     routeName: 'RGUNJTA',
     routeAbbreviation: 'RGUNJTA',
@@ -398,6 +428,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 30,
+    block: 'Gunupur',
     routeId: 'RGUNP01',
     routeName: 'RGUNJPA',
     routeAbbreviation: 'RGUNJPA',
@@ -411,6 +442,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 31,
+    block: 'Gunupur',
     routeId: 'RGUNS01',
     routeName: 'RGUNJSA',
     routeAbbreviation: 'RGUNJSA',
@@ -424,6 +456,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 32,
+    block: 'Gunupur',
     routeId: 'RGUNA01',
     routeName: 'RGUNJAA',
     routeAbbreviation: 'RGUNJAA',
@@ -437,6 +470,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 33,
+    block: 'Gunupur',
     routeId: 'RGUNJ01',
     routeName: 'RGUNJJA',
     routeAbbreviation: 'RGUNJJA',
@@ -450,6 +484,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 34,
+    block: 'Gunupur',
     routeId: 'RGUNC02',
     routeName: 'RGUNCDB',
     routeAbbreviation: 'RGUNCDB',
@@ -463,6 +498,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 35,
+    block: 'Gunupur',
     routeId: 'RGUND02',
     routeName: 'RGUNCGB',
     routeAbbreviation: 'RGUNCGB',
@@ -476,6 +512,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 36,
+    block: 'Gunupur',
     routeId: 'RGUNG02',
     routeName: 'RGUNCBB',
     routeAbbreviation: 'RGUNCBB',
@@ -489,6 +526,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 37,
+    block: 'Gunupur',
     routeId: 'RGUNG02',
     routeName: 'RGUNCCB',
     routeAbbreviation: 'RGUNCCB',
@@ -502,6 +540,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 38,
+    block: 'Gunupur',
     routeId: 'RGUNB03',
     routeName: 'RGUNBTT',
     routeAbbreviation: 'RGUNBTT',
@@ -515,6 +554,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 39,
+    block: 'Gunupur',
     routeId: 'RGUNT03',
     routeName: 'RGUNBBB',
     routeAbbreviation: 'RGUNBBB',
@@ -528,6 +568,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 40,
+    block: 'Gunupur',
     routeId: 'RGUNG04',
     routeName: 'RGUNGR',
     routeAbbreviation: 'RGUNGR',
@@ -541,6 +582,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 41,
+    block: 'Gunupur',
     routeId: 'RGUNR04',
     routeName: 'RGUNGR',
     routeAbbreviation: 'RGUNGR',
@@ -554,6 +596,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 42,
+    block: 'Gunupur',
     routeId: 'RGUNK05',
     routeName: 'RGUNCK',
     routeAbbreviation: 'RGUNCK',
@@ -567,6 +610,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 43,
+    block: 'Gunupur',
     routeId: 'RGUNC05',
     routeName: 'RGUN',
     routeAbbreviation: 'RGUN',
@@ -580,6 +624,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 44,
+    block: 'Gunupur',
     routeId: 'RGUNJ06',
     routeName: 'RGUN',
     routeAbbreviation: 'RGUN',
@@ -593,6 +638,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 45,
+    block: 'Gunupur',
     routeId: 'RGUNG06',
     routeName: 'RGUN',
     routeAbbreviation: 'RGUN',
@@ -606,6 +652,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 46,
+    block: 'Gunupur',
     routeId: 'RGUNM06',
     routeName: 'RGUN',
     routeAbbreviation: 'RGUN',
@@ -619,6 +666,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 47,
+    block: 'Gunupur',
     routeId: 'RGUNS06',
     routeName: 'RGUN',
     routeAbbreviation: 'RGUN',
@@ -634,6 +682,7 @@ export const routePlanData: RoutePlanData[] = [
   // Block GUDARI (ULB GUDARI NAC)
   {
     id: 48,
+    block: 'Gudari',
     routeId: 'RGUDASK01',
     routeName: 'RGUDAASK01',
     routeAbbreviation: 'RGUDAASK01',
@@ -647,6 +696,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 49,
+    block: 'Gudari',
     routeId: 'RGUDAMS01',
     routeName: 'RGUDAAMS01',
     routeAbbreviation: 'RGUDAAMS01',
@@ -660,6 +710,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 50,
+    block: 'Gudari',
     routeId: 'RGUDAMM01',
     routeName: 'RGUDAAMM01',
     routeAbbreviation: 'RGUDAAMM01',
@@ -673,6 +724,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 51,
+    block: 'Gudari',
     routeId: 'RGUDAMPK02',
     routeName: 'RGUDAMKP02',
     routeAbbreviation: 'RGUDAMKP02',
@@ -686,6 +738,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 52,
+    block: 'Gudari',
     routeId: 'RGUDAMPK02',
     routeName: 'RGUDAMKP02',
     routeAbbreviation: 'RGUDAMKP02',
@@ -699,6 +752,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 53,
+    block: 'Gudari',
     routeId: 'RGUDAMSS03',
     routeName: 'RGUDAMSS03',
     routeAbbreviation: 'RGUDAMSS03',
@@ -712,6 +766,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 54,
+    block: 'Gudari',
     routeId: 'RGUDASKM04',
     routeName: 'RGUDASKM04',
     routeAbbreviation: 'RGUDASKM04',
@@ -725,6 +780,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 55,
+    block: 'Gudari',
     routeId: 'RGUDASMM05',
     routeName: 'RGUDASMM05',
     routeAbbreviation: 'RGUDASMM05',
@@ -738,6 +794,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 56,
+    block: 'Gudari',
     routeId: 'RGUDAKPM06',
     routeName: 'RGUDAKPM06',
     routeAbbreviation: 'RGUDAKPM06',

@@ -18,7 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 
 /* ADDED */
-import { isAllowedEmail } from '@/lib/auth/auth';
+import { isAllowedEmail, canAccessDistrict } from '@/lib/auth/auth';
 
 const formSchema = z.object({
 name: z.string().min(2,{message:'Name must be at least 2 characters.'}),
@@ -137,7 +137,7 @@ function onSubmit(
 values:z.infer<typeof formSchema>
 ){
 
-/* WHITELIST CHECK ADDED */
+/* WHITELIST CHECK ADDED - For official portal */
 if(
 !isAllowedEmail(
 values.email,
@@ -146,15 +146,36 @@ values.email,
 ){
 toast({
 title:'Unauthorized Email',
-description:
-'This email is not approved for Official Portal access.',
+description:'This email is not approved for Official Portal access. Only specific official emails are allowed.',
 variant:'destructive'
 });
 
 return;
 }
 
+// Check district restriction for specific email
+if (values.role === 'district' && values.district) {
+  if (!canAccessDistrict(values.email, values.district)) {
+    toast({
+      title: 'Access Restricted',
+      description: `This email can only access Boudh district.`,
+      variant: 'destructive'
+    });
+    return;
+  }
+}
 
+// For block and ULB roles, check if the selected district is allowed for this email
+if ((values.role === 'block' || values.role === 'ulb') && values.district) {
+  if (!canAccessDistrict(values.email, values.district)) {
+    toast({
+      title: 'Access Restricted',
+      description: `This email can only access data for Boudh district.`,
+      variant: 'destructive'
+    });
+    return;
+  }
+}
 
 const params=new URLSearchParams();
 
@@ -199,7 +220,7 @@ router.push(
 );
 }
 
-
+ 
 
 else if(
 values.role==='block'
@@ -495,11 +516,14 @@ render={({field})=>(
 <FormControl>
 <Input
 type="email"
-placeholder="2305133@kiit.ac.in"
+placeholder="your-email@example.com"
 {...field}
 />
 </FormControl>
 <FormMessage/>
+<FormLabel className="text-xs text-muted-foreground mt-1">
+Allowed emails: 2305133@kiit.ac.in, pratyushahiya2005@gmail.com, yogendra1yogi@gmail.com, dwsm.drdaboudh@gmail.com (Boudh district only)
+</FormLabel>
 </FormItem>
 )}
 />

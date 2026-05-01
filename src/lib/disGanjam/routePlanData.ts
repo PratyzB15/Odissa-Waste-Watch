@@ -10,6 +10,7 @@ export interface RouteGpDistance {
 
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -24,9 +25,10 @@ export interface RoutePlanData {
 }
 
 export const routePlanData: RoutePlanData[] = [
-  // Aska Block
+  // Aska Block Routes
   {
     id: 1,
+    block: 'Aska',
     routeId: 'GASKA-1',
     routeName: 'Chadhiapalli to Khandadeuli',
     routeAbbreviation: 'CK-01',
@@ -52,6 +54,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Aska',
     routeId: 'GASKA-2',
     routeName: 'Babanapur to Allipur',
     routeAbbreviation: 'BA-02',
@@ -74,9 +77,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [],
     scheduledOn: 'TUE, FRI'
   },
-  // Belaguntha Block
+
+  // Belaguntha Block Routes
   {
     id: 3,
+    block: 'Belaguntha',
     routeId: 'GBELA-1',
     routeName: 'AMBAPUA to UDHURA',
     routeAbbreviation: 'AU-01',
@@ -98,9 +103,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [],
     scheduledOn: 'Monday, Friday'
   },
-  // Bhanjanagar Block
+
+  // Bhanjanagar Block Routes
   {
     id: 4,
+    block: 'Bhanjanagar',
     routeId: 'GBHAN-1',
     routeName: 'BADAKODANDA to SANAKODANDA',
     routeAbbreviation: 'BS-01',
@@ -125,9 +132,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [],
     scheduledOn: 'MON, THU'
   },
-  // Buguda Block
+
+  // Buguda Block Routes
   {
     id: 5,
+    block: 'Buguda',
     routeId: 'GBUGU-1',
     routeName: 'ANTARAPADA to PANGIDI',
     routeAbbreviation: 'AP-01',
@@ -149,9 +158,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [],
     scheduledOn: 'MON, THU'
   },
-  // Chikiti Block
+
+  // Chikiti Block Routes
   {
     id: 6,
+    block: 'Chikiti',
     routeId: 'GCHIK-1',
     routeName: 'KALABADA to LALAMENTA',
     routeAbbreviation: 'KL-01',
@@ -172,9 +183,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [],
     scheduledOn: 'MON, THU'
   },
-  // Digapahandi Block
+
+  // Digapahandi Block Routes
   {
     id: 7,
+    block: 'Digapahandi',
     routeId: 'GDIGA-1',
     routeName: 'ANKRODA to PADMANAVPUR',
     routeAbbreviation: 'AP-01',

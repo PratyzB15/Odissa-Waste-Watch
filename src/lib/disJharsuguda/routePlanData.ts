@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -20,6 +21,7 @@ export const routePlanData: RoutePlanData[] = [
   // Jharsuguda Block
   {
     id: 1,
+    block: 'Jharsuguda',
     routeId: 'JJHAJMBH',
     routeName: 'JMBH-01',
     routeAbbreviation: 'JMBH-01',
@@ -33,6 +35,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Jharsuguda',
     routeId: 'JJHAHSPM',
     routeName: 'HSPM-02',
     routeAbbreviation: 'HSPM-02',
@@ -46,6 +49,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Jharsuguda',
     routeId: 'JJHADTDK',
     routeName: 'DTDK-03',
     routeAbbreviation: 'DTDK-03',
@@ -57,9 +61,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [{ name: 'TULESWARI NETI', contact: '7077332343' }],
     scheduledOn: 'As and When required by GP'
   },
+
   // Kirmira Block
   {
     id: 4,
+    block: 'Kirmira',
     routeId: 'JKIRASBJ',
     routeName: 'ASBJ-01',
     routeAbbreviation: 'ASBJ-01',
@@ -73,6 +79,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Kirmira',
     routeId: 'JKIRBKNG',
     routeName: 'BKNG-02',
     routeAbbreviation: 'BKNG-02',
@@ -84,9 +91,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [{ name: 'SANDHYARANI PODHA', contact: '8926186447' }],
     scheduledOn: 'As and When required by GP'
   },
+
   // Kolabira Block
   {
     id: 6,
+    block: 'Kolabira',
     routeId: 'JKOLJPKSS',
     routeName: 'JPKSS-01',
     routeAbbreviation: 'JPKSS-01',
@@ -100,6 +109,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Kolabira',
     routeId: 'JKOLKRKP',
     routeName: 'KRKP-02',
     routeAbbreviation: 'KRKP-02',
@@ -111,9 +121,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [{ name: 'TIKESWARI BAG', contact: '7077024189' }],
     scheduledOn: 'As and When required by GP'
   },
+
   // Laikera Block
   {
     id: 8,
+    block: 'Laikera',
     routeId: 'JLAIBLSK',
     routeName: 'BLSK-01',
     routeAbbreviation: 'BLSK-01',
@@ -127,6 +139,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Laikera',
     routeId: 'JLAIBJTP',
     routeName: 'BJTP-02',
     routeAbbreviation: 'BJTP-02',
@@ -140,6 +153,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Laikera',
     routeId: 'JLAISKN',
     routeName: 'SKN-03',
     routeAbbreviation: 'SKN-03',
@@ -151,9 +165,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [{ name: 'KANTI KISAN', contact: '7978165353' }],
     scheduledOn: 'As and When required by GP'
   },
-  // Brajarajnagar circuits
+
+  // Brajarajnagar circuits (using Brajarajnagar as block)
   {
     id: 11,
+    block: 'Brajarajnagar',
     routeId: 'JJHAGRLKC',
     routeName: 'GRLKC-01',
     routeAbbreviation: 'GRLKC-01',
@@ -165,9 +181,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [{ name: 'URBASI BHOI', contact: '6370721186' }],
     scheduledOn: 'As and When required by GP'
   },
+
   // Lakhanpur Block
   {
     id: 12,
+    block: 'Lakhanpur',
     routeId: 'JLAKBPKLB',
     routeName: 'BPKLB-01',
     routeAbbreviation: 'BPKLB-01',
@@ -179,9 +197,11 @@ export const routePlanData: RoutePlanData[] = [
     workers: [{ name: 'BAPI ROHIDAS', contact: '8658994308' }],
     scheduledOn: 'As and When required by GP'
   },
-  // Belpahar circuits
+
+  // Belpahar circuits (using Belpahar as block)
   {
     id: 13,
+    block: 'Belpahar',
     routeId: 'JLAKTRKDP',
     routeName: 'TRKDP-01',
     routeAbbreviation: 'TRKDP-01',
@@ -195,6 +215,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Belpahar',
     routeId: 'JLAKKBTSR',
     routeName: 'KBTSR-02',
     routeAbbreviation: 'KBTSR-02',
@@ -208,6 +229,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Belpahar',
     routeId: 'JLAKSPBKS',
     routeName: 'SPBKS-03',
     routeAbbreviation: 'SPBKS-03',
@@ -221,6 +243,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 16,
+    block: 'Belpahar',
     routeId: 'JLAKJKMPP',
     routeName: 'JKMPP-04',
     routeAbbreviation: 'JKMPP-04',
@@ -234,6 +257,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 17,
+    block: 'Belpahar',
     routeId: 'JLAKVABK',
     routeName: 'VABK-05',
     routeAbbreviation: 'VABK-05',
@@ -247,6 +271,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 18,
+    block: 'Belpahar',
     routeId: 'JLAKPCRK',
     routeName: 'PCRK-06',
     routeAbbreviation: 'PCRK-06',

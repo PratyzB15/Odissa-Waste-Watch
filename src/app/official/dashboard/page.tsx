@@ -1,4 +1,3 @@
-
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -42,7 +41,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where, onSnapshot, DocumentData } from 'firebase/firestore';
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -77,6 +76,57 @@ import { balasoreDistrictData } from "@/lib/disBalasore";
 import { baleswarDistrictData } from "@/lib/disBaleswar";
 
 import { mrfData } from "@/lib/mrf-data";
+
+interface RouteData {
+  id?: string;
+  routeId: string;
+  routeName: string;
+  startingGp: string;
+  finalGp?: string;
+  destination: string;
+  scheduledOn: string;
+  block?: string;
+  workers?: { name: string; contact: string }[];
+  [key: string]: any;
+}
+
+interface ScheduleData {
+  id?: string;
+  gpName: string;
+  collectionSchedule: string;
+  driverName: string;
+  driverContact: string;
+  vehicleType: string;
+  mrf: string;
+  gpNodalPerson: string;
+  gpNodalContact: string;
+  ulbNodalPerson: string;
+  ulbNodalContact: string;
+  ulb: string;
+  block: string;
+  [key: string]: any;
+}
+
+// Waste Record Interface for real-time waste data
+interface WasteRecord {
+  id: string;
+  date: string;
+  routeId: string;
+  mrf: string;
+  ulb: string;
+  block: string;
+  district: string;
+  gpName: string;
+  totalGpLoad: number;
+  driverSubmitted: number;
+  plastic: number;
+  paper: number;
+  metal: number;
+  cloth: number;
+  glass: number;
+  sanitation: number;
+  others: number;
+}
 
 const COMPOSITION_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7c3aed', '#64748b'];
 
@@ -168,16 +218,100 @@ function DistrictDashboardContent() {
   const [lineToggle, setLineToggle] = useState('monthly');
   const [barToggle, setBarToggle] = useState('top');
   const [mrfUlbToggle, setMrfUlbToggle] = useState('mrf');
+  
+  // Real-time waste records state
+  const [wasteRecords, setWasteRecords] = useState<WasteRecord[]>([]);
 
   const db = useFirestore();
-  const wasteQuery = useMemo(() => db ? query(collection(db, 'wasteDetails'), where('district', '==', districtName), orderBy('date', 'desc')) : null, [db, districtName]);
-  const { data: verifiedRecords = [] } = useCollection(wasteQuery);
+  
+  // Real-time listener for wasteDetails (for graphs)
+  useEffect(() => {
+    if (!db || !districtName) return;
+    
+    const wasteQuery = query(
+      collection(db, 'wasteDetails'),
+      where('district', '==', districtName),
+      orderBy('date', 'desc')
+    );
+    
+    const unsubscribe = onSnapshot(wasteQuery, (snapshot) => {
+      const items: WasteRecord[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        items.push({
+          id: doc.id,
+          date: data.date || '',
+          routeId: data.routeId || '',
+          mrf: data.mrf || '',
+          ulb: data.ulb || '',
+          block: data.block || '',
+          district: data.district || '',
+          gpName: data.gpName || '',
+          totalGpLoad: data.totalGpLoad || 0,
+          driverSubmitted: data.driverSubmitted || 0,
+          plastic: data.plastic || 0,
+          paper: data.paper || 0,
+          metal: data.metal || 0,
+          cloth: data.cloth || 0,
+          glass: data.glass || 0,
+          sanitation: data.sanitation || 0,
+          others: data.others || 0,
+        });
+      });
+      setWasteRecords(items);
+    });
+    
+    return () => unsubscribe();
+  }, [db, districtName]);
+  
+  // Listen to route plans from Firestore (for active circuits and workers)
+  const [firestoreRoutes, setFirestoreRoutes] = useState<RouteData[]>([]);
+  useEffect(() => {
+    if (!db || !districtName) return;
+    const routesQuery = query(collection(db, 'routePlans'), where('district', '==', districtName), where('isDeleted', '==', false));
+    const unsubscribe = onSnapshot(routesQuery, (snapshot) => {
+      const routes: RouteData[] = [];
+      snapshot.forEach((doc: DocumentData) => {
+        const data = doc.data();
+        routes.push({ id: doc.id, ...data } as RouteData);
+      });
+      setFirestoreRoutes(routes);
+    });
+    return () => unsubscribe();
+  }, [db, districtName]);
+
+  // Listen to collection schedules from Firestore (for drivers, PEOs, ULB operators)
+  const [firestoreSchedules, setFirestoreSchedules] = useState<ScheduleData[]>([]);
+  useEffect(() => {
+    if (!db || !districtName) return;
+    const schedulesQuery = query(collection(db, 'collectionSchedules'), where('district', '==', districtName));
+    const unsubscribe = onSnapshot(schedulesQuery, (snapshot) => {
+      const schedules: ScheduleData[] = [];
+      snapshot.forEach((doc: DocumentData) => {
+        const data = doc.data();
+        schedules.push({ id: doc.id, ...data } as ScheduleData);
+      });
+      setFirestoreSchedules(schedules);
+    });
+    return () => unsubscribe();
+  }, [db, districtName]);
 
   useEffect(() => { setMounted(true); }, []);
 
   const districtSource = useMemo(() => {
     if (!districtName) return null;
-    const map: Record<string, any> = { 'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 'kandhamal': kalahandiDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData };
+    const map: Record<string, any> = { 
+      'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData, 
+      'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData, 
+      'cuttack': cuttackDistrictData, 'deogarh': deogarhDistrictData, 'dhenkanal': dhenkanalDistrictData, 
+      'gajapati': gajapatiDistrictData, 'ganjam': ganjamDistrictData, 'jagatsinghpur': jagatsinghpurDistrictData, 
+      'jajpur': jajpurDistrictData, 'jharsuguda': jharsugudaDistrictData, 'kalahandi': kalahandiDistrictData, 
+      'kandhamal': kandhamalDistrictData, 'kendrapara': kendraparaDistrictData, 'kendujhar': kendujharDistrictData, 
+      'khordha': khordhaDistrictData, 'koraput': koraputDistrictData, 'mayurbhanj': mayurbhanjDistrictData, 
+      'malkangiri': malkangiriDistrictData, 'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData, 
+      'rayagada': rayagadaDistrictData, 'nabarangpur': nabarangpurDistrictData, 'nayagarh': nayagarhDistrictData, 
+      'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData 
+    };
     return map[districtName.toLowerCase()];
   }, [districtName]);
 
@@ -187,6 +321,38 @@ function DistrictDashboardContent() {
     const districtRecords = mrfData.filter(m => m.district.toLowerCase() === districtName.toLowerCase());
     const ulbs = Array.from(new Set(districtRecords.map(m => m.ulbName))).sort();
     const mrfs = Array.from(new Set(districtRecords.map(m => m.mrfId))).sort();
+    
+    // Merge local routes with Firestore routes
+    let localRoutesData: RouteData[] = districtSource.data.routes || [];
+    const mergedRoutesMap = new Map<string, RouteData>();
+    
+    firestoreRoutes.forEach(route => {
+      mergedRoutesMap.set(route.routeId, route);
+    });
+    
+    localRoutesData.forEach((route: RouteData) => {
+      if (!mergedRoutesMap.has(route.routeId)) {
+        mergedRoutesMap.set(route.routeId, route);
+      }
+    });
+    
+    const mergedRoutes = Array.from(mergedRoutesMap.values());
+    
+    // Merge local schedules with Firestore schedules
+    let localSchedulesData: ScheduleData[] = districtSource.data.collectionSchedules || [];
+    const mergedSchedulesMap = new Map<string, ScheduleData>();
+    
+    firestoreSchedules.forEach(schedule => {
+      mergedSchedulesMap.set(schedule.gpName, schedule);
+    });
+    
+    localSchedulesData.forEach((schedule: ScheduleData) => {
+      if (!mergedSchedulesMap.has(schedule.gpName)) {
+        mergedSchedulesMap.set(schedule.gpName, schedule);
+      }
+    });
+    
+    const mergedSchedules = Array.from(mergedSchedulesMap.values());
     
     const gpsList = (districtSource.data.gpMappings || []).map((gp: any) => {
         const w = (districtSource.data.wasteGeneration || []).find((waste: any) => waste.gpName.toLowerCase() === gp.gpName.toLowerCase());
@@ -200,11 +366,15 @@ function DistrictDashboardContent() {
         };
     });
 
-    const totalDailyGen = gpsList.reduce((s, g) => s + g.dailyGen, 0);
-    const totalMonthlyGen = gpsList.reduce((s, g) => s + g.monthlyGen, 0);
+    const totalDailyGen = gpsList.reduce((s: number, g: any) => s + g.dailyGen, 0);
+    const totalMonthlyGen = gpsList.reduce((s: number, g: any) => s + g.monthlyGen, 0);
 
-    const activeCircuits = (districtSource.data.routes || []).map((route: any) => {
-        const sched = (districtSource.data.collectionSchedules || []).find((s:any) => s.gpName.toLowerCase().includes(route.routeId.toLowerCase()) || s.gpName.toLowerCase().includes(route.startingGp.toLowerCase()));
+    // Build active circuits from merged routes and schedules (connected to route planning)
+    const activeCircuits = mergedRoutes.map((route: RouteData) => {
+        const sched = mergedSchedules.find((s: ScheduleData) => 
+            s.gpName.toLowerCase().includes(route.routeId.toLowerCase()) || 
+            s.gpName.toLowerCase().includes(route.startingGp.toLowerCase())
+        );
         const scheduleStr = sched?.collectionSchedule || route.scheduledOn || 'Scheduled';
         const daysLeft = calculateDaysUntilNext(scheduleStr, new Date());
         return { 
@@ -222,38 +392,81 @@ function DistrictDashboardContent() {
         };
     }).sort((a: any, b: any) => a.daysLeft - b.daysLeft);
 
-    const hasData = verifiedRecords.length > 0;
-    const lineData = gpsList.map(g => ({
-        name: g.name,
-        weekly: hasData ? verifiedRecords.filter(r => r.gpName === g.name && new Date(r.date) > new Date(Date.now() - 7*24*60*60*1000)).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : Math.random() * 50 + 20,
-        monthly: hasData ? verifiedRecords.filter(r => r.gpName === g.name).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : Math.random() * 200 + 100
-    }));
+    const hasRealData = wasteRecords.length > 0;
+    
+    // District Load Trend (Kg) - connected to GP waste details (wasteRecords)
+    const lineData = gpsList.map((g: any) => {
+        const gpRecords = wasteRecords.filter(r => r.gpName?.toLowerCase() === g.name.toLowerCase());
+        return {
+            name: g.name,
+            weekly: hasRealData ? gpRecords.filter(r => new Date(r.date) > new Date(Date.now() - 7*24*60*60*1000)).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : Math.random() * 50 + 20,
+            monthly: hasRealData ? gpRecords.reduce((s, r) => s + (r.driverSubmitted || 0), 0) : Math.random() * 200 + 100
+        };
+    });
 
-    const mrfTonnage = mrfs.map(id => ({
+    // District Facility Audit - connected to ULB waste details (wasteRecords)
+    const mrfTonnage = mrfs.map((id: string) => ({
         name: id,
-        value: hasData ? verifiedRecords.filter(r => r.mrf === id).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 1000 + Math.random() * 2000
+        value: hasRealData ? wasteRecords.filter((r: any) => r.mrf === id).reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 1000 + Math.random() * 2000
     }));
 
-    const ulbTonnage = ulbs.map(name => ({
+    const ulbTonnage = ulbs.map((name: string) => ({
         name: name,
-        value: hasData ? verifiedRecords.filter(r => r.mrf.toLowerCase().includes(name.toLowerCase())).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : 2000 + Math.random() * 3000
+        value: hasRealData ? wasteRecords.filter((r: any) => r.ulb?.toLowerCase() === name.toLowerCase()).reduce((s: number, r: any) => s + (r.driverSubmitted || 0), 0) : 2000 + Math.random() * 3000
     }));
 
-    const streamData = hasData ? [
-        { name: 'Plastic', value: verifiedRecords.reduce((s, r) => s + (r.plastic || 0), 0) },
-        { name: 'Paper', value: verifiedRecords.reduce((s, r) => s + (r.paper || 0), 0) },
-        { name: 'Metal', value: verifiedRecords.reduce((s, r) => s + (r.metal || 0), 0) },
-        { name: 'Glass', value: verifiedRecords.reduce((s, r) => s + (r.glass || 0), 0) },
-        { name: 'Sanitation', value: verifiedRecords.reduce((s, r) => s + (r.sanitation || 0), 0) },
-        { name: 'Others', value: verifiedRecords.reduce((s, r) => s + (r.others || 0), 0) },
+    // District Stream Composition - connected to waste records
+    const streamData = hasRealData ? [
+        { name: 'Plastic', value: wasteRecords.reduce((s, r) => s + (r.plastic || 0), 0) },
+        { name: 'Paper', value: wasteRecords.reduce((s, r) => s + (r.paper || 0), 0) },
+        { name: 'Metal', value: wasteRecords.reduce((s, r) => s + (r.metal || 0), 0) },
+        { name: 'Glass', value: wasteRecords.reduce((s, r) => s + (r.glass || 0), 0) },
+        { name: 'Sanitation', value: wasteRecords.reduce((s, r) => s + (r.sanitation || 0), 0) },
+        { name: 'Others', value: wasteRecords.reduce((s, r) => s + (r.others || 0), 0) },
     ] : [
-        { name: 'Plastic', value: 4500 }, { name: 'Paper', value: 3200 }, { name: 'Metal', value: 1200 }, { name: 'Glass', value: 800 }, { name: 'Sanitation', value: 150 }, { name: 'Others', value: 900 }
+        { name: 'Plastic', value: 4500 }, { name: 'Paper', value: 3200 }, 
+        { name: 'Metal', value: 1200 }, { name: 'Glass', value: 800 }, 
+        { name: 'Sanitation', value: 150 }, { name: 'Others', value: 900 }
     ];
 
+    // District Recovery (Last 5 Months) - connected to waste records
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    let monthlyRecoveryData: any[] = [];
+    
+    if (hasRealData && wasteRecords.length > 0) {
+        const monthMap = new Map<string, number>();
+        for (let i = 4; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthName = monthNames[d.getMonth()];
+            monthMap.set(monthName, 0);
+        }
+        
+        wasteRecords.forEach(record => {
+            const date = new Date(record.date);
+            const monthName = monthNames[date.getMonth()];
+            const recordYear = date.getFullYear();
+            const recordMonth = date.getMonth();
+            
+            for (let i = 0; i < 5; i++) {
+                const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                if (recordYear === targetDate.getFullYear() && recordMonth === targetDate.getMonth()) {
+                    monthMap.set(monthName, (monthMap.get(monthName) || 0) + (record.driverSubmitted || 0));
+                    break;
+                }
+            }
+        });
+        
+        monthlyRecoveryData = Array.from(monthMap.entries()).map(([month, val]) => ({ month, val }));
+    } else {
+        monthlyRecoveryData = [{month: 'Mar', val: 5800}, {month: 'Apr', val: 6100}, {month: 'May', val: 7400}, {month: 'Jun', val: 6200}, {month: 'Jul', val: 8600}];
+    }
+
+    // Discrepancies based on active circuits and waste records
     const discrepancies: any[] = [];
     const todayStr = new Date().toISOString().split('T')[0];
-    activeCircuits.filter(c => c.isActiveToday).forEach((c, idx) => {
-        if (!verifiedRecords.some(r => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startingGp))) {
+    activeCircuits.filter((c: any) => c.isActiveToday).forEach((c: any, idx: number) => {
+        if (!wasteRecords.some((r: any) => r.date === todayStr && (r.routeId === c.routeId || r.gpName === c.startingGp))) {
             discrepancies.push({ 
                 id: `miss-${districtName}-${c.block}-${c.routeId}-${c.startingGp}-${idx}`.replace(/\s+/g, '-'), 
                 msg: `Circuit ${c.routeId} active - No receipt synced for ${c.startingGp}.` 
@@ -261,24 +474,39 @@ function DistrictDashboardContent() {
         }
     });
 
-    const peos = Array.from(new Set((districtSource.data.collectionSchedules || []).map((s:any) => JSON.stringify({ name: (s.gpNodalPerson || "").split(',')[0].trim(), contact: (s.gpNodalContact || "").split(',')[0].trim(), mrf: s.mrf }))))
-        .map(s => JSON.parse(s)).filter(p => p.name !== '-' && p.name !== '');
+    // Registry Data - Connected to waste collection page (from merged schedules and routes)
+    // Get PEOs (Nodal Person GP) from merged schedules
+    const peos = Array.from(new Set(mergedSchedules.map((s: ScheduleData) => JSON.stringify({ name: (s.gpNodalPerson || "").split(',')[0].trim(), contact: (s.gpNodalContact || "").split(',')[0].trim(), mrf: s.mrf }))))
+        .map((s: string) => JSON.parse(s)).filter((p: any) => p.name !== '-' && p.name !== '');
 
-    const operators = Array.from(new Set((districtSource.data.collectionSchedules || []).map((s:any) => JSON.stringify({ name: (s.ulbNodalPerson || "").split('&')[0].trim(), contact: (s.ulbNodalContact || "").split(',')[0].trim(), ulb: s.ulb }))))
-        .map(s => JSON.parse(s)).filter(o => o.name !== '-' && o.name !== '');
+    // Get ULB Operators (Nodal Person ULB) from merged schedules
+    const operators = Array.from(new Set(mergedSchedules.map((s: ScheduleData) => JSON.stringify({ name: (s.ulbNodalPerson || "").split('&')[0].trim(), contact: (s.ulbNodalContact || "").split(',')[0].trim(), ulb: s.ulb }))))
+        .map((s: string) => JSON.parse(s)).filter((o: any) => o.name !== '-' && o.name !== '');
 
-    const drivers = Array.from(new Set((districtSource.data.collectionSchedules || []).map((s:any) => JSON.stringify({ name: s.driverName, contact: s.driverContact, vehicle: s.vehicleType }))))
-        .map(s => JSON.parse(s)).filter(d => d.name !== '-' && d.name !== '');
+    // Get Drivers (Logistical Drivers) from merged schedules
+    const drivers = Array.from(new Set(mergedSchedules.map((s: ScheduleData) => JSON.stringify({ name: s.driverName, contact: s.driverContact, vehicle: s.vehicleType }))))
+        .map((s: string) => JSON.parse(s)).filter((d: any) => d.name !== '-' && d.name !== '');
 
-    const workers = (districtSource.data.routes || []).flatMap((r:any) => (r.workers || []).map((w:any) => ({ ...w, mrf: r.destination })));
+    // Get Sanitation Workers from merged routes (connected to route planning)
+    const workers = mergedRoutes.flatMap((r: RouteData) => (r.workers || []).map((w: any) => ({ ...w, mrf: r.destination })));
+
+    // GP Nodal Rankings (Top/Lowest GPs by waste collected) - connected to waste records
+    let gpRankingsData = gpsList.map((g: any) => ({
+        gpName: g.name,
+        surveyed: hasRealData ? wasteRecords.filter(r => r.gpName?.toLowerCase() === g.name.toLowerCase()).reduce((s, r) => s + (r.driverSubmitted || 0), 0) : g.surveyed
+    }));
 
     return { 
         ulbs, mrfs, gpsList, activeCircuits,
         lineData, mrfTonnage, ulbTonnage, streamData, discrepancies, peos, operators, drivers, workers,
-        households: gpsList.reduce((s, g) => s + g.households, 0),
-        totalDailyGen, totalMonthlyGen
+        households: gpsList.reduce((s: number, g: any) => s + g.households, 0),
+        totalDailyGen, totalMonthlyGen,
+        blocks: districtSource.blocks || [],
+        gpRankingsData,
+        monthlyRecoveryData,
+        hasRealData
     };
-  }, [districtName, districtSource, mounted, verifiedRecords]);
+  }, [districtName, districtSource, mounted, wasteRecords, firestoreRoutes, firestoreSchedules]);
 
   if (!mounted || !dashData) return <div className="p-12 text-center animate-pulse">Syncing district hub...</div>;
 
@@ -291,7 +519,7 @@ function DistrictDashboardContent() {
                 <CardTitle className="text-3xl font-black uppercase text-primary">District Node: {districtName}</CardTitle>
                 <CardDescription className="font-bold text-muted-foreground">Authoritative multi-block administrative oversight hub.</CardDescription>
             </div>
-            <Badge className="bg-primary font-black uppercase text-[10px]">DISTRICT COMMAND CENTRE</Badge>
+            <Badge className="bg-primary font-black uppercase text-[10px]">{dashData.hasRealData ? 'LIVE DATA ACTIVE' : 'DISTRICT COMMAND CENTRE'}</Badge>
           </div>
         </CardHeader>
       </Card>
@@ -301,12 +529,12 @@ function DistrictDashboardContent() {
             <PopoverTrigger asChild>
                 <Card className="border-2 shadow-sm p-4 text-center cursor-pointer hover:bg-primary/5 transition-all group">
                     <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Blocks</p>
-                    <p className="text-lg font-black text-primary underline">{districtSource.blocks.length}</p>
+                    <p className="text-lg font-black text-primary underline">{dashData.blocks.length}</p>
                 </Card>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                 <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px]">Administrative Blocks</div>
-                <Table><TableBody>{districtSource.blocks.map((b, i) => (<TableRow key={i}><TableCell className="text-[10px] font-bold uppercase">{b}</TableCell></TableRow>))}</TableBody></Table>
+                <Table><TableBody>{dashData.blocks.map((b: string, i: number) => (<TableRow key={i}><TableCell className="text-[10px] font-bold uppercase">{b}</TableCell></TableRow>))}</TableBody></Table>
             </PopoverContent>
         </Popover>
 
@@ -319,7 +547,7 @@ function DistrictDashboardContent() {
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                 <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px]">Linked Urban Local Bodies</div>
-                <Table><TableBody>{dashData.ulbs.map((u, i) => (<TableRow key={i}><TableCell className="text-[10px] font-bold uppercase">{u}</TableCell></TableRow>))}</TableBody></Table>
+                <Table><TableBody>{dashData.ulbs.map((u: string, i: number) => (<TableRow key={i}><TableCell className="text-[10px] font-bold uppercase">{u}</TableCell></TableRow>))}</TableBody></Table>
             </PopoverContent>
         </Popover>
 
@@ -332,7 +560,7 @@ function DistrictDashboardContent() {
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0 border-2 shadow-2xl overflow-hidden">
                 <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px]">District Facility Roster</div>
-                <Table><TableBody>{dashData.mrfs.map((m, i) => (<TableRow key={i}><TableCell className="text-[10px] font-bold uppercase">{m}</TableCell></TableRow>))}</TableBody></Table>
+                <Table><TableBody>{dashData.mrfs.map((m: string, i: number) => (<TableRow key={i}><TableCell className="text-[10px] font-bold uppercase">{m}</TableCell></TableRow>))}</TableBody></Table>
             </PopoverContent>
         </Popover>
 
@@ -345,7 +573,7 @@ function DistrictDashboardContent() {
             </PopoverTrigger>
             <PopoverContent className="w-64 p-0 border-2 shadow-2xl overflow-hidden">
                 <div className="bg-primary text-primary-foreground p-3 font-black uppercase text-[9px]">District GP Directory</div>
-                <ScrollArea className="h-64"><Table><TableBody>{dashData.gpsList.map((g, i) => (<TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>
+                <ScrollArea className="h-64"><Table><TableBody>{dashData.gpsList.map((g: any, i: number) => (<TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{g.name}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>
             </PopoverContent>
         </Popover>
 
@@ -354,7 +582,6 @@ function DistrictDashboardContent() {
             <p className="text-lg font-black">{dashData.households.toLocaleString()}</p>
         </Card>
 
-        {/* NEW WASTE BOXES */}
         <Card className="border-2 shadow-sm p-4 text-center border-primary/20 bg-primary/5">
             <p className="text-[9px] font-black text-primary uppercase mb-1">Total Waste/Day (Gm)</p>
             <p className="text-lg font-black text-primary">{(dashData.totalDailyGen / 1000).toFixed(1)} Kg</p>
@@ -379,13 +606,13 @@ function DistrictDashboardContent() {
                 <CardContent className="p-0">
                     <ScrollArea className="h-[250px]">
                         <div className="divide-y">
-                            {dashData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).map((alert) => (
+                            {dashData.discrepancies.filter((d: any) => !solvedAlerts.includes(d.id)).map((alert: any) => (
                                 <div key={alert.id} className="p-4 flex items-center justify-between group">
                                     <p className="text-[10px] font-bold text-foreground uppercase italic">{alert.msg}</p>
                                     <Button size="sm" variant="outline" className="h-7 text-[8px] font-black uppercase hover:bg-green-600 hover:text-white" onClick={() => setSolvedAlerts([...solvedAlerts, alert.id])}>Mark Solved</Button>
                                 </div>
                             ))}
-                            {dashData.discrepancies.filter(d => !solvedAlerts.includes(d.id)).length === 0 && (
+                            {dashData.discrepancies.filter((d: any) => !solvedAlerts.includes(d.id)).length === 0 && (
                                 <div className="p-12 text-center text-muted-foreground opacity-30 italic uppercase font-black text-xs">No active district-level discrepancies.</div>
                             )}
                         </div>
@@ -401,7 +628,7 @@ function DistrictDashboardContent() {
                 <CardContent className="p-0">
                     <ScrollArea className="h-[250px]">
                         <div className="grid divide-y">
-                            {dashData.activeCircuits.map((log, i) => (
+                            {dashData.activeCircuits.map((log: any, i: number) => (
                                 <div key={i} className={`p-5 flex items-center justify-between border-l-4 ${log.isActiveToday ? 'border-l-green-600 bg-green-50/10' : 'border-l-primary/20'}`}>
                                     <div className="flex-[1.5] space-y-1 border-r border-dashed pr-6">
                                         <p className="text-[10px] font-black uppercase text-muted-foreground leading-none">
@@ -444,7 +671,7 @@ function DistrictDashboardContent() {
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dashData.lineData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                    <XAxis dataKey="name" fontSize={9} fontWeights="bold" angle={-45} textAnchor="end" height={60} />
+                    <XAxis dataKey="name" fontSize={9} fontWeight="bold" angle={-45} textAnchor="end" height={60} />
                     <YAxis fontSize={10} />
                     <Tooltip />
                     <Line type="monotone" dataKey={lineToggle === 'monthly' ? 'monthly' : 'weekly'} stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))" }} />
@@ -463,10 +690,10 @@ function DistrictDashboardContent() {
             </CardHeader>
             <CardContent className="h-[300px] pt-6">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dashData.gpsList.sort((a,b) => barToggle === 'top' ? b.surveyed - a.surveyed : a.surveyed - b.surveyed).slice(0, 5)} layout="vertical">
+                    <BarChart data={[...dashData.gpRankingsData].sort((a: any, b: any) => barToggle === 'top' ? b.surveyed - a.surveyed : a.surveyed - b.surveyed).slice(0, 5)} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
                         <XAxis type="number" fontSize={10} />
-                        <YAxis dataKey="name" type="category" fontSize={9} width={80} fontWeights="black" />
+                        <YAxis dataKey="gpName" type="category" fontSize={9} width={80} fontWeight="black" />
                         <Tooltip />
                         <Bar dataKey="surveyed" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={30} />
                     </BarChart>
@@ -485,7 +712,7 @@ function DistrictDashboardContent() {
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={mrfUlbToggle === 'mrf' ? dashData.mrfTonnage : dashData.ulbTonnage}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                        <XAxis dataKey="name" fontSize={9} fontWeights="black" />
+                        <XAxis dataKey="name" fontSize={9} fontWeight="black" />
                         <YAxis fontSize={10} />
                         <Tooltip />
                         <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
@@ -497,13 +724,13 @@ function DistrictDashboardContent() {
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="border-2 shadow-sm">
-            <CardHeader className="bg-muted/10 border-b pb-3"><Activity className="h-4 w-4 text-primary" /> District Recovery (Last 5 Months)</CardHeader>
+            <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> District Recovery (Last 5 Months)</CardTitle></CardHeader>
             <CardContent className="h-[300px] pt-6">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={[{month: 'Mar', val: 5800}, {month: 'Apr', val: 6100}, {month: 'May', val: 7400}, {month: 'Jun', val: 6200}, {month: 'Jul', val: 8600}]}>
+                    <BarChart data={dashData.monthlyRecoveryData}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                        <XAxis dataKey="month" fontSize={10} fontWeights="black" />
-                        <YAxis fontSize={10} />
+                        <XAxis dataKey="month" fontSize={10} fontWeight="black" />
+                        <YAxis fontSize={10} tickFormatter={(v) => `${(v/1000).toFixed(0)}T`} />
                         <Tooltip />
                         <Bar dataKey="val" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
                     </BarChart>
@@ -512,12 +739,12 @@ function DistrictDashboardContent() {
         </Card>
 
         <Card className="border-2 shadow-sm">
-            <CardHeader className="bg-muted/10 border-b pb-3"><PieChartIcon className="h-4 w-4 text-primary" /> District Stream Composition</CardHeader>
+            <CardHeader className="bg-muted/10 border-b pb-3"><CardTitle className="text-xs font-black uppercase flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> District Stream Composition</CardTitle></CardHeader>
             <CardContent className="h-[300px] pt-6">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie data={dashData.streamData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                            {dashData.streamData.map((_, i) => (<Cell key={`cell-${i}`} fill={COMPOSITION_COLORS[i % COMPOSITION_COLORS.length]} />))}
+                            {dashData.streamData.map((_: any, i: number) => (<Cell key={`cell-${i}`} fill={COMPOSITION_COLORS[i % COMPOSITION_COLORS.length]} />))}
                         </Pie>
                         <Tooltip />
                         <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '9px', fontWeight: 'black', textTransform: 'uppercase'}} />
@@ -542,7 +769,7 @@ function DistrictDashboardContent() {
                     <ScrollArea className="h-64">
                         <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">MRF</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {dashData.workers.map((n, i) => (
+                            {dashData.workers.map((n: any, i: number) => (
                                 <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact || '9437XXXXXX'}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.mrf}</TableCell></TableRow>
                             ))}
                         </TableBody></Table>
@@ -562,7 +789,7 @@ function DistrictDashboardContent() {
                     <ScrollArea className="h-64">
                         <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">MRF</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {dashData.peos.map((n, i) => (
+                            {dashData.peos.map((n: any, i: number) => (
                                 <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.mrf}</TableCell></TableRow>
                             ))}
                         </TableBody></Table>
@@ -582,7 +809,7 @@ function DistrictDashboardContent() {
                     <ScrollArea className="h-64">
                         <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">ULB</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {dashData.operators.map((n, i) => (
+                            {dashData.operators.map((n: any, i: number) => (
                                 <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.ulb}</TableCell></TableRow>
                             ))}
                         </TableBody></Table>
@@ -602,7 +829,7 @@ function DistrictDashboardContent() {
                     <ScrollArea className="h-64">
                         <Table><TableHeader><TableRow><TableHead className="text-[10px] font-bold uppercase">Name</TableHead><TableHead className="text-[10px] font-bold uppercase text-right">Phone</TableHead><TableHead className="text-[10px] font-bold uppercase">Vehicle</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {dashData.drivers.map((n, i) => (
+                            {dashData.drivers.map((n: any, i: number) => (
                                 <TableRow key={i} className="border-b border-dashed"><TableCell className="text-[10px] font-bold uppercase">{n.name}</TableCell><TableCell className="text-right font-mono text-[9px] font-black text-primary">{n.contact}</TableCell><TableCell className="text-[9px] font-bold uppercase">{n.vehicle}</TableCell></TableRow>
                             ))}
                         </TableBody></Table>

@@ -1,10 +1,10 @@
-'use client';
+ 'use client';
 
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
+  CardDescription, 
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
@@ -51,11 +51,11 @@ export default function AdminLoginPage() {
       return;
     }
 
-    // Email allowlist check
+    // Email allowlist check - using 'admin' portal
     if (!isAllowedEmail(email, 'admin')) {
       toast({
         title: 'Invalid Email',
-        description: 'Access denied. This email is not authorized for Admin login.',
+        description: 'Access denied. This email is not authorized for Admin login. Only specific admin emails are allowed.',
         variant: 'destructive'
       });
       return;
@@ -155,7 +155,7 @@ export default function AdminLoginPage() {
                 disabled={isLoading}
               />
               <p className="text-[10px] text-muted-foreground font-medium">
-                Only authorized government email addresses are permitted.
+                Only authorized admin emails are permitted: 2305133@kiit.ac.in, pratyushahiya2005@gmail.com, yogendra1yogi@gmail.com
               </p>
             </div>
 
@@ -201,7 +201,7 @@ export default function AdminLoginPage() {
             {/* Demo credentials hint - remove in production */}
             <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-dashed border-primary/20">
               <p className="text-[9px] font-mono text-center text-muted-foreground uppercase tracking-wider">
-                Demo Credentials: Any authorized admin email | Password: min 6 chars
+                Demo Credentials: Authorized admin emails only | Password: min 6 chars
               </p>
             </div>
           </form>

@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState, Suspense, useEffect } from 'react';
-import { Truck, Users, Phone, Navigation, Anchor, Edit, Trash2, PlusCircle, Save } from "lucide-react";
+import { useMemo, useState, Suspense, useEffect, useCallback, useRef } from 'react';
+import { Truck, Users, Phone, Navigation, Anchor, Edit, Trash2, PlusCircle, Save, Loader2, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useFirestore } from "@/firebase";
+import { collection, doc, setDoc, query, where, onSnapshot, deleteDoc } from "firebase/firestore";
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -48,8 +50,13 @@ import { baleswarDistrictData } from "@/lib/disBaleswar";
 
 import { mrfData } from "@/lib/mrf-data";
 
+interface Worker {
+  name: string;
+  contact: string;
+}
+
 interface Route {
-  id: string | number;
+  id: string;
   block: string;
   mrfName: string;
   routeId: string;
@@ -59,21 +66,35 @@ interface Route {
   finalGp: string;
   destination: string;
   totalDistance: number;
-  workers: { name: string; contact: string }[];
+  workers: Worker[];
   scheduledOn: string;
+  district?: string;
+  ulb?: string;
+  lastUpdated?: string;
+  isFromFirestore?: boolean;
+  firestoreId?: string;
+  isDeleted?: boolean;
 }
 
 function UlbPersonnelDetailsContent() {
     const searchParams = useSearchParams();
     const ulbParam = searchParams.get('ulb') || '';
     const districtName = searchParams.get('district') || '';
+    const role = searchParams.get('role');
+    const isAuthorized = role === 'ulb' || role === 'block' || role === 'district';
     const { toast } = useToast();
 
-    const [mounted, setMounted] = useState(false);
-    const [routes, setRoutes] = useState<Route[]>([]);
+    const db = useFirestore();
+    const [firestoreRoutes, setFirestoreRoutes] = useState<Route[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [syncing, setSyncing] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingRoute, setEditingRoute] = useState<Route | null>(null);
-    
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState<string | null>(null);
+    const [dataInitialized, setDataInitialized] = useState(false);
+    const syncCompletedRef = useRef(false);
+
     const [formData, setFormData] = useState({
         block: '',
         mrfName: '',
@@ -88,8 +109,17 @@ function UlbPersonnelDetailsContent() {
         scheduledOn: ''
     });
 
-    useEffect(() => { 
-        setMounted(true); 
+    // Get MRF IDs associated with this ULB
+    const ulbMrfIds = useMemo(() => {
+        return mrfData
+            .filter(m => m.ulbName?.toLowerCase().trim() === ulbParam?.toLowerCase().trim())
+            .map(m => m.mrfId.toLowerCase());
+    }, [ulbParam]);
+
+    // Get local routes based on district and ULB (Fallback data)
+    const localRoutes = useMemo((): Route[] => {
+        if (!districtName || !ulbParam) return [];
+        
         const districtsSourceMap: Record<string, any> = {
             'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData,
             'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData,
@@ -102,24 +132,179 @@ function UlbPersonnelDetailsContent() {
             'nuapada': nuapadaDistrictData, 'puri': puriDistrictData, 'sambalpur': sambalpurDistrictData,
             'balasore': balasoreDistrictData, 'baleswar': baleswarDistrictData
         };
+        
         const source = districtsSourceMap[districtName.toLowerCase()];
-        if (!source) return;
+        if (!source) return [];
 
-        // Get MRFs assigned to this ULB from master registry
-        const ulbMrfs = mrfData.filter(m => m.ulbName.toLowerCase().trim() === ulbParam.toLowerCase().trim()).map(m => m.mrfId.toLowerCase());
-
-        const allRoutes = source.data.routes || [];
+        const allRoutes = source.data?.routes || [];
+        
+        // Filter routes by MRF destination matching ULB's MRFs
         const filtered = allRoutes.filter((r: any) => 
-            // Match by destination (MRF) or by direct ULB name mapping
-            ulbMrfs.some(mId => (r.destination || "").toLowerCase().includes(mId) || (r.mrfName || "").toLowerCase().includes(mId)) ||
+            ulbMrfIds.some(mrfId => 
+                (r.destination || "").toLowerCase().includes(mrfId) || 
+                (r.mrfName || "").toLowerCase().includes(mrfId)
+            ) ||
             (r.destination || "").toLowerCase().trim().includes(ulbParam.toLowerCase().trim())
-        ).map((r: any) => ({
-            ...r,
-            block: r.block || districtName,
-            mrfName: r.mrfName || r.destination
+        );
+        
+        return filtered.map((route: any, idx: number): Route => ({
+            id: `local-${route.routeId || idx}-${idx}`,
+            block: route.block || districtName,
+            mrfName: route.mrfName || route.destination || 'District Facility',
+            routeId: route.routeId || `ROUTE-${idx + 1}`,
+            routeAbbreviation: route.routeAbbreviation || '',
+            startingGp: route.startingGp || '',
+            intermediateGps: route.intermediateGps || [],
+            finalGp: route.finalGp || '',
+            destination: route.destination || '',
+            totalDistance: route.totalDistance || 0,
+            workers: route.workers || [],
+            scheduledOn: route.scheduledOn || 'Scheduled',
+            isFromFirestore: false,
+            firestoreId: undefined,
+            district: districtName,
+            ulb: ulbParam
         }));
-        setRoutes(filtered);
-    }, [ulbParam, districtName]);
+    }, [districtName, ulbParam, ulbMrfIds]);
+
+    // Real-time Firestore listener
+    useEffect(() => {
+        if (!db || !districtName || !ulbParam) {
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        
+        const routesQuery = query(
+            collection(db, 'routePlans'),
+            where('district', '==', districtName),
+            where('ulb', '==', ulbParam),
+            where('isDeleted', '==', false)
+        );
+
+        const unsubscribe = onSnapshot(routesQuery,
+            (snapshot) => {
+                const routes: Route[] = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    routes.push({
+                        id: doc.id,
+                        firestoreId: doc.id,
+                        block: data.block || '',
+                        mrfName: data.mrfName || '',
+                        routeId: data.routeId || '',
+                        routeAbbreviation: data.routeAbbreviation || '',
+                        startingGp: data.startingGp || '',
+                        intermediateGps: data.intermediateGps || [],
+                        finalGp: data.finalGp || '',
+                        destination: data.destination || '',
+                        totalDistance: data.totalDistance || 0,
+                        workers: data.workers || [],
+                        scheduledOn: data.scheduledOn || '',
+                        district: data.district || '',
+                        ulb: data.ulb || '',
+                        lastUpdated: data.lastUpdated || '',
+                        isFromFirestore: true
+                    });
+                });
+                
+                setFirestoreRoutes(routes);
+                setLoading(false);
+                
+                if (!dataInitialized) {
+                    setDataInitialized(true);
+                }
+            },
+            (error) => {
+                console.error("Firestore listener error:", error);
+                setLoading(false);
+                toast({
+                    title: "Connection Error",
+                    description: "Unable to sync with server. Using local data.",
+                    variant: "destructive"
+                });
+            }
+        );
+
+        return () => unsubscribe();
+    }, [db, districtName, ulbParam, toast, dataInitialized]);
+
+    // Merge local routes with Firestore data
+    const allRoutes = useMemo((): Route[] => {
+        const firestoreMap = new Map();
+        firestoreRoutes.forEach(route => {
+            firestoreMap.set(route.routeId, route);
+        });
+        
+        const mergedRoutes: Route[] = [...firestoreRoutes];
+        
+        localRoutes.forEach((localRoute: Route) => {
+            if (!firestoreMap.has(localRoute.routeId)) {
+                mergedRoutes.push(localRoute);
+            }
+        });
+        
+        return mergedRoutes.sort((a, b) => (a.routeId || '').localeCompare(b.routeId || ''));
+    }, [localRoutes, firestoreRoutes]);
+
+    // Sync local routes to Firestore on first load (only once)
+    const syncLocalToFirestore = useCallback(async () => {
+        if (!db || !districtName || !ulbParam || syncing || firestoreRoutes.length > 0 || syncCompletedRef.current) return;
+        
+        setSyncing(true);
+        try {
+            for (const localRoute of localRoutes) {
+                const documentId = `${districtName}-${ulbParam}-${localRoute.routeId}`.toLowerCase().replace(/\s+/g, '-');
+                const routeRef = doc(db, 'routePlans', documentId);
+                
+                const routeData = {
+                    block: localRoute.block,
+                    mrfName: localRoute.mrfName,
+                    routeId: localRoute.routeId,
+                    routeAbbreviation: localRoute.routeAbbreviation,
+                    startingGp: localRoute.startingGp,
+                    intermediateGps: localRoute.intermediateGps,
+                    finalGp: localRoute.finalGp,
+                    destination: localRoute.destination,
+                    totalDistance: localRoute.totalDistance,
+                    workers: localRoute.workers,
+                    scheduledOn: localRoute.scheduledOn,
+                    district: districtName,
+                    ulb: ulbParam,
+                    isDeleted: false,
+                    lastUpdated: new Date().toISOString(),
+                    syncedFromLocal: true
+                };
+                
+                await setDoc(routeRef, routeData, { merge: true });
+            }
+            
+            syncCompletedRef.current = true;
+            
+            toast({ 
+                title: "Data Synced", 
+                description: `Successfully synced ${localRoutes.length} routes to database.`,
+                variant: "default"
+            });
+        } catch (error) {
+            console.error("Sync error:", error);
+            toast({ 
+                title: "Sync Failed", 
+                description: "Failed to sync local data.",
+                variant: "destructive"
+            });
+        } finally {
+            setSyncing(false);
+        }
+    }, [db, districtName, ulbParam, localRoutes, firestoreRoutes.length, syncing, toast]);
+
+    // Auto-sync local data to Firestore only once
+    useEffect(() => {
+        if (!loading && dataInitialized && firestoreRoutes.length === 0 && localRoutes.length > 0 && !syncing && !syncCompletedRef.current) {
+            syncLocalToFirestore();
+        }
+    }, [loading, dataInitialized, firestoreRoutes.length, localRoutes.length, syncLocalToFirestore, syncing]);
 
     const handleOpenAddDialog = () => {
         setEditingRoute(null);
@@ -149,43 +334,172 @@ function UlbPersonnelDetailsContent() {
         setIsDialogOpen(true);
     };
 
-    const handleDelete = (id: string | number) => {
-        setRoutes(prev => prev.filter(r => r.id !== id));
-        toast({ title: "Entry Removed", description: "Logistical circuit deleted." });
-    };
-
-    const handleSubmit = () => {
-        const workerList = formData.workersText.split('\n').filter(line => line.includes(':')).map(line => {
-            const [name, contact] = line.split(':');
-            return { name: name.trim(), contact: contact.trim() };
-        });
-
-        const newRoute: Route = {
-            id: editingRoute ? editingRoute.id : Date.now(),
-            block: formData.block,
-            mrfName: formData.mrfName,
-            routeId: formData.routeId,
-            routeAbbreviation: formData.routeAbbreviation,
-            startingGp: formData.startingGp,
-            intermediateGps: formData.intermediateGps.split(',').map(s => s.trim()).filter(Boolean),
-            finalGp: formData.finalGp,
-            destination: formData.destination,
-            totalDistance: parseFloat(formData.totalDistance) || 0,
-            workers: workerList,
-            scheduledOn: formData.scheduledOn
-        };
-
-        if (editingRoute) {
-            setRoutes(prev => prev.map(r => r.id === editingRoute.id ? newRoute : r));
-            toast({ title: "Update Successful", description: "Route details synchronized." });
-        } else {
-            setRoutes(prev => [...prev, newRoute]);
-            toast({ title: "New Entry Added", description: "Logistical circuit added to roster." });
+    const handleDelete = async (route: Route) => {
+        if (!db) return;
+        
+        const confirmDelete = confirm(`Are you sure you want to delete route ${route.routeId}? This will affect all portals.`);
+        if (!confirmDelete) return;
+        
+        setIsDeleting(route.id);
+        
+        try {
+            if (!route.isFromFirestore) {
+                const documentId = `${districtName}-${ulbParam}-${route.routeId}`.toLowerCase().replace(/\s+/g, '-');
+                const routeRef = doc(db, 'routePlans', documentId);
+                
+                const routeData = {
+                    ...route,
+                    district: districtName,
+                    ulb: ulbParam,
+                    isDeleted: true,
+                    deletedAt: new Date().toISOString(),
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                await setDoc(routeRef, routeData, { merge: true });
+                
+                toast({ 
+                    title: "Route Removed", 
+                    description: "Route has been deactivated and synced to database.",
+                    variant: "default"
+                });
+                setIsDeleting(null);
+                return;
+            }
+            
+            const routeRef = doc(db, 'routePlans', route.id);
+            await setDoc(routeRef, {
+                isDeleted: true,
+                deletedAt: new Date().toISOString(),
+                lastUpdated: new Date().toISOString()
+            }, { merge: true });
+            
+            toast({ 
+                title: "Route Removed", 
+                description: "Route has been deactivated successfully across all portals.",
+                variant: "default"
+            });
+        } catch (error) {
+            console.error("Delete error:", error);
+            toast({ 
+                title: "Error", 
+                description: "Failed to delete route. Please try again.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsDeleting(null);
         }
-        setIsDialogOpen(false);
     };
 
-    if (!mounted) return <div className="p-12 text-center animate-pulse">Syncing directory...</div>;
+    const handleSubmit = async () => {
+        if (!db) {
+            toast({ 
+                title: "Configuration Error", 
+                description: "Database connection not available.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        const workerList = formData.workersText.split('\n')
+            .filter(line => line.trim() && line.includes(':'))
+            .map(line => {
+                const [name, contact] = line.split(':');
+                return { 
+                    name: name.trim(), 
+                    contact: contact.trim() 
+                };
+            });
+
+        if (workerList.length === 0) {
+            toast({ 
+                title: "Validation Error", 
+                description: "At least one worker is required.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        if (!formData.routeId || !formData.startingGp || !formData.destination || !formData.scheduledOn) {
+            toast({ 
+                title: "Validation Error", 
+                description: "Please fill all required fields.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setIsSubmitting(true);
+        
+        try {
+            const documentId = editingRoute?.firestoreId || (editingRoute?.id?.startsWith('local-') ?
+                `${districtName}-${ulbParam}-${formData.routeId}`.toLowerCase().replace(/\s+/g, '-') :
+                editingRoute?.id || `${districtName}-${ulbParam}-${formData.routeId}`.toLowerCase().replace(/\s+/g, '-'));
+            
+            const routeData = {
+                block: formData.block,
+                mrfName: formData.mrfName,
+                routeId: formData.routeId,
+                routeAbbreviation: formData.routeAbbreviation,
+                startingGp: formData.startingGp,
+                intermediateGps: formData.intermediateGps.split(',').map(s => s.trim()).filter(Boolean),
+                finalGp: formData.finalGp,
+                destination: formData.destination,
+                totalDistance: parseFloat(formData.totalDistance) || 0,
+                workers: workerList,
+                scheduledOn: formData.scheduledOn,
+                district: districtName,
+                ulb: ulbParam,
+                isDeleted: false,
+                lastUpdated: new Date().toISOString(),
+                updatedBy: role || 'admin'
+            };
+
+            const routeRef = doc(db, 'routePlans', documentId);
+            await setDoc(routeRef, routeData, { merge: true });
+            
+            toast({ 
+                title: "Success", 
+                description: editingRoute ? "Route updated successfully and synced across all portals." : "New route added successfully and synced across all portals.",
+                variant: "default"
+            });
+            
+            setIsDialogOpen(false);
+            setEditingRoute(null);
+        } catch (error) {
+            console.error("Submit error:", error);
+            toast({ 
+                title: "Error", 
+                description: "Failed to save route.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleManualRefresh = () => {
+        setLoading(true);
+        setTimeout(() => {
+            setLoading(false);
+        }, 1000);
+        toast({ 
+            title: "Refreshing", 
+            description: "Syncing latest data from database...",
+            variant: "default"
+        });
+    };
+
+    if (loading && !dataInitialized) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <div className="text-center space-y-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                    <p className="text-muted-foreground">Loading route data...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8">
@@ -197,11 +511,24 @@ function UlbPersonnelDetailsContent() {
                         <Navigation className="text-primary h-8 w-8" /> 
                         Route Planning Directory: {ulbParam}
                         </CardTitle>
-                        <CardDescription className="text-lg">Verified collection circuits and sanitation worker assignments for all associated MRF facilities.</CardDescription>
+                        <CardDescription className="text-lg">Verified collection circuits and sanitation worker assignments for all associated MRF facilities. Changes sync across all portals instantly.</CardDescription>
                     </div>
-                    <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
-                        <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button 
+                            onClick={handleManualRefresh} 
+                            variant="outline"
+                            className="font-black uppercase tracking-widest h-11"
+                            disabled={syncing}
+                        >
+                            <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} /> 
+                            Sync Now
+                        </Button>
+                        {isAuthorized && (
+                            <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg px-6">
+                                <PlusCircle className="mr-2 h-5 w-5" /> Add New Entry
+                            </Button>
+                        )}
+                    </div>
                 </div>
               </CardHeader>
             </Card>
@@ -213,7 +540,7 @@ function UlbPersonnelDetailsContent() {
                         <Table className="border-collapse">
                             <TableHeader className="bg-muted/80">
                                 <TableRow>
-                                    <TableHead className="w-[180px] uppercase text-[9px] font-black tracking-widest border">Tagged block and tagged mrf</TableHead>
+                                    <TableHead className="w-[180px] uppercase text-[9px] font-black tracking-widest border">Block / MRF</TableHead>
                                     <TableHead className="w-[150px] uppercase text-[9px] font-black tracking-widest border">Route ID</TableHead>
                                     <TableHead className="w-[150px] uppercase text-[9px] font-black tracking-widest border">Route Name (Abbr.)</TableHead>
                                     <TableHead className="w-[150px] uppercase text-[9px] font-black tracking-widest border">Starting GP</TableHead>
@@ -223,46 +550,71 @@ function UlbPersonnelDetailsContent() {
                                     <TableHead className="w-[80px] text-right uppercase text-[9px] font-black tracking-widest border">Dist. (Km)</TableHead>
                                     <TableHead className="w-[300px] uppercase text-[9px] font-black tracking-widest border">Details of Sanitation Workers</TableHead>
                                     <TableHead className="w-[180px] uppercase text-[9px] font-black tracking-widest border">Day of Collection</TableHead>
-                                    <TableHead className="w-[120px] uppercase text-[9px] font-black tracking-widest border text-center">Actions</TableHead>
+                                    {isAuthorized && <TableHead className="w-[120px] uppercase text-[9px] font-black tracking-widest border text-center">Actions</TableHead>}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {routes.map((route, idx) => (
-                                    <TableRow key={idx} className="hover:bg-primary/[0.01] transition-colors border-b last:border-0 h-24">
-                                        <TableCell className="border text-[10px] font-black text-primary uppercase leading-tight">
-                                            <p>{route.block}</p>
-                                            <p className="text-[8px] text-muted-foreground italic">{route.mrfName}</p>
-                                        </TableCell>
-                                        <TableCell className="border font-mono text-[10px] font-bold text-foreground">{route.routeId}</TableCell>
-                                        <TableCell className="border"><Badge variant="outline" className="text-[9px] font-black border-primary/30 bg-primary/5">{route.routeAbbreviation || route.routeId}</Badge></TableCell>
-                                        <TableCell className="border text-[10px] font-bold text-green-700 uppercase">{route.startingGp}</TableCell>
-                                        <TableCell className="border text-[9px] font-medium italic text-muted-foreground leading-tight">{route.intermediateGps.join(' → ')}</TableCell>
-                                        <TableCell className="border text-[10px] font-bold text-blue-700 uppercase">{route.finalGp || route.destination}</TableCell>
-                                        <TableCell className="border"><div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-primary"><Anchor className="h-3 w-3" />{route.destination}</div></TableCell>
-                                        <TableCell className="border text-right font-mono font-black text-xs text-primary">{route.totalDistance}</TableCell>
-                                        <TableCell className="border bg-muted/5">
-                                            <div className="space-y-1">
-                                                {route.workers.map((w, i) => (
-                                                    <div key={i} className="text-[10px] font-bold leading-tight">
-                                                        <span className="text-primary uppercase">{w.name}</span>
-                                                        <span className="text-muted-foreground ml-1">({w.contact})</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="border text-[10px] font-black uppercase text-blue-700 leading-tight">{route.scheduledOn}</TableCell>
-                                        <TableCell className="border text-center">
-                                            <div className="flex justify-center gap-2">
-                                                <Button size="icon" variant="outline" className="h-8 w-8 text-primary" onClick={() => handleOpenEditDialog(route)}><Edit className="h-4 w-4" /></Button>
-                                                <Button size="icon" variant="outline" className="h-8 w-8 text-destructive" onClick={() => handleDelete(route.id)}><Trash2 className="h-4 w-4" /></Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {routes.length === 0 && (
+                                {allRoutes.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={11} className="h-48 text-center text-muted-foreground italic uppercase font-black opacity-30">No logistical circuits resolved for this ULB.</TableCell>
+                                        <TableCell colSpan={isAuthorized ? 11 : 10} className="h-48 text-center text-muted-foreground italic uppercase font-black opacity-30">
+                                            No logistical circuits resolved for this ULB.
+                                        </TableCell>
                                     </TableRow>
+                                ) : (
+                                    allRoutes.map((route, idx) => (
+                                        <TableRow key={route.id || idx} className="hover:bg-primary/[0.01] transition-colors border-b last:border-0 h-24">
+                                            <TableCell className="border text-[10px] font-black text-primary uppercase leading-tight">
+                                                <p>{route.block}</p>
+                                                <p className="text-[8px] text-muted-foreground italic">{route.mrfName}</p>
+                                            </TableCell>
+                                            <TableCell className="border font-mono text-[10px] font-bold text-foreground">{route.routeId}</TableCell>
+                                            <TableCell className="border"><Badge variant="outline" className="text-[9px] font-black border-primary/30 bg-primary/5">{route.routeAbbreviation || route.routeId}</Badge></TableCell>
+                                            <TableCell className="border text-[10px] font-bold text-green-700 uppercase">{route.startingGp}</TableCell>
+                                            <TableCell className="border text-[9px] font-medium italic text-muted-foreground leading-tight">{route.intermediateGps.join(' → ')}</TableCell>
+                                            <TableCell className="border text-[10px] font-bold text-blue-700 uppercase">{route.finalGp || route.destination}</TableCell>
+                                            <TableCell className="border"><div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-primary"><Anchor className="h-3 w-3" />{route.destination}</div></TableCell>
+                                            <TableCell className="border text-right font-mono font-black text-xs text-primary">{route.totalDistance}</TableCell>
+                                            <TableCell className="border bg-muted/5">
+                                                <div className="space-y-1">
+                                                    {route.workers.map((w, i) => (
+                                                        <div key={i} className="text-[10px] font-bold leading-tight">
+                                                            <span className="text-primary uppercase">{w.name}</span>
+                                                            <span className="text-muted-foreground ml-1">({w.contact})</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="border text-[10px] font-black uppercase text-blue-700 leading-tight">{route.scheduledOn}</TableCell>
+                                            {isAuthorized && (
+                                                <TableCell className="border text-center">
+                                                    <div className="flex justify-center gap-2">
+                                                        <Button 
+                                                            size="icon" 
+                                                            variant="outline" 
+                                                            className="h-8 w-8 text-primary hover:bg-primary/10" 
+                                                            onClick={() => handleOpenEditDialog(route)}
+                                                            disabled={isSubmitting}
+                                                        >
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button 
+                                                            size="icon" 
+                                                            variant="outline" 
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10" 
+                                                            onClick={() => handleDelete(route)}
+                                                            disabled={isDeleting === route.id}
+                                                        >
+                                                            {isDeleting === route.id ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <Trash2 className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    ))
                                 )}
                             </TableBody>
                         </Table>
@@ -276,27 +628,83 @@ function UlbPersonnelDetailsContent() {
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-black uppercase text-primary">{editingRoute ? 'Edit Route Entry' : 'Add New Route'}</DialogTitle>
+                        <DialogDescription>
+                            {editingRoute 
+                                ? `Editing route ${editingRoute.routeId}. Changes will sync across all portals.`
+                                : 'Add new route plan. This will be available across district, block, ULB, and driver portals.'}
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6">
                         <div className="space-y-4">
-                            <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Block</Label><Input value={formData.block} onChange={(e) => setFormData({...formData, block: e.target.value})} /></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Route ID</Label><Input value={formData.routeId} onChange={(e) => setFormData({...formData, routeId: e.target.value})} /></div>
-                                <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Abbreviation</Label><Input value={formData.routeAbbreviation} onChange={(e) => setFormData({...formData, routeAbbreviation: e.target.value})} /></div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold uppercase">Block</Label>
+                                <Input value={formData.block} onChange={(e) => setFormData({...formData, block: e.target.value})} disabled={!!editingRoute} />
+                                {editingRoute && <p className="text-[8px] text-muted-foreground">Block cannot be changed after creation</p>}
                             </div>
-                            <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Total Distance</Label><Input type="number" value={formData.totalDistance} onChange={(e) => setFormData({...formData, totalDistance: e.target.value})} /></div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-bold uppercase">Route ID *</Label>
+                                    <Input value={formData.routeId} onChange={(e) => setFormData({...formData, routeId: e.target.value})} disabled={!!editingRoute} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-bold uppercase">Abbreviation</Label>
+                                    <Input value={formData.routeAbbreviation} onChange={(e) => setFormData({...formData, routeAbbreviation: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold uppercase">MRF Name</Label>
+                                <Input value={formData.mrfName} onChange={(e) => setFormData({...formData, mrfName: e.target.value})} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold uppercase">Total Distance (km) *</Label>
+                                <Input type="number" step="0.1" value={formData.totalDistance} onChange={(e) => setFormData({...formData, totalDistance: e.target.value})} />
+                            </div>
                         </div>
                         <div className="space-y-4">
-                            <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Starting GP</Label><Input value={formData.startingGp} onChange={(e) => setFormData({...formData, startingGp: e.target.value})} /></div>
-                            <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Last GP</Label><Input value={formData.finalGp} onChange={(e) => setFormData({...formData, finalGp: e.target.value})} /></div>
-                            <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Schedule</Label><Input value={formData.scheduledOn} onChange={(e) => setFormData({...formData, scheduledOn: e.target.value})} /></div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold uppercase">Starting GP *</Label>
+                                <Input value={formData.startingGp} onChange={(e) => setFormData({...formData, startingGp: e.target.value})} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold uppercase">Destination MRF *</Label>
+                                <Input value={formData.destination} onChange={(e) => setFormData({...formData, destination: e.target.value})} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold uppercase">Last/Final GP</Label>
+                                <Input value={formData.finalGp} onChange={(e) => setFormData({...formData, finalGp: e.target.value})} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold uppercase">Collection Day *</Label>
+                                <Input value={formData.scheduledOn} onChange={(e) => setFormData({...formData, scheduledOn: e.target.value})} placeholder="e.g., Monday, Tuesday, Wednesday" />
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold uppercase">Intermediate GPs</Label>
+                                <Input value={formData.intermediateGps} onChange={(e) => setFormData({...formData, intermediateGps: e.target.value})} placeholder="GP1, GP2, GP3 (comma-separated)" />
+                            </div>
                         </div>
                         <div className="md:col-span-2 space-y-2">
-                            <Label className="text-[10px] font-bold uppercase">Workers (Format: Name:Contact, one per line)</Label>
-                            <Textarea value={formData.workersText} onChange={(e) => setFormData({...formData, workersText: e.target.value})} rows={4} className="font-mono" />
+                            <Label className="text-[10px] font-bold uppercase">Workers (Format: Name:Contact, one per line) *</Label>
+                            <Textarea value={formData.workersText} onChange={(e) => setFormData({...formData, workersText: e.target.value})} rows={4} className="font-mono" placeholder="John Doe:9876543210&#10;Jane Smith:9876543211" />
+                            <p className="text-xs text-muted-foreground">Enter each worker on a new line with name and contact number separated by a colon (:)</p>
                         </div>
                     </div>
-                    <DialogFooter><Button onClick={handleSubmit} className="font-black uppercase px-8">Save Route Details</Button></DialogFooter>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSubmit} disabled={isSubmitting} className="font-black uppercase px-8">
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                'Save Route Details'
+                            )}
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
@@ -304,5 +712,16 @@ function UlbPersonnelDetailsContent() {
 }
 
 export default function PersonnelDetailsPage() {
-    return (<Suspense fallback={<div className="p-12 text-center">Loading roster...</div>}><UlbPersonnelDetailsContent /></Suspense>);
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center h-96">
+                <div className="text-center space-y-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                    <p className="text-muted-foreground">Loading roster...</p>
+                </div>
+            </div>
+        }>
+            <UlbPersonnelDetailsContent />
+        </Suspense>
+    );
 }

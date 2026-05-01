@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -19,6 +20,7 @@ export const routePlanData: RoutePlanData[] = [
   // Baleswar Block - Balasore Municipality
   {
     id: 1,
+    block: 'Baleswar',
     routeId: 'BBALPHSC-01',
     routeName: 'Patrapada to Chandipur',
     routeAbbreviation: 'PHSC-01',
@@ -37,6 +39,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Baleswar',
     routeId: 'BBALBSGP-02',
     routeName: 'Baincha to Parikhi',
     routeAbbreviation: 'BSGP-02',
@@ -55,6 +58,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Baleswar',
     routeId: 'BBALDBC-03',
     routeName: 'Dubalagadi to Chhanua',
     routeAbbreviation: 'DBC-03',
@@ -72,6 +76,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Baleswar',
     routeId: 'BBALRSGPB-4',
     routeName: 'Ranasahi to Bardhanpur',
     routeAbbreviation: 'RSGPB-4',
@@ -91,6 +96,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Baleswar',
     routeId: 'BBALRJSGK-05',
     routeName: 'Rasalpur to Khannagar',
     routeAbbreviation: 'RJSGK-05',
@@ -110,6 +116,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Baleswar',
     routeId: 'BBALNBOO-06',
     routeName: 'Nagram to Odangi',
     routeAbbreviation: 'NBOO-06',
@@ -127,7 +134,8 @@ export const routePlanData: RoutePlanData[] = [
     ]
   },
   {
-    id: 7,
+    id: 7,    
+    block: 'Baleswar',
     routeId: 'BBALRHKP-07',
     routeName: 'Raisuan to Panchupada',
     routeAbbreviation: 'RHKP-07',
@@ -146,6 +154,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Baleswar',
     routeId: 'BBALKRARS-08',
     routeName: 'Kasipada to Srirampur',
     routeAbbreviation: 'KRARS-08',
@@ -165,6 +174,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Baleswar',
     routeId: 'BBALSAK-09',
     routeName: 'Sartha to Kasafal',
     routeAbbreviation: 'SAK-09',
@@ -184,6 +194,7 @@ export const routePlanData: RoutePlanData[] = [
   // Jaleswar Block Routes
   {
     id: 10,
+    block: 'Jaleswar',
     routeId: 'BJALAGBKJ-01',
     routeName: 'Aruha to Jhadpimpal',
     routeAbbreviation: 'AGBKJ-01',
@@ -203,6 +214,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Jaleswar',
     routeId: 'BJALRKPBP-02',
     routeName: 'R.R.Pur to Paschimabad',
     routeAbbreviation: 'RKPBP-02',
@@ -222,6 +234,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 12,
+    block: 'Jaleswar',  
     routeId: 'BJALGMRSC-03',
     routeName: 'Gadsai Baliapal to Chamargaon',
     routeAbbreviation: 'GMRSC-03',
@@ -241,6 +254,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Jaleswar',
     routeId: 'BJALBKKSS-04',
     routeName: 'Baradiha to Saradarbandha',
     routeAbbreviation: 'BKKSS-04',
@@ -260,6 +274,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Jaleswar',
     routeId: 'BJALKROKM-05',
     routeName: 'Kaliko to Makidiha',
     routeAbbreviation: 'KROKM-05',
@@ -279,6 +294,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Jaleswar',
     routeId: 'BJALGLSDN-06',
     routeName: 'Gobarghata to Nachhimpur',
     routeAbbreviation: 'GLSDN-06',
@@ -298,6 +314,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 16,
+    block: 'Jaleswar',
     routeId: 'BJALSNNKS-07',
     routeName: 'Sago to Sampatia',
     routeAbbreviation: 'SNNKS-07',
@@ -319,6 +336,7 @@ export const routePlanData: RoutePlanData[] = [
   // Soro Block Routes
   {
     id: 17,
+    block: 'Soro',
     routeId: 'BSORGTAPBM-01',
     routeName: 'Gud to Mulising',
     routeAbbreviation: 'GTAPBM-01',
@@ -339,6 +357,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 18,
+    block: 'Soro',
     routeId: 'BSORSTSK-02',
     routeName: 'Sabira to Kedarpur',
     routeAbbreviation: 'STSK-02',
@@ -357,6 +376,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 19,
+    block: 'Soro',  
     routeId: 'BSORSGKMD-03',
     routeName: 'Singakhunta to Dahisada',
     routeAbbreviation: 'SGKMD-03',
@@ -377,6 +397,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 20,
+    block: 'Soro',
     routeId: 'BSORAMNNS-04',
     routeName: 'Attapur to Sarasankha',
     routeAbbreviation: 'AMNNS-04',
@@ -396,6 +417,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 21,
+    block: 'Soro',
     routeId: 'BSORMJN-05',
     routeName: 'Manipur to Natapada',
     routeAbbreviation: 'MJN-05',
@@ -415,6 +437,7 @@ export const routePlanData: RoutePlanData[] = [
   // Nilgiri Block Routes
   {
     id: 22,
+    block: 'Nilgiri',
     routeId: 'BNILDKBJK-01',
     routeName: 'Dhabasila to K.P. Lakharajpur',
     routeAbbreviation: 'DKBJK-01',
@@ -434,6 +457,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 23,
+    block: 'Nilgiri',
     routeId: 'BNILMKKNR-02',
     routeName: 'Machhua to R.K.Pur',
     routeAbbreviation: 'MMKNR-02',
@@ -453,6 +477,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 24,
+    block: 'Nilgiri',
     routeId: 'BNILANGMS-03',
     routeName: 'Ajodhya to Siadimal',
     routeAbbreviation: 'ANGMS-03',
@@ -471,6 +496,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 25,
+    block: 'Nilgiri',
     routeId: 'BNILSJTBP-04',
     routeName: 'Sajanagarh to Pithahata',
     routeAbbreviation: 'SJTBP-04',
@@ -489,6 +515,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 26,
+    block: 'Nilgiri',
     routeId: 'BNILCDATB-05',
     routeName: 'Chhatrapur to Bhouriabad',
     routeAbbreviation: 'CDATB-05',
@@ -510,6 +537,7 @@ export const routePlanData: RoutePlanData[] = [
   // Remuna Block Routes (Remuna NAC)
   {
     id: 27,
+    block: 'Remuna',
     routeId: 'BREMSTITKM-01',
     routeName: 'Srijang to Maharajpur',
     routeAbbreviation: 'STITKM-01',
@@ -530,6 +558,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 28,
+    block: 'Remuna',
     routeId: 'BREMBSNBKK-02',
     routeName: 'Barunasing to Karanjia',
     routeAbbreviation: 'BSNBKK-02',
@@ -550,6 +579,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 29,
+    block: 'Remuna',
     routeId: 'BREMBSSKB-03',
     routeName: 'Balia to Bhimpura',
     routeAbbreviation: 'BSSKB-03',
@@ -569,6 +599,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 30,
+    block: 'Remuna',
     routeId: 'BREMHNGDC-03',
     routeName: 'Haripur to Chasakhand',
     routeAbbreviation: 'HNGDC-03',
@@ -588,6 +619,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 31,
+    block: 'Remuna',
     routeId: 'BREMBPKMA-05',
     routeName: 'Badapal to Armala',
     routeAbbreviation: 'BPKMA-05',
@@ -607,6 +639,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 32,
+    block: 'Remuna',
     routeId: 'BREMNTDG-06',
     routeName: 'Nuapadhi to Gududa',
     routeAbbreviation: 'NTDGP-06',

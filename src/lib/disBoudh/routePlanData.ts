@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+   block: string; 
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -18,6 +19,7 @@ export interface RoutePlanData {
 export const routePlanData: RoutePlanData[] = [
   {
     id: 1,
+     block: 'Boudh',
     routeId: 'BBOUBKLMPT-1',
     routeName: 'MURSUNDHI to TELIBANDH',
     routeAbbreviation: 'BLKLMPT-1',
@@ -36,6 +38,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Boudh',
     routeId: 'BBOUABBKMMTR-2',
     routeName: 'TALASARDA to ROXA',
     routeAbbreviation: 'ABBKMMTR-2',
@@ -55,6 +58,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Harbhanga',
     routeId: 'BHARBBRS-3',
     routeName: 'SARSARA to RADHANAGAR',
     routeAbbreviation: 'BBRS-3',
@@ -74,6 +78,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Harbhanga',
     routeId: 'BHARBLMPP-4',
     routeName: 'Mathura to Pitambpur',
     routeAbbreviation: 'BLMPP-4',

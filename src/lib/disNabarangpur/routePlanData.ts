@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -19,6 +20,7 @@ export const routePlanData: RoutePlanData[] = [
   // Umerkote Block (Umerkote MRF)
   {
     id: 1,
+    block: 'Umerkote',
     routeId: 'NUMEA1',
     routeName: 'BBKM-01',
     routeAbbreviation: 'BBKM-01',
@@ -32,6 +34,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Umerkote',
     routeId: 'NUMEB2',
     routeName: 'STRBN-02',
     routeAbbreviation: 'STRBN-02',
@@ -45,6 +48,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Umerkote',
     routeId: 'NUMEB3',
     routeName: 'SASB-03',
     routeAbbreviation: 'SASB-03',
@@ -58,6 +62,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Umerkote',
     routeId: 'NUMEB4',
     routeName: 'CMSKB-04',
     routeAbbreviation: 'CMSKB-04',
@@ -71,6 +76,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Umerkote',
     routeId: 'NUMEB5',
     routeName: 'KBH-05',
     routeAbbreviation: 'KBH-05',
@@ -84,6 +90,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Umerkote',
     routeId: 'NUMEB6',
     routeName: 'JBB-06',
     routeAbbreviation: 'JBB-06',
@@ -97,6 +104,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Umerkote',
     routeId: 'NUMEB7',
     routeName: 'KT-07',
     routeAbbreviation: 'KT-07',
@@ -112,6 +120,7 @@ export const routePlanData: RoutePlanData[] = [
   // Nabarangpur Block (Nabarangapur MRF)
   {
     id: 8,
+    block: 'Nabarangpur',
     routeId: 'NNABA1',
     routeName: 'ABS-01',
     routeAbbreviation: 'ABS-01',
@@ -125,6 +134,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 9,
+    block: 'Nabarangpur',
     routeId: 'NNABB2',
     routeName: 'BCB-02',
     routeAbbreviation: 'BCB-02',
@@ -138,6 +148,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Nabarangpur',
     routeId: 'NNABP3',
     routeName: 'PSB-03',
     routeAbbreviation: 'PSB-03',
@@ -151,6 +162,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Nabarangpur',
     routeId: 'NNABT4',
     routeName: 'TM-04',
     routeAbbreviation: 'TM-04',
@@ -164,6 +176,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 12,
+    block: 'Nabarangpur',
     routeId: 'NNABB5',
     routeName: 'BB-05',
     routeAbbreviation: 'BB-05',

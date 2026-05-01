@@ -1,5 +1,6 @@
 export interface RoutePlanData {
   id: number;
+  block: string;
   routeId: string;
   routeName: string;
   routeAbbreviation: string;
@@ -20,6 +21,7 @@ export const routePlanData: RoutePlanData[] = [
   // ATTABIRA BLOCK
   {
     id: 1,
+    block: 'Attabira',
     routeId: 'BATT-K/B/C-1',
     routeName: 'KULUNDA-BUGBUGA-CHKULI',
     routeAbbreviation: 'KBC-01',
@@ -37,6 +39,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 2,
+    block: 'Attabira',
     routeId: 'BATT-M/K/H-1',
     routeName: 'MANAPADA-KHARMUMUNDA-HIRLIAPALI',
     routeAbbreviation: 'MKH-01',
@@ -54,6 +57,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 3,
+    block: 'Attabira',
     routeId: 'BATT-P/J/J-1',
     routeName: 'PAHARSRIGIDA-JANHAPADA-JHILIMINDA',
     routeAbbreviation: 'PJJ-01',
@@ -71,6 +75,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 4,
+    block: 'Attabira',
     routeId: 'BATT-L/T/G-1',
     routeName: 'LACHIDA-TANGARAPALLI-GODBHAGA',
     routeAbbreviation: 'LTG-01',
@@ -88,6 +93,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 5,
+    block: 'Attabira',
     routeId: 'BATT-K/K/K-1',
     routeName: 'KADABAHAL-KULTATUKRA-KUMALSINMGHA',
     routeAbbreviation: 'KKK-01',
@@ -105,6 +111,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 6,
+    block: 'Attabira',
     routeId: 'BATT-L/L/S-1',
     routeName: 'LAHANDA-LARAMBHA-SILOT',
     routeAbbreviation: 'LLS-01',
@@ -122,6 +129,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 7,
+    block: 'Attabira',
     routeId: 'BATT-T/D/A-1',
     routeName: 'TAMPARSARA-DULAMPUR-AMLIPALI',
     routeAbbreviation: 'TDA-01',
@@ -139,6 +147,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 8,
+    block: 'Attabira',
     routeId: 'BATT-L/T/J-1',
     routeName: 'LARASARA-TOPE-JANGAD',
     routeAbbreviation: 'LTJ-01',
@@ -158,6 +167,7 @@ export const routePlanData: RoutePlanData[] = [
   // BARGARH BLOCK
   {
     id: 9,
+    block: 'Bargarh',
     routeId: 'BBAR-N/B/S',
     routeName: 'Nileswar-Birmal-S.Dumerpali',
     routeAbbreviation: 'NBS-01',
@@ -175,6 +185,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 10,
+    block: 'Bargarh',
     routeId: 'BBAR-C/P/G',
     routeName: 'Chakarkend-Patharla-Gobindpur',
     routeAbbreviation: 'CPG-01',
@@ -192,6 +203,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 11,
+    block: 'Bargarh',
     routeId: 'BBAR-G/D/B',
     routeName: 'Gudesira-Deogaon-Bardol',
     routeAbbreviation: 'GDB-01',
@@ -209,6 +221,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 12,
+    block: 'Bargarh',
     routeId: 'BBAR-K/K/B',
     routeName: 'Khaliapali-Katapali-Bargaon',
     routeAbbreviation: 'KKB-01',
@@ -226,6 +239,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 13,
+    block: 'Bargarh',
     routeId: 'BBAR-T/K/S',
     routeName: 'Tumgaon-Khuntpali-Sarasara',
     routeAbbreviation: 'TKS-01',
@@ -243,6 +257,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 14,
+    block: 'Bargarh',
     routeId: 'BBAR-G/D',
     routeName: 'Gaisima-Dhanger',
     routeAbbreviation: 'GD-01',
@@ -259,6 +274,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 15,
+    block: 'Bargarh',
     routeId: 'BBAR-B/N.J/J',
     routeName: 'Bonda-N.Jampali-Jamurda',
     routeAbbreviation: 'BNJJ-01',
@@ -276,6 +292,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 16,
+    block: 'Bargarh',
     routeId: 'BBAR-T/K/B',
     routeName: 'Talsrigida-Kalapani-Barhagoda',
     routeAbbreviation: 'TKB-01',
@@ -293,6 +310,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 17,
+    block: 'Bargarh',
     routeId: 'BBAR-K/K/A',
     routeName: 'Kuruan-Khandahata-Adgaon',
     routeAbbreviation: 'KKA-01',
@@ -310,6 +328,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 18,
+    block: 'Bargarh',
     routeId: 'BBAR-T',
     routeName: 'Tora Circuit',
     routeAbbreviation: 'T-01',
@@ -327,6 +346,7 @@ export const routePlanData: RoutePlanData[] = [
   // BARPALI BLOCK
   {
     id: 19,
+    block: 'Barpali',
     routeId: 'BBAR-G/B/K-1',
     routeName: 'Gopaepali-Bandhpali-Katapali',
     routeAbbreviation: 'GBK-01',
@@ -342,6 +362,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 20,
+    block: 'Barpali',
     routeId: 'BBAR-B/B/S-1',
     routeName: 'Barguda-Bhatigaon-Satalma',
     routeAbbreviation: 'BBS-01',
@@ -358,6 +379,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 21,
+    block: 'Barpali',
     routeId: 'BBAR-K/T/P-1',
     routeName: 'Kainsir-Tulandi-Patkulunda',
     routeAbbreviation: 'KTP-01',
@@ -373,6 +395,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 22,
+    block: 'Barpali',
     routeId: 'BBAR-T/T/R-1',
     routeName: 'Tinkani-Tilaemal-Roxa',
     routeAbbreviation: 'TTR-01',
@@ -389,6 +412,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 23,
+    block: 'Barpali',
     routeId: 'BBAR-K/M/A-1',
     routeName: 'Khemesara-Mahada-Agalpur',
     routeAbbreviation: 'KMA-01',
@@ -405,6 +429,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 24,
+    block: 'Barpali',
     routeId: 'BBAR-L/M/K-1',
     routeName: 'Lenda-Mahulpali-Kusanpuri',
     routeAbbreviation: 'LMK-01',
@@ -421,6 +446,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 25,
+    block: 'Barpali',
     routeId: 'BBAR-K/-/B-1',
     routeName: 'Kanbar-Bagbadi',
     routeAbbreviation: 'KB-01',
@@ -437,6 +463,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 26,
+    block: 'Barpali',
     routeId: 'BBAR-R/K/B-1',
     routeName: 'Remta-Kumbhari-Baramkela',
     routeAbbreviation: 'RKB-01',
@@ -455,6 +482,7 @@ export const routePlanData: RoutePlanData[] = [
   // BIJEPUR BLOCK
   {
     id: 27,
+    block: 'Bijepur',
     routeId: 'BBIJ-C/B/B',
     routeName: 'CHARPALI-BUDAPALI-BAIRAKHPALI',
     routeAbbreviation: 'CBB-01',
@@ -472,6 +500,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 28,
+    block: 'Bijepur',
     routeId: 'BBIJ-T/K/S',
     routeName: 'T.GANDAPALI-KHARMUNDA-SURUBALI',
     routeAbbreviation: 'TKS-01',
@@ -489,6 +518,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 29,
+    block: 'Bijepur',
     routeId: 'BBIJ-S/T/M',
     routeName: 'SANBAUSEN-TALPADAR-M.SRIGIDA',
     routeAbbreviation: 'STM-01',
@@ -506,6 +536,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 30,
+    block: 'Bijepur',
     routeId: 'BBIJ-J/L/P',
     routeName: 'JOKHIPALI-LAUMUNDA-PATHARLA',
     routeAbbreviation: 'JLP-01',
@@ -523,6 +554,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 31,
+    block: 'Bijepur',
     routeId: 'BBIJ-B/S/B',
     routeName: 'BADBRAHAMNI-SAIPALI-BENIACHAL',
     routeAbbreviation: 'BSB-01',
@@ -540,6 +572,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 32,
+    block: 'Bijepur',
     routeId: 'BBIJ-B/P/B',
     routeName: 'BARMUNDA-PADA-BHATIGAON',
     routeAbbreviation: 'BPB-01',
@@ -557,6 +590,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 33,
+    block: 'Bijepur',
     routeId: 'BBIJ-S/J/B',
     routeName: 'SAMALEIPADAR-JARING-BADBAUSEN',
     routeAbbreviation: 'SJB-01',
@@ -574,6 +608,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 34,
+    block: 'Bijepur',
     routeId: 'BBIJ-P/G',
     routeName: 'PAHANDI-GANTHIAPALI',
     routeAbbreviation: 'PG-01',
@@ -592,6 +627,7 @@ export const routePlanData: RoutePlanData[] = [
   // PADAMPUR BLOCK
   {
     id: 35,
+    block: 'Padampur',
     routeId: 'BPAD-M/B/B',
     routeName: 'MAHULPALI-BHEUNRIA-BARIKEL',
     routeAbbreviation: 'MBB-01',
@@ -609,6 +645,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 36,
+    block: 'Padampur',
     routeId: 'BPAD-P/L/K',
     routeName: 'PURENA-LOHARPALI-KHALIAPALI',
     routeAbbreviation: 'PLK-01',
@@ -626,6 +663,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 37,
+    block: 'Padampur',
     routeId: 'BPAD-D/B/D',
     routeName: 'DAHITA-BUDEN-DAHIGAON',
     routeAbbreviation: 'DBD-01',
@@ -643,6 +681,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 38,
+    block: 'Padampur',
     routeId: 'BPAD-J/B/K',
     routeName: 'JAMARTALA-BUDAMAL-KANSAR',
     routeAbbreviation: 'JBK-01',
@@ -660,6 +699,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 39,
+    block: 'Padampur',
     routeId: 'BPAD-J/D/P',
     routeName: 'JAMALA-DANGAGHAT-PALSAPALI',
     routeAbbreviation: 'JDP-01',
@@ -678,6 +718,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 40,
+    block: 'Padampur',
     routeId: 'BPAD-G/T/M',
     routeName: 'GYAN-TAL-MELCHHAMUNDA',
     routeAbbreviation: 'GTM-01',
@@ -697,6 +738,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 41,
+    block: 'Padampur',
     routeId: 'BPAD-S/B/K',
     routeName: 'SARGIBAHAL-BARIHAPALI-KANSINGHA',
     routeAbbreviation: 'SBK-01',
@@ -714,6 +756,7 @@ export const routePlanData: RoutePlanData[] = [
   },
   {
     id: 42,
+    block: 'Padampur',
     routeId: 'BPAD-C',
     routeName: 'CHARPALI Circuit',
     routeAbbreviation: 'C-01',

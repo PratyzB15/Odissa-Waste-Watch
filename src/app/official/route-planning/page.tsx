@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useSearchParams } from "next/navigation";
-import { useMemo, Suspense, useState, useEffect } from "react";
-import { useCollection, useFirestore } from "@/firebase";
-import { collection, doc, setDoc, query } from "firebase/firestore";
+import { useMemo, Suspense, useState, useEffect, useCallback } from "react";
+import { useFirestore } from "@/firebase";
+import { collection, doc, setDoc, query, where, onSnapshot, deleteDoc } from "firebase/firestore";
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -40,17 +40,16 @@ import { nuapadaDistrictData } from "@/lib/disNuapada";
 import { puriDistrictData } from "@/lib/disPuri";
 import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
-import { Navigation, Anchor, PlusCircle, Edit, Trash2, Save } from "lucide-react";
+import { Navigation, Anchor, PlusCircle, Edit, Trash2, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 
 interface Route {
-  id: string | number;
+  id: string;
   block: string;
   ulbName: string;
   routeId: string;
@@ -61,7 +60,99 @@ interface Route {
   destination: string;
   totalDistance: number;
   scheduleDisplay: string;
+  district?: string;
+  lastUpdated?: string;
+  isFromFirestore?: boolean;
+  firestoreId?: string;
+  isDeleted?: boolean;
 }
+
+// Helper function to get sort order for collection schedule
+const getScheduleSortOrder = (schedule: string): number => {
+  const scheduleLower = schedule.toLowerCase().trim();
+  
+  // Weekday mapping (Monday = 1, Sunday = 7)
+  const weekdays: Record<string, number> = {
+    'monday': 1,
+    'tuesday': 2,
+    'wednesday': 3,
+    'thursday': 4,
+    'friday': 5,
+    'saturday': 6,
+    'sunday': 7
+  };
+  
+  // Check if it's a weekday
+  if (weekdays[scheduleLower]) {
+    return weekdays[scheduleLower];
+  }
+  
+  // Check for "1st week friday", "2nd week monday", etc.
+  const weekPattern = /(\d+)(?:st|nd|rd|th)\s+week\s+(\w+)/i;
+  const weekMatch = scheduleLower.match(weekPattern);
+  if (weekMatch) {
+    const weekNum = parseInt(weekMatch[1]);
+    const dayName = weekMatch[2];
+    const dayOrder = weekdays[dayName] || 99;
+    // Base: 100 + (weekNum * 10) + dayOrder
+    return 100 + (weekNum * 10) + dayOrder;
+  }
+  
+  // Check for "Friday of 1st week", "Monday of 2nd week" pattern
+  const weekOfPattern = /(\w+)\s+of\s+(\d+)(?:st|nd|rd|th)\s+week/i;
+  const weekOfMatch = scheduleLower.match(weekOfPattern);
+  if (weekOfMatch) {
+    const dayName = weekOfMatch[1];
+    const weekNum = parseInt(weekOfMatch[2]);
+    const dayOrder = weekdays[dayName] || 99;
+    return 100 + (weekNum * 10) + dayOrder;
+  }
+  
+  // Check for date patterns (1st, 2nd, 3rd, 4th, 5th, 15th, etc.)
+  const dateMatch = scheduleLower.match(/(\d+)(?:st|nd|rd|th)/);
+  if (dateMatch) {
+    const dateNum = parseInt(dateMatch[1]);
+    return 200 + dateNum;
+  }
+  
+  // Check for hyphenated dates (e.g., "1-15", "16-30")
+  const rangeMatch = scheduleLower.match(/^(\d+)-(\d+)$/);
+  if (rangeMatch) {
+    const startDate = parseInt(rangeMatch[1]);
+    return 300 + startDate;
+  }
+  
+  // Check for "first", "second", "third", "fourth" week patterns
+  const weekNamePattern = /(first|second|third|fourth)\s+(\w+)/i;
+  const weekNameMatch = scheduleLower.match(weekNamePattern);
+  if (weekNameMatch) {
+    const weekNames: Record<string, number> = { 'first': 1, 'second': 2, 'third': 3, 'fourth': 4 };
+    const weekNum = weekNames[weekNameMatch[1]] || 5;
+    const dayName = weekNameMatch[2];
+    const dayOrder = weekdays[dayName] || 99;
+    return 100 + (weekNum * 10) + dayOrder;
+  }
+  
+  // Default - put at the end
+  return 999;
+};
+
+// Sort routes by block first, then by schedule order
+const sortRoutes = (routes: Route[]): Route[] => {
+  return [...routes].sort((a, b) => {
+    // First sort by block name
+    const blockCompare = (a.block || '').localeCompare(b.block || '');
+    if (blockCompare !== 0) return blockCompare;
+    
+    // Then sort by collection schedule using custom order
+    const aOrder = getScheduleSortOrder(a.scheduleDisplay || '');
+    const bOrder = getScheduleSortOrder(b.scheduleDisplay || '');
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    
+    // Finally sort by route ID if both block and schedule are the same
+    return (a.routeId || '').localeCompare(b.routeId || '');
+  });
+};
 
 function DistrictRoutePlanningContent() {
   const { toast } = useToast();
@@ -72,12 +163,14 @@ function DistrictRoutePlanningContent() {
   const isAuthorized = role === 'block' || role === 'district';
 
   const db = useFirestore();
-  const { data: firestoreRoutes = [] } = useCollection(db ? query(collection(db, 'routePlans')) : null);
-
-  const [mounted, setMounted] = useState(false);
-  const [routes, setRoutes] = useState<Route[]>([]);
+  const [firestoreRoutes, setFirestoreRoutes] = useState<Route[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRoute, setEditingRoute] = useState<Route | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [dataInitialized, setDataInitialized] = useState(false);
 
   const [formData, setFormData] = useState({
     block: '', ulbName: '', routeId: '', routeAbbreviation: '',
@@ -85,8 +178,10 @@ function DistrictRoutePlanningContent() {
     totalDistance: '', scheduleDisplay: ''
   });
 
-  useEffect(() => {
-    setMounted(true);
+  // Get local routes based on district and block (Fallback data)
+  const localRoutes = useMemo((): Route[] => {
+    if (!districtName) return [];
+    
     const districtsMap: Record<string, any> = {
       'angul': angulDistrictData, 'balangir': balangirDistrictData, 'bhadrak': bhadrakDistrictData,
       'bargarh': bargarhDistrictData, 'sonepur': sonepurDistrictData, 'boudh': boudhDistrictData,
@@ -101,24 +196,181 @@ function DistrictRoutePlanningContent() {
     };
     
     const source = districtsMap[districtName.toLowerCase()];
-    if (!source) return;
+    if (!source) return [];
 
-    let initialRoutes = [...(source.data.routes || [])];
-    const enriched = initialRoutes.filter((r: any) => !blockParam || (r.block || "").toLowerCase().includes(blockParam.toLowerCase())).map((r: any) => {
-        const override = firestoreRoutes.find((f: any) => f.routeId === r.routeId && f.district === districtName);
-        return {
-            ...r,
-            ulbName: override?.ulbName || r.ulbName || r.destination || 'District ULB',
-            block: override?.block || r.block || 'District Block',
-            startingGp: override?.startingGp || r.startingGp,
-            finalGp: override?.finalGp || r.finalGp,
-            destination: override?.destination || r.destination,
-            totalDistance: override?.totalDistance || r.totalDistance,
-            scheduleDisplay: override?.scheduleDisplay || r.scheduledOn || r.collectionSchedule || 'Scheduled'
-        };
+    let initialRoutes = source.data?.routes || [];
+    
+    // Filter by block if blockParam is provided
+    let filteredRoutes = initialRoutes;
+    if (blockParam) {
+      filteredRoutes = initialRoutes.filter((r: any) => 
+        (r.block || "").toLowerCase() === blockParam.toLowerCase() ||
+        (r.block || "").toLowerCase().includes(blockParam.toLowerCase())
+      );
+    }
+    
+    return filteredRoutes.map((route: any, idx: number): Route => ({
+      id: `local-${route.routeId}-${idx}`,
+      block: route.block || 'District Block',
+      ulbName: route.ulbName || route.destination || 'District ULB',
+      routeId: route.routeId,
+      routeAbbreviation: route.routeAbbreviation || '',
+      startingGp: route.startingGp,
+      intermediateGps: route.intermediateGps || [],
+      finalGp: route.finalGp || '',
+      destination: route.destination,
+      totalDistance: route.totalDistance || 0,
+      scheduleDisplay: route.scheduledOn || route.collectionSchedule || 'Scheduled',
+      isFromFirestore: false,
+      firestoreId: undefined
+    }));
+  }, [districtName, blockParam]);
+
+  // Real-time Firestore listener
+  useEffect(() => {
+    if (!db || !districtName) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    
+    // Build query - if blockParam is provided, filter by block
+    let routesQuery;
+    if (blockParam) {
+      routesQuery = query(
+        collection(db, 'routePlans'),
+        where('district', '==', districtName),
+        where('block', '==', blockParam),
+        where('isDeleted', '==', false)
+      );
+    } else {
+      routesQuery = query(
+        collection(db, 'routePlans'),
+        where('district', '==', districtName),
+        where('isDeleted', '==', false)
+      );
+    }
+
+    const unsubscribe = onSnapshot(routesQuery,
+      (snapshot) => {
+        const routes: Route[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          routes.push({
+            id: doc.id,
+            firestoreId: doc.id,
+            block: data.block || '',
+            ulbName: data.ulbName || '',
+            routeId: data.routeId || '',
+            routeAbbreviation: data.routeAbbreviation || '',
+            startingGp: data.startingGp || '',
+            intermediateGps: data.intermediateGps || [],
+            finalGp: data.finalGp || '',
+            destination: data.destination || '',
+            totalDistance: data.totalDistance || 0,
+            scheduleDisplay: data.scheduleDisplay || '',
+            district: data.district || '',
+            lastUpdated: data.lastUpdated || '',
+            isFromFirestore: true
+          });
+        });
+        
+        setFirestoreRoutes(routes);
+        setLoading(false);
+        
+        if (!dataInitialized) {
+          setDataInitialized(true);
+        }
+      },
+      (error) => {
+        console.error("Firestore listener error:", error);
+        setLoading(false);
+        toast({
+          title: "Connection Error",
+          description: "Unable to sync with server. Using local data.",
+          variant: "destructive"
+        });
+      }
+    );
+
+    return () => unsubscribe();
+  }, [db, districtName, blockParam, toast, dataInitialized]);
+
+  // Merge local routes with Firestore data and sort properly
+  const allRoutes = useMemo((): Route[] => {
+    const firestoreMap = new Map();
+    firestoreRoutes.forEach(route => {
+      firestoreMap.set(route.routeId, route);
     });
-    setRoutes(enriched);
-  }, [districtName, blockParam, firestoreRoutes]);
+    
+    // Start with Firestore routes (modified/added routes)
+    const mergedRoutes: Route[] = [...firestoreRoutes];
+    
+    // Add local routes that DON'T exist in Firestore (unmodified routes)
+    localRoutes.forEach((localRoute: Route) => {
+      if (!firestoreMap.has(localRoute.routeId)) {
+        mergedRoutes.push(localRoute);
+      }
+    });
+    
+    // Sort routes by block and then by schedule order
+    return sortRoutes(mergedRoutes);
+  }, [localRoutes, firestoreRoutes]);
+
+  // Sync local routes to Firestore on first load (only if no data exists)
+  const syncLocalToFirestore = useCallback(async () => {
+    if (!db || !districtName || syncing || firestoreRoutes.length > 0) return;
+    
+    setSyncing(true);
+    try {
+      for (const localRoute of localRoutes) {
+        const documentId = `${districtName}-${localRoute.routeId}`.toLowerCase().replace(/\s+/g, '-');
+        const routeRef = doc(db, 'routePlans', documentId);
+        
+        const routeData = {
+          block: localRoute.block,
+          ulbName: localRoute.ulbName,
+          routeId: localRoute.routeId,
+          routeAbbreviation: localRoute.routeAbbreviation,
+          startingGp: localRoute.startingGp,
+          intermediateGps: localRoute.intermediateGps,
+          finalGp: localRoute.finalGp,
+          destination: localRoute.destination,
+          totalDistance: localRoute.totalDistance,
+          scheduleDisplay: localRoute.scheduleDisplay,
+          district: districtName,
+          isDeleted: false,
+          lastUpdated: new Date().toISOString(),
+          syncedFromLocal: true
+        };
+        
+        await setDoc(routeRef, routeData, { merge: true });
+      }
+      
+      toast({ 
+        title: "Data Synced", 
+        description: `Successfully synced ${localRoutes.length} routes to database.`,
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Sync error:", error);
+      toast({ 
+        title: "Sync Failed", 
+        description: "Failed to sync local data.",
+        variant: "destructive"
+      });
+    } finally {
+      setSyncing(false);
+    }
+  }, [db, districtName, localRoutes, firestoreRoutes.length, syncing, toast]);
+
+  // Auto-sync local data to Firestore only when Firestore is empty
+  useEffect(() => {
+    if (!loading && dataInitialized && firestoreRoutes.length === 0 && localRoutes.length > 0 && !syncing) {
+      syncLocalToFirestore();
+    }
+  }, [loading, dataInitialized, firestoreRoutes.length, localRoutes.length, syncLocalToFirestore, syncing]);
 
   const handleOpenAddDialog = () => {
     setEditingRoute(null);
@@ -133,32 +385,166 @@ function DistrictRoutePlanningContent() {
   const handleOpenEditDialog = (route: Route) => {
     setEditingRoute(route);
     setFormData({
-      block: route.block, ulbName: route.ulbName, routeId: route.routeId,
-      routeAbbreviation: route.routeAbbreviation, startingGp: route.startingGp,
+      block: route.block,
+      ulbName: route.ulbName,
+      routeId: route.routeId,
+      routeAbbreviation: route.routeAbbreviation,
+      startingGp: route.startingGp,
       intermediateGps: Array.isArray(route.intermediateGps) ? route.intermediateGps.join(', ') : '',
-      finalGp: route.finalGp, destination: route.destination,
-      totalDistance: route.totalDistance.toString(), scheduleDisplay: route.scheduleDisplay
+      finalGp: route.finalGp,
+      destination: route.destination,
+      totalDistance: route.totalDistance.toString(),
+      scheduleDisplay: route.scheduleDisplay
     });
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = async () => {
+  const handleDelete = async (route: Route) => {
     if (!db) return;
-    const compositeId = `${districtName}-${formData.routeId}`.toLowerCase().replace(/\s+/g, '-');
-
-    await setDoc(doc(db, 'routePlans', compositeId), {
-        ...formData,
-        district: districtName,
-        intermediateGps: formData.intermediateGps.split(',').map(s => s.trim()).filter(Boolean),
-        totalDistance: parseFloat(formData.totalDistance) || 0,
-        updatedAt: new Date().toISOString()
-    }, { merge: true });
-
-    toast({ title: "Sync Successful", description: "Route plan synchronized across all portals." });
-    setIsDialogOpen(false);
+    
+    const confirmDelete = confirm(`Are you sure you want to delete route ${route.routeId}? This action will remove it from all portals.`);
+    if (!confirmDelete) return;
+    
+    setIsDeleting(route.id);
+    
+    try {
+      if (!route.isFromFirestore) {
+        const documentId = `${districtName}-${route.routeId}`.toLowerCase().replace(/\s+/g, '-');
+        const routeRef = doc(db, 'routePlans', documentId);
+        
+        const routeData = {
+          block: route.block,
+          ulbName: route.ulbName,
+          routeId: route.routeId,
+          routeAbbreviation: route.routeAbbreviation,
+          startingGp: route.startingGp,
+          intermediateGps: route.intermediateGps,
+          finalGp: route.finalGp,
+          destination: route.destination,
+          totalDistance: route.totalDistance,
+          scheduleDisplay: route.scheduleDisplay,
+          district: districtName,
+          isDeleted: true,
+          deletedAt: new Date().toISOString(),
+          lastUpdated: new Date().toISOString()
+        };
+        
+        await setDoc(routeRef, routeData, { merge: true });
+        
+        toast({ 
+          title: "Route Removed", 
+          description: "Route has been deactivated and synced to database.",
+          variant: "default"
+        });
+        setIsDeleting(null);
+        return;
+      }
+      
+      const routeRef = doc(db, 'routePlans', route.id);
+      await setDoc(routeRef, {
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      }, { merge: true });
+      
+      toast({ 
+        title: "Route Removed", 
+        description: "Route has been deactivated successfully across all portals.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to delete route. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(null);
+    }
   };
 
-  if (!mounted || !districtName) return null;
+  const handleSubmit = async () => {
+    if (!db) {
+      toast({ title: "Error", description: "Database connection not available.", variant: "destructive" });
+      return;
+    }
+
+    if (!formData.routeId || !formData.startingGp || !formData.destination) {
+      toast({ title: "Validation Error", description: "Please fill all required fields.", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      const documentId = editingRoute?.firestoreId || (editingRoute?.id?.startsWith('local-') ?
+        `${districtName}-${formData.routeId}`.toLowerCase().replace(/\s+/g, '-') :
+        editingRoute?.id || `${districtName}-${formData.routeId}`.toLowerCase().replace(/\s+/g, '-'));
+      
+      const routeData = {
+        block: formData.block || blockParam || districtName,
+        ulbName: formData.ulbName,
+        routeId: formData.routeId,
+        routeAbbreviation: formData.routeAbbreviation,
+        startingGp: formData.startingGp,
+        intermediateGps: formData.intermediateGps.split(',').map(s => s.trim()).filter(Boolean),
+        finalGp: formData.finalGp,
+        destination: formData.destination,
+        totalDistance: parseFloat(formData.totalDistance) || 0,
+        scheduleDisplay: formData.scheduleDisplay,
+        district: districtName,
+        isDeleted: false,
+        lastUpdated: new Date().toISOString(),
+        updatedBy: role || 'admin'
+      };
+      
+      const routeRef = doc(db, 'routePlans', documentId);
+      await setDoc(routeRef, routeData, { merge: true });
+
+      toast({ 
+        title: editingRoute ? "Route Updated" : "Route Added", 
+        description: `Route ${formData.routeId} has been synchronized across all portals.`,
+        variant: "default" 
+      });
+      
+      setIsDialogOpen(false);
+      setEditingRoute(null);
+      
+    } catch (error) {
+      console.error('Error saving route:', error);
+      toast({ 
+        title: "Sync Failed", 
+        description: "Failed to save route. Please try again.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleManualRefresh = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+    toast({ 
+      title: "Refreshing", 
+      description: "Syncing latest data from database...",
+      variant: "default"
+    });
+  };
+
+  if (loading && !dataInitialized) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Loading route data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -167,9 +553,31 @@ function DistrictRoutePlanningContent() {
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <Navigation className="h-8 w-8 text-primary" />
-              <div><CardTitle className="text-2xl font-black uppercase">Route Planning: {districtName}</CardTitle><CardDescription>Verified circuit audits linking GP nodes to processing facilities.</CardDescription></div>
+              <div>
+                <CardTitle className="text-2xl font-black uppercase">Route Planning: {districtName}</CardTitle>
+                <CardDescription>
+                  Verified circuit audits linking GP nodes to processing facilities. 
+                  {blockParam ? ` Showing routes for block: ${blockParam}` : ' Showing all block routes.'}
+                  Changes sync across all portals.
+                </CardDescription>
+              </div>
             </div>
-            {isAuthorized && <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg"><PlusCircle className="mr-2 h-5 w-5" /> Add New Details</Button>}
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleManualRefresh} 
+                variant="outline"
+                className="font-black uppercase tracking-widest h-11"
+                disabled={syncing}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} /> 
+                Sync Now
+              </Button>
+              {isAuthorized && (
+                <Button onClick={handleOpenAddDialog} className="font-black uppercase tracking-widest h-11 bg-primary shadow-lg">
+                  <PlusCircle className="mr-2 h-5 w-5" /> Add New Details
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-6">
@@ -190,26 +598,62 @@ function DistrictRoutePlanningContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {routes.map((route, idx) => (
-                    <TableRow key={idx} className="hover:bg-primary/[0.02] border-b transition-colors">
-                      <TableCell className="border text-center font-mono text-xs">{idx + 1}</TableCell>
-                      <TableCell className="border text-[10px] font-bold uppercase">{route.block}</TableCell>
-                      <TableCell className="border font-mono text-[10px] font-black text-primary">{route.routeId}</TableCell>
-                      <TableCell className="border text-[10px] font-bold text-green-700 uppercase">{route.startingGp}</TableCell>
-                      <TableCell className="border text-[9px] font-medium italic text-muted-foreground leading-tight">{route.intermediateGps?.join(' → ') || 'Direct'}</TableCell>
-                      <TableCell className="border text-[10px] font-black uppercase text-primary leading-tight">{route.destination}</TableCell>
-                      <TableCell className="border text-right font-mono font-black text-xs text-primary">{route.totalDistance}</TableCell>
-                      <TableCell className="border text-[10px] font-black uppercase text-blue-700 leading-tight">{route.scheduleDisplay}</TableCell>
-                      {isAuthorized && (
-                        <TableCell className="border text-center">
-                            <div className="flex justify-center gap-2">
-                                <Button size="icon" variant="outline" className="h-8 w-8 text-primary" onClick={() => handleOpenEditDialog(route)}><Edit className="h-4 w-4" /></Button>
-                                <Button size="icon" variant="outline" className="h-8 w-8 text-destructive" disabled><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                        </TableCell>
-                      )}
+                  {allRoutes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={isAuthorized ? 9 : 8} className="text-center py-12 text-muted-foreground">
+                        <Navigation className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        No routes found. Click "Add New Entry" to create a route.
+                      </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    allRoutes.map((route, idx) => (
+                      <TableRow key={route.id || idx} className="hover:bg-primary/[0.02] border-b transition-colors h-16">
+                        <TableCell className="border text-center font-mono text-xs">{idx + 1}</TableCell>
+                        <TableCell className="border text-[10px] font-bold uppercase">{route.block}</TableCell>
+                        <TableCell className="border font-mono text-[10px] font-black text-primary">{route.routeId}</TableCell>
+                        <TableCell className="border text-[10px] font-bold text-green-700 uppercase">{route.startingGp}</TableCell>
+                        <TableCell className="border text-[9px] font-medium italic text-muted-foreground leading-tight">
+                          {route.intermediateGps?.length > 0 ? route.intermediateGps.join(' → ') : 'Direct'}
+                        </TableCell>
+                        <TableCell className="border">
+                          <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-primary">
+                            <Anchor className="h-3 w-3" />
+                            {route.destination}
+                          </div>
+                        </TableCell>
+                        <TableCell className="border text-right font-mono font-black text-xs text-primary">{route.totalDistance}</TableCell>
+                        <TableCell className="border text-[10px] font-black uppercase text-blue-700 leading-tight">{route.scheduleDisplay}</TableCell>
+                        {isAuthorized && (
+                          <TableCell className="border text-center">
+                            <div className="flex justify-center gap-2">
+                              <Button 
+                                size="icon" 
+                                variant="outline" 
+                                className="h-8 w-8 text-primary hover:bg-primary/10" 
+                                onClick={() => handleOpenEditDialog(route)}
+                                disabled={isSubmitting}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                size="icon" 
+                                variant="outline" 
+                                className="h-8 w-8 text-destructive hover:bg-destructive/10" 
+                                onClick={() => handleDelete(route)}
+                                disabled={isDeleting === route.id}
+                              >
+                                {isDeleting === route.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -220,15 +664,118 @@ function DistrictRoutePlanningContent() {
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle className="text-xl font-black uppercase text-primary">Edit Route Plan</DialogTitle></DialogHeader>
-            <div className="grid grid-cols-2 gap-6 py-6">
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Starting GP</Label><Input value={formData.startingGp} onChange={e => setFormData({...formData, startingGp: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Final GP</Label><Input value={formData.finalGp} onChange={e => setFormData({...formData, finalGp: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Destination (MRF)</Label><Input value={formData.destination} onChange={e => setFormData({...formData, destination: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Distance (Km)</Label><Input type="number" value={formData.totalDistance} onChange={e => setFormData({...formData, totalDistance: e.target.value})} /></div>
-                <div className="space-y-2 col-span-2"><Label className="text-[10px] font-black uppercase">Schedule</Label><Input value={formData.scheduleDisplay} onChange={e => setFormData({...formData, scheduleDisplay: e.target.value})} /></div>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black uppercase text-primary">
+              {editingRoute ? 'Edit Route Plan' : 'Add New Route Plan'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingRoute 
+                ? `Editing route ${editingRoute.routeId}. Changes will sync across all portals.` 
+                : 'Add new route plan. This will be available across district, block, and driver portals.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-6 py-6">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase">Block Name *</Label>
+              <Input 
+                value={formData.block} 
+                onChange={e => setFormData({...formData, block: e.target.value})} 
+                placeholder="Enter block name"
+                disabled={!!editingRoute}
+              />
             </div>
-            <DialogFooter><Button onClick={handleSubmit} className="font-black uppercase px-8">Sync Route</Button></DialogFooter>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase">ULB Name</Label>
+              <Input 
+                value={formData.ulbName} 
+                onChange={e => setFormData({...formData, ulbName: e.target.value})} 
+                placeholder="Urban Local Body name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase">Route ID *</Label>
+              <Input 
+                value={formData.routeId} 
+                onChange={e => setFormData({...formData, routeId: e.target.value})} 
+                placeholder="Unique route identifier"
+                disabled={!!editingRoute}
+              />
+              {editingRoute && <p className="text-[8px] text-muted-foreground">Route ID cannot be changed after creation</p>}
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase">Route Abbreviation</Label>
+              <Input 
+                value={formData.routeAbbreviation} 
+                onChange={e => setFormData({...formData, routeAbbreviation: e.target.value})} 
+                placeholder="Short code for route"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase">Starting GP *</Label>
+              <Input 
+                value={formData.startingGp} 
+                onChange={e => setFormData({...formData, startingGp: e.target.value})} 
+                placeholder="Starting Gram Panchayat"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase">Final GP</Label>
+              <Input 
+                value={formData.finalGp} 
+                onChange={e => setFormData({...formData, finalGp: e.target.value})} 
+                placeholder="Final Gram Panchayat"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase">Destination (MRF) *</Label>
+              <Input 
+                value={formData.destination} 
+                onChange={e => setFormData({...formData, destination: e.target.value})} 
+                placeholder="Material Recovery Facility"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase">Total Distance (km) *</Label>
+              <Input 
+                type="number" 
+                step="0.1"
+                value={formData.totalDistance} 
+                onChange={e => setFormData({...formData, totalDistance: e.target.value})} 
+                placeholder="Distance in kilometers"
+              />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label className="text-[10px] font-black uppercase">Intermediate GPs (comma separated)</Label>
+              <Input 
+                value={formData.intermediateGps} 
+                onChange={e => setFormData({...formData, intermediateGps: e.target.value})} 
+                placeholder="GP1, GP2, GP3"
+              />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label className="text-[10px] font-black uppercase">Collection Schedule *</Label>
+              <Input 
+                value={formData.scheduleDisplay} 
+                onChange={e => setFormData({...formData, scheduleDisplay: e.target.value})} 
+                placeholder="e.g., Monday, 1st, 15th, 1st week Friday"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="font-black uppercase px-8">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                editingRoute ? 'Update Route' : 'Save Route'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -236,5 +783,16 @@ function DistrictRoutePlanningContent() {
 }
 
 export default function DistrictRoutePlanningPage() {
-  return (<Suspense fallback={<div>Loading...</div>}><DistrictRoutePlanningContent /></Suspense>);
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Loading route planning portal...</p>
+        </div>
+      </div>
+    }>
+      <DistrictRoutePlanningContent />
+    </Suspense>
+  );
 }
