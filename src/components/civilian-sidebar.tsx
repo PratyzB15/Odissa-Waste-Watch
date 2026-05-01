@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -57,7 +56,7 @@ export function CivilianSidebar({ isMobile = false }: { isMobile?: boolean }) {
               )}
             >
               <Icon className="h-4 w-4" />
-              {label}
+              <span className="truncate">{label}</span>
             </Link>
           ))}
           <Separator className="my-2" />
