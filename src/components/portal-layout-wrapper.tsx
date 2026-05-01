@@ -26,6 +26,16 @@ export function PortalLayoutWrapper({
     return () => window.removeEventListener('popstate', handleRouteChange);
   }, []);
 
+  // Function to render sidebar with isMobile=true for mobile view
+  const renderMobileSidebar = () => {
+    // Check if sidebarContent is a React element and has a type that is a function/component
+    if (React.isValidElement(sidebarContent)) {
+      // Clone the element and add isMobile={true} prop
+      return React.cloneElement(sidebarContent as React.ReactElement<any>, { isMobile: true });
+    }
+    return sidebarContent;
+  };
+
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
       {/* Desktop Sidebar - Hidden on mobile */}
@@ -55,8 +65,7 @@ export function PortalLayoutWrapper({
                     </SheetClose>
                   </div>
                   <div className="flex-1 overflow-y-auto" onClick={() => setOpen(false)}>
-                    {/* IMPORTANT: Directly render the sidebar content */}
-                    {sidebarContent}
+                    {renderMobileSidebar()}
                   </div>
                 </div>
               </SheetContent>
