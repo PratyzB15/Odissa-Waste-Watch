@@ -82,3 +82,28 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mobile sidebar fix */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Fix for mobile viewport */
+html, body {
+  overflow-x: hidden;
+  position: relative;
+  width: 100%;
+}
+
+/* Ensure proper stacking context */
+#__next, .main-layout {
+  position: relative;
+  width: 100%;
+  overflow-x: hidden;
+}

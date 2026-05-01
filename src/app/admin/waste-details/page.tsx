@@ -70,7 +70,6 @@ interface WasteRecord {
 }
 
 function StateWasteReconciliationContent() {
-  const [mounted, setMounted] = useState(false);
   const [records, setRecords] = useState<WasteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const db = useFirestore();
@@ -86,7 +85,7 @@ function StateWasteReconciliationContent() {
     return districts.sort();
   }, []);
 
-  // For each district, get its associated blocks (pre-built cards)
+  // For each district, get its associated blocks
   const districtToBlocksMap = useMemo(() => {
     const map = new Map<string, string[]>();
     allDistricts.forEach(district => {
@@ -152,7 +151,7 @@ function StateWasteReconciliationContent() {
     return () => unsubscribe();
   }, [db]);
 
-  // Calculate state baseline average from GP Information pages
+  // Calculate state baseline average
   const stateBaselineAvg = useMemo(() => {
     const districtSources = [ 
       angulDistrictData, balangirDistrictData, bhadrakDistrictData, bargarhDistrictData, 
@@ -195,14 +194,15 @@ function StateWasteReconciliationContent() {
       cloth: acc.cloth + (curr.cloth || 0),
       glass: acc.glass + (curr.glass || 0),
       sanitation: acc.sanitation + (curr.sanitation || 0),
-      others: acc.others + (curr.others || 0)
+      others: acc.others + (curr.others || 0),
+      count: acc.count + 1
     }), { 
       totalFromGPs: 0, driverSubmitted: 0, discrepancy: 0, 
-      plastic: 0, paper: 0, metal: 0, cloth: 0, glass: 0, sanitation: 0, others: 0 
+      plastic: 0, paper: 0, metal: 0, cloth: 0, glass: 0, sanitation: 0, others: 0, count: 0
     });
   };
 
-  if (!mounted || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-4">
@@ -363,9 +363,11 @@ function StateWasteReconciliationContent() {
                                                         <TableCell className="border-r font-mono text-center font-bold">{row.date}</TableCell>
                                                         <TableCell className="border-r font-black text-primary uppercase text-center">{row.routeId}</TableCell>
                                                         <TableCell className="border-r font-bold uppercase text-center">{row.mrf}</TableCell>
-                                                        <TableCell className="border-r font-bold uppercase text-center flex items-center justify-center gap-1">
-                                                          <Building className="h-3 w-3 text-primary" />
-                                                          {row.ulb || 'N/A'}
+                                                        <TableCell className="border-r font-bold uppercase text-center">
+                                                          <div className="flex items-center justify-center gap-1">
+                                                            <Building className="h-3 w-3 text-primary" />
+                                                            {row.ulb || 'N/A'}
+                                                          </div>
                                                         </TableCell>
                                                         <TableCell className="border-r text-center">
                                                           <Popover>
@@ -537,7 +539,10 @@ function StateWasteReconciliationContent() {
                     </TableHeader>
                     <TableBody>
                       {(() => {
-                        const yearly = records.filter(r => new Date(r.date).getFullYear().toString() === year);
+                        const yearly = records.filter(r => {
+                          if (!r.date) return false;
+                          return new Date(r.date).getFullYear().toString() === year;
+                        });
                         if (yearly.length === 0) {
                           return <TableRow><TableCell colSpan={9} className="h-48 text-center italic font-black uppercase tracking-[0.3em] opacity-10 text-2xl">Awaiting Annual Audit Cycle</TableCell></TableRow>;
                         }
@@ -586,14 +591,13 @@ function StateWasteReconciliationContent() {
 }
 
 export default function StateWasteDetailsPage() {
-  useEffect(() => { setMounted(true); }, []);
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-96"><Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" /></div>}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+      </div>
+    }>
       <StateWasteReconciliationContent />
     </Suspense>
   );
-}
-
-function setMounted(arg0: boolean) {
-  throw new Error("Function not implemented.");
 }

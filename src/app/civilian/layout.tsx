@@ -1,18 +1,12 @@
 'use client';
 
 import { CivilianSidebar } from '@/components/civilian-sidebar';
+import { PortalLayoutWrapper } from '@/components/portal-layout-wrapper';
+import { User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import { Menu, User, LogOut } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
 
 function CivilianLayoutContent({ children }: { children: React.ReactNode; }) {
   const router = useRouter();
@@ -42,58 +36,36 @@ function CivilianLayoutContent({ children }: { children: React.ReactNode; }) {
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-background text-foreground">
-      <CivilianSidebar />
-      <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6 lg:justify-end">
-          <div className="lg:hidden">
-            {mounted && (
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Menu className="h-5 w-5" />
-                    <span className="sr-only">Toggle navigation menu</span>
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="p-0">
-                  <SheetHeader className="sr-only">
-                    <SheetTitle>Personnel Menu</SheetTitle>
-                  </SheetHeader>
-                  <CivilianSidebar isMobile={true} />
-                </SheetContent>
-              </Sheet>
-            )}
-            {!mounted && (
-              <Button variant="outline" size="icon" disabled>
-                <Menu className="h-5 w-5" />
-              </Button>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <User className="h-9 w-9 p-1.5 rounded-full bg-muted text-muted-foreground border-2 border-primary/20"/>
-              <div className="text-sm">
-                <p className="font-black uppercase tracking-tight text-foreground">{name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                    <Badge variant="default" className="text-[7px] h-3 px-1 font-black uppercase tracking-widest">{formatRoleLabel(role)}</Badge>
-                    {block && <Badge variant="secondary" className="text-[8px] py-0 font-bold">{block}</Badge>}
-                </div>
+    <PortalLayoutWrapper sidebarContent={<CivilianSidebar />} title="Personnel Portal">
+      {/* Header - Only visible on desktop */}
+      <div className="hidden lg:flex sticky top-0 z-40 h-16 items-center justify-end border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <User className="h-9 w-9 p-1.5 rounded-full bg-muted text-muted-foreground border-2 border-primary/20" />
+            <div className="text-sm">
+              <p className="font-black uppercase tracking-tight text-foreground">{name}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <Badge variant="default" className="text-[7px] h-3 px-1 font-black uppercase tracking-widest">{formatRoleLabel(role)}</Badge>
+                {block && <Badge variant="secondary" className="text-[8px] py-0 font-bold">{block}</Badge>}
               </div>
             </div>
-             <Button variant="outline" size="icon" onClick={handleLogout} title="Logout" className="hover:bg-destructive hover:text-white transition-colors">
-              <LogOut className="h-4 w-4" />
-            </Button>
           </div>
-        </header>
-        <main className="flex-1 p-4 md:p-6">{children}</main>
-        <footer className="border-t py-4 px-6 text-center text-sm text-muted-foreground">
-          <p>&copy; {year} Government of Odisha. All Rights Reserved.</p>
-        </footer>
+          <Button variant="outline" size="icon" onClick={handleLogout} title="Logout" className="hover:bg-destructive hover:text-white transition-colors">
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
-    </div>
+      
+      {/* Main Content */}
+      {children}
+      
+      {/* Footer */}
+      <footer className="border-t py-4 px-6 text-center text-sm text-muted-foreground mt-auto">
+        <p>&copy; {year} Government of Odisha. All Rights Reserved.</p>
+      </footer>
+    </PortalLayoutWrapper>
   );
 }
-
 
 export default function CivilianLayout({
   children,
