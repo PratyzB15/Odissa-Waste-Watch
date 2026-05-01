@@ -522,7 +522,7 @@ placeholder="your-email@example.com"
 </FormControl>
 <FormMessage/>
 <FormLabel className="text-xs text-muted-foreground mt-1">
-Allowed emails: 2305133@kiit.ac.in, pratyushahiya2005@gmail.com, yogendra1yogi@gmail.com, dwsm.drdaboudh@gmail.com (Boudh district only)
+Only authorized official emails are permitted. 
 </FormLabel>
 </FormItem>
 )}

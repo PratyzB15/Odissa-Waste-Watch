@@ -155,7 +155,7 @@ export default function AdminLoginPage() {
                 disabled={isLoading}
               />
               <p className="text-[10px] text-muted-foreground font-medium">
-                Only authorized admin emails are permitted: 2305133@kiit.ac.in, pratyushahiya2005@gmail.com, yogendra1yogi@gmail.com
+                Only authorized admin emails are permitted. Please use your official government email address.
               </p>
             </div>
 
