@@ -581,84 +581,82 @@ function DistrictRoutePlanningContent() {
           </div>
         </CardHeader>
         <CardContent className="pt-6">
-          <ScrollArea className="w-full">
-            <div className="min-w-[1800px]">
-              <Table className="border-collapse border">
-                <TableHeader className="bg-muted/80">
+          {/* Removed ScrollArea and min-width to allow natural fit */}
+          <div className="w-full overflow-x-auto">
+            <Table className="w-full min-w-[800px] table-auto">
+              <TableHeader className="bg-muted/80">
+                <TableRow>
+                  <TableHead className="w-[50px] text-center border font-black text-[10px] uppercase tracking-widest">S.No.</TableHead>
+                  <TableHead className="w-[150px] border font-black text-[10px] uppercase tracking-widest">Block Name</TableHead>
+                  <TableHead className="w-[100px] border font-black text-[10px] uppercase tracking-widest">Route ID</TableHead>
+                  <TableHead className="w-[150px] border font-black text-[10px] uppercase tracking-widest">Starting GP</TableHead>
+                  <TableHead className="w-[200px] border font-black text-[10px] uppercase tracking-widest">Intermediate GPs</TableHead>
+                  <TableHead className="w-[150px] border font-black text-[10px] uppercase tracking-widest">Destination (MRF)</TableHead>
+                  <TableHead className="w-[70px] border font-black text-[10px] uppercase tracking-widest text-right">Dist. (Km)</TableHead>
+                  <TableHead className="w-[180px] border font-black text-[10px] uppercase tracking-widest">Schedule</TableHead>
+                  {isAuthorized && <TableHead className="w-[80px] border font-black text-[10px] uppercase tracking-widest text-center">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allRoutes.length === 0 ? (
                   <TableRow>
-                    <TableHead className="w-[60px] text-center border font-black text-[9px] uppercase tracking-widest">S.No.</TableHead>
-                    <TableHead className="w-[180px] border font-black text-[9px] uppercase tracking-widest">Block Name</TableHead>
-                    <TableHead className="w-[150px] border font-black text-[9px] uppercase tracking-widest">Route ID</TableHead>
-                    <TableHead className="w-[200px] border font-black text-[9px] uppercase tracking-widest">Starting GP</TableHead>
-                    <TableHead className="w-[300px] border font-black text-[9px] uppercase tracking-widest">Intermediate GPs</TableHead>
-                    <TableHead className="w-[180px] border font-black text-[9px] uppercase tracking-widest">Destination (MRF)</TableHead>
-                    <TableHead className="w-[100px] border font-black text-[9px] uppercase tracking-widest text-right">Dist. (Km)</TableHead>
-                    <TableHead className="w-[180px] border font-black text-[9px] uppercase tracking-widest">Schedule</TableHead>
-                    {isAuthorized && <TableHead className="w-[120px] border font-black text-[9px] uppercase tracking-widest text-center">Actions</TableHead>}
+                    <TableCell colSpan={isAuthorized ? 9 : 8} className="text-center py-12 text-muted-foreground">
+                      <Navigation className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      No routes found. Click "Add New Entry" to create a route.
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {allRoutes.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={isAuthorized ? 9 : 8} className="text-center py-12 text-muted-foreground">
-                        <Navigation className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        No routes found. Click "Add New Entry" to create a route.
+                ) : (
+                  allRoutes.map((route, idx) => (
+                    <TableRow key={route.id || idx} className="hover:bg-primary/[0.02] border-b transition-colors">
+                      <TableCell className="border text-center font-mono text-xs p-2">{idx + 1}</TableCell>
+                      <TableCell className="border text-[11px] font-bold uppercase p-2 break-words">{route.block}</TableCell>
+                      <TableCell className="border font-mono text-[11px] font-black text-primary p-2 break-words">{route.routeId}</TableCell>
+                      <TableCell className="border text-[11px] font-bold text-green-700 uppercase p-2 break-words">{route.startingGp}</TableCell>
+                      <TableCell className="border text-[10px] font-medium italic text-muted-foreground p-2">
+                        {route.intermediateGps?.length > 0 ? route.intermediateGps.join(' → ') : 'Direct'}
                       </TableCell>
-                    </TableRow>
-                  ) : (
-                    allRoutes.map((route, idx) => (
-                      <TableRow key={route.id || idx} className="hover:bg-primary/[0.02] border-b transition-colors h-16">
-                        <TableCell className="border text-center font-mono text-xs">{idx + 1}</TableCell>
-                        <TableCell className="border text-[10px] font-bold uppercase">{route.block}</TableCell>
-                        <TableCell className="border font-mono text-[10px] font-black text-primary">{route.routeId}</TableCell>
-                        <TableCell className="border text-[10px] font-bold text-green-700 uppercase">{route.startingGp}</TableCell>
-                        <TableCell className="border text-[9px] font-medium italic text-muted-foreground leading-tight">
-                          {route.intermediateGps?.length > 0 ? route.intermediateGps.join(' → ') : 'Direct'}
-                        </TableCell>
-                        <TableCell className="border">
-                          <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-primary">
-                            <Anchor className="h-3 w-3" />
-                            {route.destination}
+                      <TableCell className="border p-2">
+                        <div className="flex items-center gap-1 text-[11px] font-black uppercase text-primary">
+                          <Anchor className="h-3 w-3 shrink-0" />
+                          <span className="break-words">{route.destination}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="border text-right font-mono font-black text-xs text-primary p-2">{route.totalDistance}</TableCell>
+                      <TableCell className="border text-[10px] font-black uppercase text-blue-700 p-2 break-words leading-tight">{route.scheduleDisplay}</TableCell>
+                      {isAuthorized && (
+                        <TableCell className="border text-center p-2">
+                          <div className="flex justify-center gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-7 w-7 p-0 text-primary hover:bg-primary/10" 
+                              onClick={() => handleOpenEditDialog(route)}
+                              disabled={isSubmitting}
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" 
+                              onClick={() => handleDelete(route)}
+                              disabled={isDeleting === route.id}
+                            >
+                              {isDeleting === route.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
                           </div>
                         </TableCell>
-                        <TableCell className="border text-right font-mono font-black text-xs text-primary">{route.totalDistance}</TableCell>
-                        <TableCell className="border text-[10px] font-black uppercase text-blue-700 leading-tight">{route.scheduleDisplay}</TableCell>
-                        {isAuthorized && (
-                          <TableCell className="border text-center">
-                            <div className="flex justify-center gap-2">
-                              <Button 
-                                size="icon" 
-                                variant="outline" 
-                                className="h-8 w-8 text-primary hover:bg-primary/10" 
-                                onClick={() => handleOpenEditDialog(route)}
-                                disabled={isSubmitting}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                size="icon" 
-                                variant="outline" 
-                                className="h-8 w-8 text-destructive hover:bg-destructive/10" 
-                                onClick={() => handleDelete(route)}
-                                disabled={isDeleting === route.id}
-                              >
-                                {isDeleting === route.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+                      )}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

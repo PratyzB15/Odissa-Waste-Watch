@@ -32,7 +32,6 @@ import { malkangiriDistrictData } from "@/lib/disMalkangiri";
 import { mrfData } from "@/lib/mrf-data";
 import { Navigation, Anchor, PlusCircle, Edit, Trash2, Loader2, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,7 +70,6 @@ interface Route {
 const getScheduleSortOrder = (schedule: string): number => {
   const scheduleLower = schedule.toLowerCase().trim();
   
-  // Weekday mapping (Monday = 1, Sunday = 7)
   const weekdays: Record<string, number> = {
     'monday': 1,
     'tuesday': 2,
@@ -82,12 +80,10 @@ const getScheduleSortOrder = (schedule: string): number => {
     'sunday': 7
   };
   
-  // Check if it's a weekday
   if (weekdays[scheduleLower]) {
     return weekdays[scheduleLower];
   }
   
-  // Check for "1st week friday", "2nd week monday", etc.
   const weekPattern = /(\d+)(?:st|nd|rd|th)\s+week\s+(\w+)/i;
   const weekMatch = scheduleLower.match(weekPattern);
   if (weekMatch) {
@@ -97,7 +93,6 @@ const getScheduleSortOrder = (schedule: string): number => {
     return 100 + (weekNum * 10) + dayOrder;
   }
   
-  // Check for "Friday of 1st week", "Monday of 2nd week" pattern
   const weekOfPattern = /(\w+)\s+of\s+(\d+)(?:st|nd|rd|th)\s+week/i;
   const weekOfMatch = scheduleLower.match(weekOfPattern);
   if (weekOfMatch) {
@@ -107,21 +102,18 @@ const getScheduleSortOrder = (schedule: string): number => {
     return 100 + (weekNum * 10) + dayOrder;
   }
   
-  // Check for date patterns (1st, 2nd, 3rd, 4th, 5th, 15th, etc.)
   const dateMatch = scheduleLower.match(/(\d+)(?:st|nd|rd|th)/);
   if (dateMatch) {
     const dateNum = parseInt(dateMatch[1]);
     return 200 + dateNum;
   }
   
-  // Check for hyphenated dates (e.g., "1-15", "16-30")
   const rangeMatch = scheduleLower.match(/^(\d+)-(\d+)$/);
   if (rangeMatch) {
     const startDate = parseInt(rangeMatch[1]);
     return 300 + startDate;
   }
   
-  // Check for "first", "second", "third", "fourth" week patterns
   const weekNamePattern = /(first|second|third|fourth)\s+(\w+)/i;
   const weekNameMatch = scheduleLower.match(weekNamePattern);
   if (weekNameMatch) {
@@ -132,23 +124,18 @@ const getScheduleSortOrder = (schedule: string): number => {
     return 100 + (weekNum * 10) + dayOrder;
   }
   
-  // Default - put at the end
   return 999;
 };
 
-// Sort routes by block first, then by schedule order
 const sortRoutes = (routes: Route[]): Route[] => {
   return [...routes].sort((a, b) => {
-    // First sort by block name
     const blockCompare = (a.block || '').localeCompare(b.block || '');
     if (blockCompare !== 0) return blockCompare;
     
-    // Then sort by collection schedule using custom order
     const aOrder = getScheduleSortOrder(a.scheduledOn || '');
     const bOrder = getScheduleSortOrder(b.scheduledOn || '');
     if (aOrder !== bOrder) return aOrder - bOrder;
     
-    // Finally sort by route ID if both block and schedule are the same
     return (a.routeId || '').localeCompare(b.routeId || '');
   });
 };
@@ -169,7 +156,6 @@ function PersonnelDetailsContent() {
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [dataInitialized, setDataInitialized] = useState(false);
     
-    // Form State
     const [formData, setFormData] = useState({
         taggedMrf: '',
         routeId: '',
@@ -183,7 +169,6 @@ function PersonnelDetailsContent() {
         scheduledOn: ''
     });
 
-    // Get local routes based on district and block (Fallback data)
     const localRoutes = useMemo((): Route[] => {
         if (!blockName) return [];
         
@@ -203,7 +188,6 @@ function PersonnelDetailsContent() {
         
         let initialRoutes: any[] = [];
         
-        // Try to get routes from the source - check multiple locations
         if (source && source.routePlanData) {
             initialRoutes = source.routePlanData;
         } else if (source && source.data && source.data.routes) {
@@ -217,7 +201,6 @@ function PersonnelDetailsContent() {
             }
         }
         
-        // Filter routes by block name - case insensitive comparison
         let filteredRoutes = initialRoutes;
         if (filteredRoutes.length > 0 && filteredRoutes[0] && filteredRoutes[0].block) {
             filteredRoutes = filteredRoutes.filter((route: any) => {
@@ -226,9 +209,6 @@ function PersonnelDetailsContent() {
             });
         }
         
-        console.log(`Local routes for block ${blockName}:`, filteredRoutes);
-        
-        // Get MRF record for this block
         const mrfRecord = mrfData.find(m => m.blockCovered?.toLowerCase() === blockName?.toLowerCase());
         const defaultTaggedMrf = mrfRecord?.mrfId || (filteredRoutes[0]?.destination || 'District Facility');
         
@@ -252,7 +232,6 @@ function PersonnelDetailsContent() {
         }));
     }, [blockName, district]);
 
-    // Real-time Firestore listener
     useEffect(() => {
         if (!db || !blockName) {
             setLoading(false);
@@ -315,7 +294,6 @@ function PersonnelDetailsContent() {
         return () => unsubscribe();
     }, [db, blockName, toast, dataInitialized]);
 
-    // Merge local routes with Firestore routes and sort
     const allRoutes = useMemo((): Route[] => {
         const firestoreMap = new Map();
         firestoreRoutes.forEach(route => {
@@ -330,13 +308,9 @@ function PersonnelDetailsContent() {
             }
         });
         
-        console.log(`All routes for ${blockName}:`, mergedRoutes);
-        
-        // Sort routes by block and schedule order
         return sortRoutes(mergedRoutes);
     }, [localRoutes, firestoreRoutes, blockName]);
 
-    // Sync local routes to Firestore on first load
     const syncLocalToFirestore = useCallback(async () => {
         if (!db || !blockName || syncing || firestoreRoutes.length > 0) return;
         
@@ -389,7 +363,6 @@ function PersonnelDetailsContent() {
         }
     }, [db, blockName, district, localRoutes, firestoreRoutes.length, syncing, toast]);
 
-    // Auto-sync local data to Firestore
     useEffect(() => {
         if (!loading && dataInitialized && firestoreRoutes.length === 0 && localRoutes.length > 0 && !syncing) {
             syncLocalToFirestore();
@@ -650,23 +623,22 @@ function PersonnelDetailsContent() {
             </Card>
 
             <Card className="border-2 shadow-md">
-                <CardContent className="p-0 overflow-hidden">
-                    <ScrollArea className="w-full">
-                      <div className="min-w-[1700px]">
-                        <Table className="border-collapse">
+                <CardContent className="p-0">
+                    <div className="w-full overflow-x-auto">
+                        <Table className="w-full min-w-[900px] table-auto">
                             <TableHeader className="bg-muted/80">
                                 <TableRow>
-                                    <TableHead className="w-[180px] uppercase text-[9px] font-black tracking-widest border">Tagged MRF</TableHead>
-                                    <TableHead className="w-[150px] uppercase text-[9px] font-black tracking-widest border">Route ID</TableHead>
-                                    <TableHead className="w-[150px] uppercase text-[9px] font-black tracking-widest border">Route Name (Abbr.)</TableHead>
-                                    <TableHead className="w-[150px] uppercase text-[9px] font-black tracking-widest border">Starting GP</TableHead>
-                                    <TableHead className="w-[200px] uppercase text-[9px] font-black tracking-widest border">Intermediate GPs</TableHead>
-                                    <TableHead className="w-[150px] uppercase text-[9px] font-black tracking-widest border">Last/Final GP</TableHead>
-                                    <TableHead className="w-[180px] uppercase text-[9px] font-black tracking-widest border">Destination (MRF)</TableHead>
-                                    <TableHead className="w-[80px] text-right uppercase text-[9px] font-black tracking-widest border">Dist. (Km)</TableHead>
-                                    <TableHead className="w-[300px] uppercase text-[9px] font-black tracking-widest border">Details of Sanitation Workers</TableHead>
-                                    <TableHead className="w-[180px] uppercase text-[9px] font-black tracking-widest border">Day of Collection</TableHead>
-                                    <TableHead className="w-[120px] uppercase text-[9px] font-black tracking-widest border text-center">Actions</TableHead>
+                                    <TableHead className="w-[100px] uppercase text-[11px] font-black tracking-widest border">Tagged MRF</TableHead>
+                                    <TableHead className="w-[90px] uppercase text-[11px] font-black tracking-widest border">Route ID</TableHead>
+                                    <TableHead className="w-[70px] uppercase text-[11px] font-black tracking-widest border">Abbr.</TableHead>
+                                    <TableHead className="w-[110px] uppercase text-[11px] font-black tracking-widest border">Starting GP</TableHead>
+                                    <TableHead className="w-[130px] uppercase text-[11px] font-black tracking-widest border">Intermediate GPs</TableHead>
+                                    <TableHead className="w-[100px] uppercase text-[11px] font-black tracking-widest border">Final GP</TableHead>
+                                    <TableHead className="w-[110px] uppercase text-[11px] font-black tracking-widest border">Destination</TableHead>
+                                    <TableHead className="w-[50px] text-right uppercase text-[11px] font-black tracking-widest border">Dist.</TableHead>
+                                    <TableHead className="w-[180px] uppercase text-[11px] font-black tracking-widest border">Workers</TableHead>
+                                    <TableHead className="w-[110px] uppercase text-[11px] font-black tracking-widest border">Collection Day</TableHead>
+                                    <TableHead className="w-[70px] uppercase text-[11px] font-black tracking-widest border text-center">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -680,75 +652,75 @@ function PersonnelDetailsContent() {
                                     allRoutes.map((route) => (
                                         <TableRow 
                                             key={route.id} 
-                                            className="hover:bg-primary/[0.01] transition-colors border-b last:border-0 h-24"
+                                            className="hover:bg-primary/[0.01] transition-colors border-b last:border-0"
                                         >
-                                            <TableCell className="border text-[10px] font-black text-primary uppercase leading-tight">
+                                            <TableCell className="border text-[11px] font-black text-primary uppercase p-2 break-words">
                                                 {route.taggedMrf || route.destination || 'N/A'}
                                             </TableCell>
-                                            <TableCell className="border font-mono text-[10px] font-bold text-foreground">
+                                            <TableCell className="border font-mono text-[11px] font-bold text-foreground p-2 break-words">
                                                 {route.routeId}
                                             </TableCell>
-                                            <TableCell className="border">
-                                                <Badge variant="outline" className="text-[9px] font-black border-primary/30 bg-primary/5">
+                                            <TableCell className="border p-2">
+                                                <Badge variant="outline" className="text-[10px] font-black border-primary/30 bg-primary/5 whitespace-nowrap">
                                                     {route.routeAbbreviation || route.routeId}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="border text-[10px] font-bold text-green-700 uppercase">
+                                            <TableCell className="border text-[11px] font-bold text-green-700 uppercase p-2 break-words">
                                                 {route.startingGp}
                                             </TableCell>
-                                            <TableCell className="border text-[9px] font-medium italic text-muted-foreground leading-tight">
+                                            <TableCell className="border text-[10px] font-medium italic text-muted-foreground p-2 break-words">
                                                 {route.intermediateGps?.length > 0 ? route.intermediateGps.join(' → ') : 'Direct'}
                                             </TableCell>
-                                            <TableCell className="border text-[10px] font-bold text-blue-700 uppercase">
+                                            <TableCell className="border text-[11px] font-bold text-blue-700 uppercase p-2 break-words">
                                                 {route.finalGp || route.destination}
                                             </TableCell>
-                                            <TableCell className="border">
-                                                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-primary">
-                                                    <Anchor className="h-3 w-3" />
-                                                    {route.destination}
+                                            <TableCell className="border p-2">
+                                                <div className="flex items-center gap-1 text-[11px] font-black uppercase text-primary">
+                                                    <Anchor className="h-3 w-3 shrink-0" />
+                                                    <span className="break-words">{route.destination}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="border text-right font-mono font-black text-xs text-primary">
+                                            <TableCell className="border text-right font-mono font-black text-xs text-primary p-2">
                                                 {route.totalDistance}
                                             </TableCell>
-                                            <TableCell className="border bg-muted/5">
+                                            <TableCell className="border bg-muted/5 p-2">
                                                 <div className="space-y-1">
                                                     {route.workers && route.workers.length > 0 ? (
                                                         route.workers.map((w, i) => (
                                                             <div key={i} className="text-[10px] font-bold leading-tight">
                                                                 <span className="text-primary uppercase">{w.name}</span>
-                                                                <span className="text-muted-foreground ml-1">({w.contact})</span>
+                                                                <span className="text-muted-foreground ml-1 text-[9px]">({w.contact})</span>
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <span className="text-muted-foreground italic">No workers assigned</span>
+                                                        <span className="text-muted-foreground italic text-[10px]">No workers</span>
                                                     )}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="border text-[10px] font-black uppercase text-blue-700 leading-tight">
+                                            <TableCell className="border text-[10px] font-black uppercase text-blue-700 p-2 break-words leading-tight">
                                                 {route.scheduledOn}
                                             </TableCell>
-                                            <TableCell className="border text-center">
-                                                <div className="flex justify-center gap-2">
+                                            <TableCell className="border text-center p-2">
+                                                <div className="flex justify-center gap-1">
                                                     <Button 
-                                                        size="icon" 
+                                                        size="sm" 
                                                         variant="outline" 
-                                                        className="h-8 w-8 text-primary hover:bg-primary/10" 
+                                                        className="h-7 w-7 p-0 text-primary hover:bg-primary/10" 
                                                         onClick={() => handleOpenEditDialog(route)}
                                                         disabled={saving}
                                                     >
-                                                        <Edit className="h-4 w-4" />
+                                                        <Edit className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button 
-                                                        size="icon" 
+                                                        size="sm" 
                                                         variant="outline" 
-                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10" 
+                                                        className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" 
                                                         onClick={() => handleDelete(route)}
                                                         disabled={deletingId === route.id}
                                                     >
                                                         {deletingId === route.id ? 
-                                                            <Loader2 className="h-4 w-4 animate-spin" /> : 
-                                                            <Trash2 className="h-4 w-4" />
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 
+                                                            <Trash2 className="h-3.5 w-3.5" />
                                                         }
                                                     </Button>
                                                 </div>
@@ -758,9 +730,7 @@ function PersonnelDetailsContent() {
                                 )}
                             </TableBody>
                         </Table>
-                      </div>
-                      <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
+                    </div>
                 </CardContent>
             </Card>
 

@@ -107,3 +107,96 @@ html, body {
   width: 100%;
   overflow-x: hidden;
 }
+
+/* ===== GLOBAL TABLE RESPONSIVENESS ===== */
+/* Make all tables fit within the window on desktop */
+@media (min-width: 1024px) {
+  /* Target all tables in the application */
+  table:not(.ignore-responsive) {
+    width: 100%;
+    table-layout: auto !important;
+    font-size: 0.8125rem !important; /* 13px - smaller font */
+  }
+  
+  /* Reduce padding on all table cells */
+  table:not(.ignore-responsive) th,
+  table:not(.ignore-responsive) td {
+    padding: 0.5rem 0.5rem !important;
+  }
+  
+  /* Make action buttons compact */
+  table:not(.ignore-responsive) button,
+  table:not(.ignore-responsive) .action-button {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.75rem !important;
+    white-space: nowrap !important;
+  }
+  
+  /* Prevent action column from wrapping */
+  table:not(.ignore-responsive) td:last-child,
+  table:not(.ignore-responsive) th:last-child {
+    white-space: nowrap !important;
+  }
+}
+
+/* For very large screens, make tables even more compact */
+@media (min-width: 1536px) {
+  table:not(.ignore-responsive) {
+    font-size: 0.875rem !important; /* 14px - back to normal on ultra-wide */
+  }
+  
+  table:not(.ignore-responsive) th,
+  table:not(.ignore-responsive) td {
+    padding: 0.625rem 0.75rem !important;
+  }
+}
+
+/* For smaller desktops (1024px to 1280px) - compress more */
+@media (min-width: 1024px) and (max-width: 1280px) {
+  table:not(.ignore-responsive) {
+    font-size: 0.75rem !important; /* 12px */
+  }
+  
+  table:not(.ignore-responsive) th,
+  table:not(.ignore-responsive) td {
+    padding: 0.375rem 0.375rem !important;
+  }
+  
+  /* Hide less important columns on smaller desktops */
+  table:not(.ignore-responsive) th:nth-child(5),
+  table:not(.ignore-responsive) td:nth-child(5),
+  table:not(.ignore-responsive) th:nth-child(6),
+  table:not(.ignore-responsive) td:nth-child(6) {
+    display: none;
+  }
+}
+
+/* Show horizontal scroll only if absolutely needed (very wide content) */
+@media (max-width: 1023px) {
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .table-responsive table {
+    min-width: 600px;
+  }
+}
+
+/* Specific fix for data tables and complaint tables */
+.data-table,
+.complaints-table,
+.workers-table,
+.grievances-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+@media (min-width: 1024px) {
+  .data-table,
+  .complaints-table,
+  .workers-table,
+  .grievances-table {
+    overflow-x: visible;
+  }
+}

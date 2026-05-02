@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { 
     ClipboardList, 
     PlusCircle, 
@@ -594,134 +593,132 @@ function OfficialWasteCollectionDetailsContent() {
           </div>
         </CardHeader>
         <CardContent className="pt-6">
-          <ScrollArea className="w-full">
-            <div className="min-w-[1800px]">
-              <Table className="border">
-                <TableHeader className="bg-muted/80">
+          {/* Responsive table with horizontal scroll only when needed */}
+          <div className="w-full overflow-x-auto">
+            <Table className="w-full min-w-[1000px] table-auto border">
+              <TableHeader className="bg-muted/80">
+                <TableRow>
+                  <TableHead className="w-[50px] border uppercase font-black text-[11px] tracking-widest">S.No.</TableHead>
+                  <TableHead className="w-[110px] border uppercase font-black text-[11px] tracking-widest">Block</TableHead>
+                  <TableHead className="w-[130px] border uppercase font-black text-[11px] tracking-widest">ULB</TableHead>
+                  <TableHead className="w-[110px] border uppercase font-black text-[11px] tracking-widest">MRF</TableHead>
+                  <TableHead className="w-[190px] border uppercase font-black text-[11px] tracking-widest text-center">Vehicle</TableHead>
+                  <TableHead className="w-[150px] border uppercase font-black text-[11px] tracking-widest text-center">Driver</TableHead>
+                  <TableHead className="w-[110px] border uppercase font-black text-[11px] tracking-widest">Collection Day</TableHead>
+                  <TableHead className="w-[70px] border uppercase font-black text-[11px] tracking-widest text-right">Load</TableHead>
+                  <TableHead className="w-[150px] border uppercase font-black text-[11px] tracking-widest">PEO Details</TableHead>
+                  <TableHead className="w-[150px] border uppercase font-black text-[11px] tracking-widest">ULB Operator</TableHead>
+                  {isAuthorized && <TableHead className="w-[70px] border uppercase font-black text-[11px] tracking-widest text-center">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allSchedules.length === 0 ? (
                   <TableRow>
-                    <TableHead className="w-[50px] border uppercase font-black text-[9px]">S.No.</TableHead>
-                    <TableHead className="w-[120px] border uppercase font-black text-[9px]">Block</TableHead>
-                    <TableHead className="w-[180px] border uppercase font-black text-[9px]">ULB</TableHead>
-                    <TableHead className="w-[150px] border uppercase font-black text-[9px]">MRF Node</TableHead>
-                    <TableHead className="w-[280px] border uppercase font-black text-[9px] text-center">Vehicle Details</TableHead>
-                    <TableHead className="w-[200px] border uppercase font-black text-[9px] text-center">Driver Details</TableHead>
-                    <TableHead className="w-[150px] border uppercase font-black text-[9px]">Collection Day</TableHead>
-                    <TableHead className="w-[100px] border uppercase font-black text-[9px] text-right">Load (Kg)</TableHead>
-                    <TableHead className="w-[250px] border uppercase font-black text-[9px]">PEO Details (GP)</TableHead>
-                    <TableHead className="w-[230px] border uppercase font-black text-[9px]">ULB Operator</TableHead>
-                    {isAuthorized && <TableHead className="w-[100px] border uppercase font-black text-[9px] text-center">Actions</TableHead>}
+                    <TableCell colSpan={isAuthorized ? 11 : 10} className="text-center py-12 text-muted-foreground">
+                      <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      No collection records found for {districtParam}{blockParam ? ` - ${blockParam} Block` : ''}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {allSchedules.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={isAuthorized ? 11 : 10} className="text-center py-12 text-muted-foreground">
-                        <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        No collection records found for {districtParam}{blockParam ? ` - ${blockParam} Block` : ''}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    allSchedules.map((item, idx) => {
-                      // Format driver details
-                      const driverItems = formatNamesWithContacts(item.driverName, item.driverContact);
-                      // Format PEO details
-                      const peoItems = formatNamesWithContacts(item.gpNodalPerson, item.gpNodalContact);
-                      // Format ULB Operator details
-                      const operatorItems = formatNamesWithContacts(item.ulbNodalPerson, item.ulbNodalContact);
-                      
-                      return (
-                        <TableRow key={item.id || idx} className="hover:bg-primary/[0.01] border-b h-auto min-h-20">
-                          <TableCell className="border text-center font-mono text-xs">{idx + 1}</TableCell>
-                          <TableCell className="border font-black text-[10px] uppercase">{item.block}</TableCell>
-                          <TableCell className="border font-bold text-[10px] uppercase text-primary leading-tight">{item.ulb}</TableCell>
-                          <TableCell className="border font-black text-[9px] uppercase">{item.mrf}</TableCell>
-                          <TableCell className="border text-[10px] text-center">
-                            <div className="space-y-0.5">
-                                <p className="font-bold uppercase text-foreground">{item.vehicleType}</p>
-                                <p className="font-mono text-[9px] text-muted-foreground">{item.vehicleNo} | {item.vehicleCapacity} Kg</p>
+                ) : (
+                  allSchedules.map((item, idx) => {
+                    // Format driver details
+                    const driverItems = formatNamesWithContacts(item.driverName, item.driverContact);
+                    // Format PEO details
+                    const peoItems = formatNamesWithContacts(item.gpNodalPerson, item.gpNodalContact);
+                    // Format ULB Operator details
+                    const operatorItems = formatNamesWithContacts(item.ulbNodalPerson, item.ulbNodalContact);
+                    
+                    return (
+                      <TableRow key={item.id || idx} className="hover:bg-primary/[0.01] border-b">
+                        <TableCell className="border text-center font-mono text-xs p-2">{idx + 1}</TableCell>
+                        <TableCell className="border font-black text-[11px] uppercase p-2 break-words">{item.block}</TableCell>
+                        <TableCell className="border font-bold text-[11px] uppercase text-primary p-2 break-words">{item.ulb}</TableCell>
+                        <TableCell className="border font-black text-[10px] uppercase p-2 break-words">{item.mrf}</TableCell>
+                        <TableCell className="border text-[11px] text-center p-2">
+                          <div className="space-y-0.5">
+                            <p className="font-bold uppercase text-foreground text-[11px]">{item.vehicleType}</p>
+                            <p className="font-mono text-[10px] text-muted-foreground break-words">{item.vehicleNo} | {item.vehicleCapacity} Kg</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="border text-center p-2">
+                          <div className="space-y-1">
+                            {driverItems.length > 0 ? (
+                              driverItems.map((d, i) => (
+                                <div key={i} className="text-[10px] font-bold">
+                                  <span className="uppercase">{d.name}</span>
+                                  <span className="text-primary font-mono ml-1 text-[9px]">({d.contact})</span>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground italic">No driver</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="border text-[11px] font-black text-blue-700 uppercase p-2 break-words">{item.collectionSchedule}</TableCell>
+                        <TableCell className="border text-right font-mono font-black text-primary text-xs p-2">{item.actualWasteKg.toLocaleString()}</TableCell>
+                        <TableCell className="border bg-blue-50/10 p-2">
+                          <div className="space-y-1">
+                            {peoItems.length > 0 ? (
+                              peoItems.map((p, i) => (
+                                <div key={i} className="text-[10px] font-bold">
+                                  <span className="uppercase text-primary">{p.name}</span>
+                                  <span className="text-muted-foreground font-mono ml-1 text-[9px]">({p.contact})</span>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground italic">No PEO</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="border bg-orange-50/5 p-2">
+                          <div className="space-y-1">
+                            {operatorItems.length > 0 ? (
+                              operatorItems.map((o, i) => (
+                                <div key={i} className="text-[10px] font-bold">
+                                  <span className="uppercase text-primary">{o.name}</span>
+                                  <span className="text-muted-foreground font-mono ml-1 text-[9px]">({o.contact})</span>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground italic">No operator</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        {isAuthorized && (
+                          <TableCell className="border text-center p-2">
+                            <div className="flex justify-center gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-7 w-7 p-0 text-primary hover:bg-primary/10" 
+                                onClick={() => handleOpenEditDialog(item)}
+                                disabled={isSubmitting}
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" 
+                                onClick={() => handleDelete(item)}
+                                disabled={isDeleting === item.id}
+                              >
+                                {isDeleting === item.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
                             </div>
                           </TableCell>
-                          <TableCell className="border text-center">
-                            <div className="space-y-1">
-                              {driverItems.length > 0 ? (
-                                driverItems.map((d, i) => (
-                                  <div key={i} className="text-[9px] font-bold">
-                                    <span className="uppercase">{d.name}</span>
-                                    <span className="text-primary font-mono ml-1">({d.contact})</span>
-                                  </div>
-                                ))
-                              ) : (
-                                <span className="text-[9px] text-muted-foreground italic">No driver assigned</span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="border text-[10px] font-black text-blue-700 uppercase">{item.collectionSchedule}</TableCell>
-                          <TableCell className="border text-right font-mono font-black text-primary text-xs">{item.actualWasteKg.toLocaleString()}</TableCell>
-                          <TableCell className="border bg-blue-50/10 p-2">
-                            <div className="space-y-1">
-                              {peoItems.length > 0 ? (
-                                peoItems.map((p, i) => (
-                                  <div key={i} className="text-[9px] font-bold">
-                                    <span className="uppercase text-primary">{p.name}</span>
-                                    <span className="text-muted-foreground font-mono ml-1">({p.contact})</span>
-                                  </div>
-                                ))
-                              ) : (
-                                <span className="text-[9px] text-muted-foreground italic">No PEO assigned</span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="border bg-orange-50/5 p-2">
-                            <div className="space-y-1">
-                              {operatorItems.length > 0 ? (
-                                operatorItems.map((o, i) => (
-                                  <div key={i} className="text-[9px] font-bold">
-                                    <span className="uppercase text-primary">{o.name}</span>
-                                    <span className="text-muted-foreground font-mono ml-1">({o.contact})</span>
-                                  </div>
-                                ))
-                              ) : (
-                                <span className="text-[9px] text-muted-foreground italic">No operator assigned</span>
-                              )}
-                            </div>
-                          </TableCell>
-                          {isAuthorized && (
-                            <TableCell className="border text-center">
-                              <div className="flex justify-center gap-1">
-                                <Button 
-                                  size="icon" 
-                                  variant="outline" 
-                                  className="h-7 w-7 text-primary hover:bg-primary/10" 
-                                  onClick={() => handleOpenEditDialog(item)}
-                                  disabled={isSubmitting}
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button 
-                                  size="icon" 
-                                  variant="outline" 
-                                  className="h-7 w-7 text-destructive hover:bg-destructive/10" 
-                                  onClick={() => handleDelete(item)}
-                                  disabled={isDeleting === item.id}
-                                >
-                                  {isDeleting === item.id ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-3 w-3" />
-                                  )}
-                                </Button>
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+                        )}
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

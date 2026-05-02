@@ -30,29 +30,35 @@ function OfficialLayoutContent({ children }: { children: React.ReactNode }) {
 
     return (
         <PortalLayoutWrapper sidebarContent={<OfficialSidebar />} title="Official Portal">
-            {/* Header - Only visible on desktop */}
-            <div className="hidden lg:flex sticky top-0 z-40 h-16 items-center justify-end border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6">
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3">
-                        <User className="h-9 w-9 p-1.5 rounded-full bg-muted text-muted-foreground" />
-                        <div className="text-sm">
-                            <p className="font-semibold">Welcome, {displayName.split('(')[0].trim()}</p>
-                            <p className="text-muted-foreground capitalize">{roleName}</p>
+            <div className="flex flex-col min-h-screen">
+                {/* Header - Only visible on desktop */}
+                <div className="hidden lg:flex sticky top-0 z-40 h-16 items-center justify-end border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6 shrink-0">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <User className="h-9 w-9 p-1.5 rounded-full bg-muted text-muted-foreground" />
+                            <div className="text-sm">
+                                <p className="font-semibold">Welcome, {displayName.split('(')[0].trim()}</p>
+                                <p className="text-muted-foreground capitalize">{roleName}</p>
+                            </div>
                         </div>
+                        <Button variant="outline" size="icon" onClick={handleLogout} title="Logout">
+                            <LogOut className="h-4 w-4" />
+                        </Button>
                     </div>
-                    <Button variant="outline" size="icon" onClick={handleLogout} title="Logout">
-                        <LogOut className="h-4 w-4" />
-                    </Button>
                 </div>
+                
+                {/* Main Content - Removed overflow-x-auto to allow natural fit */}
+                <main className="flex-1">
+                    <div className="w-full max-w-full overflow-x-auto lg:overflow-x-visible">
+                        {children}
+                    </div>
+                </main>
+                
+                {/* Footer */}
+                <footer className="border-t py-4 px-6 text-center text-sm text-muted-foreground mt-auto shrink-0">
+                    <p>&copy; {year} Government of Odisha. All Rights Reserved.</p>
+                </footer>
             </div>
-            
-            {/* Main Content */}
-            {children}
-            
-            {/* Footer */}
-            <footer className="border-t py-4 px-6 text-center text-sm text-muted-foreground mt-auto">
-                <p>&copy; {year} Government of Odisha. All Rights Reserved.</p>
-            </footer>
         </PortalLayoutWrapper>
     );
 }
@@ -63,7 +69,7 @@ export default function OfficialLayout({
     children: React.ReactNode;
 }) {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
             <OfficialLayoutContent>{children}</OfficialLayoutContent>
         </Suspense>
     );

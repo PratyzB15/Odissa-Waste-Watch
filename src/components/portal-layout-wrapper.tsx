@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
 interface PortalLayoutWrapperProps {
@@ -36,14 +36,14 @@ export function PortalLayoutWrapper({
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:block shrink-0">
         {sidebarContent}
       </div>
       
       {/* Mobile Layout */}
-      <div className="flex flex-1 flex-col w-full">
+      <div className="flex flex-1 flex-col w-full min-w-0">
         {/* Mobile Header with Menu Button */}
-        <div className="lg:hidden sticky top-0 z-40 bg-background border-b">
+        <div className="lg:hidden sticky top-0 z-40 bg-background border-b shrink-0">
           <div className="flex items-center h-16 px-4">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
@@ -52,15 +52,13 @@ export function PortalLayoutWrapper({
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="p-0 w-80 z-[100]">
-                {/* ONLY ONE CROSS BUTTON - closes sidebar when clicked */}
+                {/* ONLY ONE CROSS BUTTON - Using SheetClose */}
                 <div className="flex justify-end p-4 border-b">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setOpen(false)}
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
+                  <SheetClose asChild>
+                    <Button variant="ghost" size="icon">
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </SheetClose>
                 </div>
                 <div className="flex-1 overflow-y-auto" onClick={() => setOpen(false)}>
                   {renderMobileSidebar()}
@@ -74,9 +72,11 @@ export function PortalLayoutWrapper({
           </div>
         </div>
         
-        {/* Main Content Area */}
-        <main className={cn("flex-1 p-4 md:p-6", className)}>
-          {children}
+        {/* Main Content Area - Fit to window on desktop, scroll only on mobile if needed */}
+        <main className={cn("flex-1", className)}>
+          <div className="w-full max-w-full overflow-x-auto lg:overflow-x-visible">
+            {children}
+          </div>
         </main>
       </div>
     </div>
