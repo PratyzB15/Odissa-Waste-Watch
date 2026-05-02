@@ -7,7 +7,6 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState, Suspense, useEffect, useCallback, useRef } from 'react';
 import { Truck, Users, Phone, Navigation, Anchor, Edit, Trash2, PlusCircle, Save, Loader2, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -534,23 +533,23 @@ function UlbPersonnelDetailsContent() {
             </Card>
 
             <Card className="border-2 shadow-md">
-                <CardContent className="p-0 overflow-hidden">
-                    <ScrollArea className="w-full">
-                      <div className="min-w-[1700px]">
-                        <Table className="border-collapse">
+                <CardContent className="p-0">
+                    {/* Removed ScrollArea and min-width to allow natural fit */}
+                    <div className="w-full overflow-x-auto">
+                        <Table className="w-full min-w-[1000px] table-auto border-collapse">
                             <TableHeader className="bg-muted/80">
                                 <TableRow>
-                                    <TableHead className="w-[180px] uppercase text-[9px] font-black tracking-widest border">Block / MRF</TableHead>
-                                    <TableHead className="w-[150px] uppercase text-[9px] font-black tracking-widest border">Route ID</TableHead>
-                                    <TableHead className="w-[150px] uppercase text-[9px] font-black tracking-widest border">Route Name (Abbr.)</TableHead>
-                                    <TableHead className="w-[150px] uppercase text-[9px] font-black tracking-widest border">Starting GP</TableHead>
-                                    <TableHead className="w-[200px] uppercase text-[9px] font-black tracking-widest border">Intermediate GPs</TableHead>
-                                    <TableHead className="w-[150px] uppercase text-[9px] font-black tracking-widest border">Last/Final GP</TableHead>
-                                    <TableHead className="w-[180px] uppercase text-[9px] font-black tracking-widest border">Destination (MRF)</TableHead>
-                                    <TableHead className="w-[80px] text-right uppercase text-[9px] font-black tracking-widest border">Dist. (Km)</TableHead>
-                                    <TableHead className="w-[300px] uppercase text-[9px] font-black tracking-widest border">Details of Sanitation Workers</TableHead>
-                                    <TableHead className="w-[180px] uppercase text-[9px] font-black tracking-widest border">Day of Collection</TableHead>
-                                    {isAuthorized && <TableHead className="w-[120px] uppercase text-[9px] font-black tracking-widest border text-center">Actions</TableHead>}
+                                    <TableHead className="w-[140px] uppercase text-[11px] font-black tracking-widest border">Block / MRF</TableHead>
+                                    <TableHead className="w-[100px] uppercase text-[11px] font-black tracking-widest border">Route ID</TableHead>
+                                    <TableHead className="w-[100px] uppercase text-[11px] font-black tracking-widest border">Route Name</TableHead>
+                                    <TableHead className="w-[130px] uppercase text-[11px] font-black tracking-widest border">Starting GP</TableHead>
+                                    <TableHead className="w-[160px] uppercase text-[11px] font-black tracking-widest border">Intermediate GPs</TableHead>
+                                    <TableHead className="w-[120px] uppercase text-[11px] font-black tracking-widest border">Final GP</TableHead>
+                                    <TableHead className="w-[140px] uppercase text-[11px] font-black tracking-widest border">Destination</TableHead>
+                                    <TableHead className="w-[60px] text-right uppercase text-[11px] font-black tracking-widest border">Dist.</TableHead>
+                                    <TableHead className="w-[180px] uppercase text-[11px] font-black tracking-widest border">Workers</TableHead>
+                                    <TableHead className="w-[130px] uppercase text-[11px] font-black tracking-widest border">Collection Day</TableHead>
+                                    {isAuthorized && <TableHead className="w-[80px] uppercase text-[11px] font-black tracking-widest border text-center">Actions</TableHead>}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -562,52 +561,66 @@ function UlbPersonnelDetailsContent() {
                                     </TableRow>
                                 ) : (
                                     allRoutes.map((route, idx) => (
-                                        <TableRow key={route.id || idx} className="hover:bg-primary/[0.01] transition-colors border-b last:border-0 h-24">
-                                            <TableCell className="border text-[10px] font-black text-primary uppercase leading-tight">
-                                                <p>{route.block}</p>
-                                                <p className="text-[8px] text-muted-foreground italic">{route.mrfName}</p>
+                                        <TableRow key={route.id || idx} className="hover:bg-primary/[0.01] transition-colors border-b last:border-0">
+                                            <TableCell className="border text-[11px] font-black text-primary uppercase leading-tight p-2">
+                                                <p className="break-words">{route.block}</p>
+                                                <p className="text-[9px] text-muted-foreground italic break-words">{route.mrfName}</p>
                                             </TableCell>
-                                            <TableCell className="border font-mono text-[10px] font-bold text-foreground">{route.routeId}</TableCell>
-                                            <TableCell className="border"><Badge variant="outline" className="text-[9px] font-black border-primary/30 bg-primary/5">{route.routeAbbreviation || route.routeId}</Badge></TableCell>
-                                            <TableCell className="border text-[10px] font-bold text-green-700 uppercase">{route.startingGp}</TableCell>
-                                            <TableCell className="border text-[9px] font-medium italic text-muted-foreground leading-tight">{route.intermediateGps.join(' → ')}</TableCell>
-                                            <TableCell className="border text-[10px] font-bold text-blue-700 uppercase">{route.finalGp || route.destination}</TableCell>
-                                            <TableCell className="border"><div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-primary"><Anchor className="h-3 w-3" />{route.destination}</div></TableCell>
-                                            <TableCell className="border text-right font-mono font-black text-xs text-primary">{route.totalDistance}</TableCell>
-                                            <TableCell className="border bg-muted/5">
+                                            <TableCell className="border font-mono text-[11px] font-bold text-foreground p-2 break-words">{route.routeId}</TableCell>
+                                            <TableCell className="border p-2">
+                                                <Badge variant="outline" className="text-[10px] font-black border-primary/30 bg-primary/5 whitespace-nowrap">
+                                                    {route.routeAbbreviation || route.routeId}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="border text-[11px] font-bold text-green-700 uppercase p-2 break-words">{route.startingGp}</TableCell>
+                                            <TableCell className="border text-[10px] font-medium italic text-muted-foreground p-2 break-words">
+                                                {route.intermediateGps.length > 0 ? route.intermediateGps.join(' → ') : 'Direct'}
+                                            </TableCell>
+                                            <TableCell className="border text-[11px] font-bold text-blue-700 uppercase p-2 break-words">{route.finalGp || route.destination}</TableCell>
+                                            <TableCell className="border p-2">
+                                                <div className="flex items-center gap-1.5 text-[11px] font-black uppercase text-primary">
+                                                    <Anchor className="h-3 w-3" />
+                                                    <span className="break-words">{route.destination}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="border text-right font-mono font-black text-xs text-primary p-2">{route.totalDistance}</TableCell>
+                                            <TableCell className="border bg-muted/5 p-2">
                                                 <div className="space-y-1">
                                                     {route.workers.map((w, i) => (
                                                         <div key={i} className="text-[10px] font-bold leading-tight">
                                                             <span className="text-primary uppercase">{w.name}</span>
-                                                            <span className="text-muted-foreground ml-1">({w.contact})</span>
+                                                            <span className="text-muted-foreground ml-1 text-[9px]">({w.contact})</span>
                                                         </div>
                                                     ))}
+                                                    {route.workers.length === 0 && (
+                                                        <span className="text-muted-foreground italic text-[10px]">No workers assigned</span>
+                                                    )}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="border text-[10px] font-black uppercase text-blue-700 leading-tight">{route.scheduledOn}</TableCell>
+                                            <TableCell className="border text-[10px] font-black uppercase text-blue-700 p-2 break-words leading-tight">{route.scheduledOn}</TableCell>
                                             {isAuthorized && (
-                                                <TableCell className="border text-center">
-                                                    <div className="flex justify-center gap-2">
+                                                <TableCell className="border text-center p-2">
+                                                    <div className="flex justify-center gap-1">
                                                         <Button 
-                                                            size="icon" 
+                                                            size="sm" 
                                                             variant="outline" 
-                                                            className="h-8 w-8 text-primary hover:bg-primary/10" 
+                                                            className="h-7 w-7 p-0 text-primary hover:bg-primary/10" 
                                                             onClick={() => handleOpenEditDialog(route)}
                                                             disabled={isSubmitting}
                                                         >
-                                                            <Edit className="h-4 w-4" />
+                                                            <Edit className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button 
-                                                            size="icon" 
+                                                            size="sm" 
                                                             variant="outline" 
-                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10" 
+                                                            className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" 
                                                             onClick={() => handleDelete(route)}
                                                             disabled={isDeleting === route.id}
                                                         >
                                                             {isDeleting === route.id ? (
-                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                                             ) : (
-                                                                <Trash2 className="h-4 w-4" />
+                                                                <Trash2 className="h-3.5 w-3.5" />
                                                             )}
                                                         </Button>
                                                     </div>
@@ -618,9 +631,7 @@ function UlbPersonnelDetailsContent() {
                                 )}
                             </TableBody>
                         </Table>
-                      </div>
-                      <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -647,8 +658,8 @@ function UlbPersonnelDetailsContent() {
                                     <Input value={formData.routeId} onChange={(e) => setFormData({...formData, routeId: e.target.value})} disabled={!!editingRoute} />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase">Abbreviation</Label>
-                                    <Input value={formData.routeAbbreviation} onChange={(e) => setFormData({...formData, routeAbbreviation: e.target.value})} />
+                                    <Label className="text-[10px] font-bold uppercase">Route Name</Label>
+                                    <Input value={formData.routeAbbreviation} onChange={(e) => setFormData({...formData, routeAbbreviation: e.target.value})} placeholder="e.g., DTDK-01" />
                                 </div>
                             </div>
                             <div className="space-y-1.5">
@@ -670,7 +681,7 @@ function UlbPersonnelDetailsContent() {
                                 <Input value={formData.destination} onChange={(e) => setFormData({...formData, destination: e.target.value})} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase">Last/Final GP</Label>
+                                <Label className="text-[10px] font-bold uppercase">Final GP</Label>
                                 <Input value={formData.finalGp} onChange={(e) => setFormData({...formData, finalGp: e.target.value})} />
                             </div>
                             <div className="space-y-1.5">

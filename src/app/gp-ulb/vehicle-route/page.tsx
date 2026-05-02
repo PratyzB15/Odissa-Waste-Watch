@@ -1,4 +1,3 @@
-
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Truck, User, Calendar, Route, Clock, Navigation, Anchor, Phone, Users, Info } from "lucide-react";
@@ -7,6 +6,8 @@ import { useMemo, Suspense, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useFirestore } from "@/firebase";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 
 // District Data Imports
 import { angulDistrictData } from "@/lib/disAngul";
@@ -47,8 +48,30 @@ function VehicleRouteContent() {
     const gpName = searchParams.get('gp') || '';
     const districtName = searchParams.get('district') || '';
     const [mounted, setMounted] = useState(false);
+    const [firestoreSchedule, setFirestoreSchedule] = useState<any>(null);
+    const db = useFirestore();
 
     useEffect(() => { setMounted(true); }, []);
+
+    // Real-time Firestore listener for collection schedule
+    useEffect(() => {
+        if (!db || !districtName || !gpName) return;
+
+        const scheduleQuery = query(
+            collection(db, 'collectionSchedules'),
+            where('district', '==', districtName),
+            where('gpName', '==', gpName)
+        );
+
+        const unsubscribe = onSnapshot(scheduleQuery, (snapshot) => {
+            if (!snapshot.empty) {
+                const data = snapshot.docs[0].data();
+                setFirestoreSchedule(data);
+            }
+        });
+
+        return () => unsubscribe();
+    }, [db, districtName, gpName]);
 
     const routeData = useMemo(() => {
         if (!mounted || !gpName || !districtName) return null;
@@ -69,7 +92,6 @@ function VehicleRouteContent() {
         const source = sourceMap[districtName.toLowerCase()];
         if (!source) return null;
 
-        // HIGH PRECISION STOP SCANNING
         const route = source.data.routes.find((r: any) => 
             r.startingGp.toLowerCase().trim() === gpName.toLowerCase().trim() ||
             (Array.isArray(r.intermediateGps) && r.intermediateGps.some((igp: any) => igp.toLowerCase().trim() === gpName.toLowerCase().trim())) ||
@@ -79,7 +101,7 @@ function VehicleRouteContent() {
 
         if (!route) return null;
 
-        const schedule = source.data.collectionSchedules.find((s: any) => 
+        const schedule = firestoreSchedule || source.data.collectionSchedules.find((s: any) => 
             s.gpName.toLowerCase().includes(gpName.toLowerCase().trim()) ||
             s.routeId === route.routeId
         );
@@ -100,7 +122,7 @@ function VehicleRouteContent() {
             endTime: "02:00 PM",
             workers: route.workers || []
         };
-    }, [gpName, districtName, mounted]);
+    }, [gpName, districtName, mounted, firestoreSchedule]);
 
     if (!mounted) return <div className="p-12 text-center animate-pulse">Initializing Hub...</div>;
 
@@ -117,8 +139,8 @@ function VehicleRouteContent() {
     }
 
   return (
-    <div className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-1 space-y-6">
+    <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 space-y-6">
             <Card className="border-2 shadow-sm">
                 <CardHeader className="bg-primary/5 border-b pb-3">
                     <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
@@ -146,7 +168,7 @@ function VehicleRouteContent() {
                 <CardContent className="pt-4 space-y-3">
                     <div className="flex flex-col gap-1">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter">Verified Personnel</span>
-                        <span className="font-black text-lg text-primary uppercase">{routeData.driverName}</span>
+                        <span className="font-black text-lg text-primary uppercase break-words">{routeData.driverName}</span>
                     </div>
                     <div className="bg-muted p-2 rounded-lg flex items-center justify-between">
                         <Phone className="h-3 w-3 text-muted-foreground" />
@@ -166,8 +188,8 @@ function VehicleRouteContent() {
                         <div className="space-y-2">
                             {routeData.workers.length > 0 ? routeData.workers.map((worker: any, idx: number) => (
                                 <div key={idx} className="flex items-center justify-between p-2 border rounded-lg bg-card text-[10px]">
-                                    <span className="font-black uppercase">{worker.name}</span>
-                                    <span className="font-mono text-primary flex items-center gap-1">
+                                    <span className="font-black uppercase break-words">{worker.name}</span>
+                                    <span className="font-mono text-primary flex items-center gap-1 shrink-0 ml-2">
                                         <Phone className="h-2.5 w-2.5" /> {worker.contact}
                                     </span>
                                 </div>
@@ -181,7 +203,7 @@ function VehicleRouteContent() {
                 </CardContent>
             </Card>
         </div>
-        <div className="md:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
             <Card className="border-2 border-primary/20 shadow-md">
                 <CardHeader className="bg-primary/5 border-b pb-3">
                     <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
@@ -189,7 +211,7 @@ function VehicleRouteContent() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
-                    <div className="flex justify-between items-start">
+                    <div className="flex flex-wrap justify-between items-start gap-4">
                         <div className="space-y-1">
                             <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Route ID</p>
                             <div className="font-black text-2xl flex items-center flex-wrap gap-3">
@@ -204,7 +226,7 @@ function VehicleRouteContent() {
                     </div>
                     
                     <div className="relative pl-6 border-l-4 border-primary/20 space-y-8 py-4 ml-2">
-                        {routeData.path.map((stop, i) => (
+                        {routeData.path.map((stop: string, i: number) => (
                             <div key={i} className="relative">
                                 <div className="absolute -left-[30px] top-1.5 h-4 w-4 rounded-full bg-primary ring-4 ring-background border-2 border-white shadow-sm"></div>
                                 <div className={`text-sm font-black flex items-center flex-wrap gap-2 ${stop.toLowerCase().trim() === gpName.toLowerCase().trim() ? 'text-primary' : 'text-foreground'}`}>
@@ -217,12 +239,12 @@ function VehicleRouteContent() {
 
                     <Separator className="border-dashed" />
                     
-                    <div className="grid grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-1">
                             <p className="text-[10px] font-black uppercase text-muted-foreground">Cycle Schedule</p>
                             <div className="flex items-center gap-2 text-sm font-bold text-blue-700">
                                 <Calendar className="h-4 w-4"/>
-                                <span className="uppercase">{routeData.collectionDay}</span>
+                                <span className="uppercase break-words">{routeData.collectionDay}</span>
                             </div>
                         </div>
                         <div className="space-y-1">

@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSearchParams } from "next/navigation";
 import { useMemo, Suspense, useState, useEffect, useCallback, useRef } from "react";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList, PlusCircle, Edit, Trash2, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -466,82 +465,80 @@ function GpInformationContent() {
           </div>
         </CardHeader>
         <CardContent className="pt-6">
-            <ScrollArea className="w-full">
-                <div className="min-w-[1400px]">
-                <Table className="border-collapse border text-[10px]">
-                    <TableHeader className="bg-muted/80">
-                    <TableRow>
-                        <TableHead className="w-[60px] text-center border font-black uppercase">S.No.</TableHead>
-                        <TableHead className="border font-black uppercase">Facility (ULB/MRF)</TableHead>
-                        <TableHead className="border font-black uppercase">GP Node</TableHead>
-                        <TableHead className="border font-black uppercase text-center">Households</TableHead>
-                        <TableHead className="border font-black uppercase text-center">Schools</TableHead>
-                        <TableHead className="border font-black uppercase text-center">Anganwadis</TableHead>
-                        <TableHead className="border font-black uppercase text-center">Comm. Est.</TableHead>
-                        <TableHead className="border font-black uppercase text-right px-4">Waste/Day (Gm)</TableHead>
-                        <TableHead className="border font-black uppercase text-right px-4">Waste/Month (Gm)</TableHead>
-                        {isAuthorized && <TableHead className="w-[120px] border font-black uppercase text-center">Actions</TableHead>}
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {allGps.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={isAuthorized ? 10 : 9} className="text-center py-12 text-muted-foreground">
-                          <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                          No GP information found for {ulbParam}
+          {/* Removed ScrollArea and min-width to allow natural fit */}
+          <div className="w-full overflow-x-auto">
+            <Table className="w-full min-w-[900px] table-auto border-collapse border">
+              <TableHeader className="bg-muted/80">
+                <TableRow>
+                  <TableHead className="w-[50px] text-center border font-black uppercase text-[11px]">S.No.</TableHead>
+                  <TableHead className="w-[180px] border font-black uppercase text-[11px]">Facility (ULB/MRF)</TableHead>
+                  <TableHead className="w-[150px] border font-black uppercase text-[11px]">GP Node</TableHead>
+                  <TableHead className="w-[90px] border font-black uppercase text-[11px] text-center">Households</TableHead>
+                  <TableHead className="w-[70px] border font-black uppercase text-[11px] text-center">Schools</TableHead>
+                  <TableHead className="w-[90px] border font-black uppercase text-[11px] text-center">Anganwadis</TableHead>
+                  <TableHead className="w-[90px] border font-black uppercase text-[11px] text-center">Comm. Est.</TableHead>
+                  <TableHead className="w-[110px] border font-black uppercase text-[11px] text-right px-4">Waste/Day (Gm)</TableHead>
+                  <TableHead className="w-[120px] border font-black uppercase text-[11px] text-right px-4">Waste/Month (Gm)</TableHead>
+                  {isAuthorized && <TableHead className="w-[80px] border font-black uppercase text-[11px] text-center">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allGps.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={isAuthorized ? 10 : 9} className="text-center py-12 text-muted-foreground">
+                      <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      No GP information found for {ulbParam}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  allGps.map((row, idx) => (
+                    <TableRow key={row.id || idx} className="hover:bg-primary/[0.02] border-b">
+                      <TableCell className="text-center border-r font-mono text-[11px] p-2">{idx + 1}</TableCell>
+                      <TableCell className="border-r font-bold uppercase leading-tight p-2">
+                        <p className="text-primary text-[11px] break-words">{row.mrfName || 'N/A'}</p>
+                        <p className="text-[9px] text-muted-foreground italic break-words">{row.ulbName}</p>
+                      </TableCell>
+                      <TableCell className="border-r font-black uppercase text-foreground text-[11px] p-2 break-words">{row.gpName}</TableCell>
+                      <TableCell className="text-center border-r font-mono font-bold text-[12px] p-2">{row.households.toLocaleString()}</TableCell>
+                      <TableCell className="text-center border-r font-mono text-[11px] p-2">{row.schools}</TableCell>
+                      <TableCell className="text-center border-r font-mono text-[11px] p-2">{row.anganwadis}</TableCell>
+                      <TableCell className="text-center border-r font-medium text-[11px] p-2">{row.commercial}</TableCell>
+                      <TableCell className="text-right border-r font-mono font-black text-primary text-[11px] px-4 p-2">{(row.dailyWaste || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right border-r font-mono font-black text-primary text-[11px] px-4 p-2">{(row.monthlyWaste || 0).toLocaleString()}</TableCell>
+                      {isAuthorized && (
+                        <TableCell className="border text-center p-2">
+                          <div className="flex justify-center gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-7 w-7 p-0 text-primary hover:bg-primary/10" 
+                              onClick={() => handleOpenEditDialog(row)}
+                              disabled={isSubmitting}
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" 
+                              onClick={() => handleDelete(row)}
+                              disabled={isDeleting === row.id}
+                            >
+                              {isDeleting === row.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          </div>
                         </TableCell>
-                      </TableRow>
-                    ) : (
-                      allGps.map((row, idx) => (
-                        <TableRow key={row.id || idx} className="hover:bg-primary/[0.02] border-b h-12">
-                          <TableCell className="text-center border-r font-mono">{idx + 1}</TableCell>
-                          <TableCell className="border-r font-bold uppercase leading-tight">
-                              <p className="text-primary">{row.mrfName || 'N/A'}</p>
-                              <p className="text-[8px] text-muted-foreground italic">{row.ulbName}</p>
-                          </TableCell>
-                          <TableCell className="border-r font-black uppercase text-foreground">{row.gpName}</TableCell>
-                          <TableCell className="text-center border-r font-mono font-bold text-sm">{row.households.toLocaleString()}</TableCell>
-                          <TableCell className="text-center border-r font-mono">{row.schools}</TableCell>
-                          <TableCell className="text-center border-r font-mono">{row.anganwadis}</TableCell>
-                          <TableCell className="text-center border-r font-medium">{row.commercial}</TableCell>
-                          <TableCell className="text-right border-r font-mono font-black text-primary px-4">{(row.dailyWaste || 0).toLocaleString()}</TableCell>
-                          <TableCell className="text-right border-r font-mono font-black text-primary px-4">{(row.monthlyWaste || 0).toLocaleString()}</TableCell>
-                          {isAuthorized && (
-                            <TableCell className="border text-center">
-                              <div className="flex justify-center gap-1">
-                                <Button 
-                                  size="icon" 
-                                  variant="outline" 
-                                  className="h-7 w-7 text-primary hover:bg-primary/10" 
-                                  onClick={() => handleOpenEditDialog(row)}
-                                  disabled={isSubmitting}
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button 
-                                  size="icon" 
-                                  variant="outline" 
-                                  className="h-7 w-7 text-destructive hover:bg-destructive/10" 
-                                  onClick={() => handleDelete(row)}
-                                  disabled={isDeleting === row.id}
-                                >
-                                  {isDeleting === row.id ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-3 w-3" />
-                                  )}
-                                </Button>
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))
-                    )}
-                    </TableBody>
-                </Table>
-                </div>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+                      )}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

@@ -30,7 +30,7 @@ import { koraputDistrictData } from "@/lib/disKoraput";
 import { mayurbhanjDistrictData } from "@/lib/disMayurbhanj";
 import { malkangiriDistrictData } from "@/lib/disMalkangiri";
 import { mrfData } from "@/lib/mrf-data";
-import { Navigation, Anchor, PlusCircle, Edit, Trash2, Loader2, RefreshCw } from "lucide-react";
+import { Navigation, Anchor, PlusCircle, Edit, Trash2, Loader2, RefreshCw, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -622,6 +622,38 @@ function PersonnelDetailsContent() {
               </CardHeader>
             </Card>
 
+            {/* Information Box about Route ID and Route Name Convention */}
+            <Card className="border-2 border-blue-200 bg-blue-50/30 shadow-sm">
+                <CardContent className="py-4">
+                    <div className="flex items-start gap-3">
+                        <Info className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
+                        <div className="space-y-2 text-sm">
+                            <p className="font-black uppercase text-blue-800 text-xs tracking-wider">Route Naming Convention</p>
+                            <div className="grid md:grid-cols-2 gap-4 text-xs">
+                                <div className="space-y-1">
+                                    <p className="font-bold text-blue-900">Route ID Format:</p>
+                                    <p className="text-muted-foreground font-mono text-[11px]">
+                                        <span className="bg-blue-100 px-1.5 py-0.5 rounded">[District First Letter]</span> - 
+                                        <span className="bg-blue-100 px-1.5 py-0.5 rounded">[Block First 3 Letters]</span> - 
+                                        <span className="bg-blue-100 px-1.5 py-0.5 rounded">[GP First Letter]</span> - 
+                                        <span className="bg-blue-100 px-1.5 py-0.5 rounded">[Number 1/2/3]</span>
+                                    </p>
+                                    <p className="text-muted-foreground text-[10px] italic">Example: <span className="font-mono font-bold">B-BAN-K-01</span> (Bhadrak - Bantala - Karanjam - Route 1)</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="font-bold text-blue-900">Route Name (Abbreviation) Format:</p>
+                                    <p className="text-muted-foreground font-mono text-[11px]">
+                                        <span className="bg-blue-100 px-1.5 py-0.5 rounded">First letters of all GPs along the route</span> - 
+                                        <span className="bg-blue-100 px-1.5 py-0.5 rounded">Number</span>
+                                    </p>
+                                    <p className="text-muted-foreground text-[10px] italic">Example: <span className="font-mono font-bold">DTDK-01</span> (Durlaga → Talpatia → Dalki → Katikela)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
             <Card className="border-2 shadow-md">
                 <CardContent className="p-0">
                     <div className="w-full overflow-x-auto">
@@ -630,7 +662,7 @@ function PersonnelDetailsContent() {
                                 <TableRow>
                                     <TableHead className="w-[100px] uppercase text-[11px] font-black tracking-widest border">Tagged MRF</TableHead>
                                     <TableHead className="w-[90px] uppercase text-[11px] font-black tracking-widest border">Route ID</TableHead>
-                                    <TableHead className="w-[70px] uppercase text-[11px] font-black tracking-widest border">Abbr.</TableHead>
+                                    <TableHead className="w-[120px] uppercase text-[11px] font-black tracking-widest border">Route Name</TableHead>
                                     <TableHead className="w-[110px] uppercase text-[11px] font-black tracking-widest border">Starting GP</TableHead>
                                     <TableHead className="w-[130px] uppercase text-[11px] font-black tracking-widest border">Intermediate GPs</TableHead>
                                     <TableHead className="w-[100px] uppercase text-[11px] font-black tracking-widest border">Final GP</TableHead>
@@ -763,13 +795,16 @@ function PersonnelDetailsContent() {
                                         onChange={(e) => setFormData({...formData, routeId: e.target.value})} 
                                         required
                                     />
+                                    <p className="text-[8px] text-muted-foreground">Format: [District]-[Block]-[GP]-[Number]</p>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase">Abbreviation</Label>
+                                    <Label className="text-[10px] font-bold uppercase">Route Name *</Label>
                                     <Input 
                                         value={formData.routeAbbreviation} 
                                         onChange={(e) => setFormData({...formData, routeAbbreviation: e.target.value})} 
+                                        placeholder="e.g., DTDK-01"
                                     />
+                                    <p className="text-[8px] text-muted-foreground">Abbreviation using GP first letters</p>
                                 </div>
                             </div>
                             <div className="space-y-1.5">

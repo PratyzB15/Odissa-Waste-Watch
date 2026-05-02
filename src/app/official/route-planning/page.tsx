@@ -40,12 +40,11 @@ import { nuapadaDistrictData } from "@/lib/disNuapada";
 import { puriDistrictData } from "@/lib/disPuri";
 import { sambalpurDistrictData } from "@/lib/disSambalpur";
 
-import { Navigation, Anchor, PlusCircle, Edit, Trash2, Loader2, RefreshCw } from "lucide-react";
+import { Navigation, Anchor, PlusCircle, Edit, Trash2, Loader2, RefreshCw, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 
 interface Route {
@@ -214,7 +213,7 @@ function DistrictRoutePlanningContent() {
       block: route.block || 'District Block',
       ulbName: route.ulbName || route.destination || 'District ULB',
       routeId: route.routeId,
-      routeAbbreviation: route.routeAbbreviation || '',
+      routeAbbreviation: route.routeAbbreviation || route.routeName || '',
       startingGp: route.startingGp,
       intermediateGps: route.intermediateGps || [],
       finalGp: route.finalGp || '',
@@ -263,7 +262,7 @@ function DistrictRoutePlanningContent() {
             block: data.block || '',
             ulbName: data.ulbName || '',
             routeId: data.routeId || '',
-            routeAbbreviation: data.routeAbbreviation || '',
+            routeAbbreviation: data.routeAbbreviation || data.routeName || '',
             startingGp: data.startingGp || '',
             intermediateGps: data.intermediateGps || [],
             finalGp: data.finalGp || '',
@@ -580,27 +579,63 @@ function DistrictRoutePlanningContent() {
             </div>
           </div>
         </CardHeader>
+      </Card>
+
+      {/* Information Box about Route ID and Route Name Convention */}
+      <Card className="border-2 border-blue-200 bg-blue-50/30 shadow-sm">
+        <CardContent className="py-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
+            <div className="space-y-2 text-sm">
+              <p className="font-black uppercase text-blue-800 text-xs tracking-wider">Route Naming Convention</p>
+              <div className="grid md:grid-cols-2 gap-4 text-xs">
+                <div className="space-y-1">
+                  <p className="font-bold text-blue-900">Route ID Format:</p>
+                  <p className="text-muted-foreground font-mono text-[11px]">
+                    <span className="bg-blue-100 px-1.5 py-0.5 rounded">[District First Letter]</span> - 
+                    <span className="bg-blue-100 px-1.5 py-0.5 rounded">[Block First 3 Letters]</span> - 
+                    <span className="bg-blue-100 px-1.5 py-0.5 rounded">[GP First Letter]</span> - 
+                    <span className="bg-blue-100 px-1.5 py-0.5 rounded">[Number 1/2/3]</span>
+                  </p>
+                  <p className="text-muted-foreground text-[10px] italic">Example: <span className="font-mono font-bold">B-BAN-K-01</span> (Bhadrak - Bantala - Karanjam - Route 1)</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-bold text-blue-900">Route Name Format:</p>
+                  <p className="text-muted-foreground font-mono text-[11px]">
+                    <span className="bg-blue-100 px-1.5 py-0.5 rounded">First letters of all GPs along the route</span> - 
+                    <span className="bg-blue-100 px-1.5 py-0.5 rounded">Number</span>
+                  </p>
+                  <p className="text-muted-foreground text-[10px] italic">Example: <span className="font-mono font-bold">DTDK-01</span> (Durlaga → Talpatia → Dalki → Katikela)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-2 shadow-md">
         <CardContent className="pt-6">
-          {/* Removed ScrollArea and min-width to allow natural fit */}
+          {/* Responsive table with horizontal scroll only when needed */}
           <div className="w-full overflow-x-auto">
-            <Table className="w-full min-w-[800px] table-auto">
+            <Table className="w-full min-w-[1000px] table-auto">
               <TableHeader className="bg-muted/80">
                 <TableRow>
-                  <TableHead className="w-[50px] text-center border font-black text-[10px] uppercase tracking-widest">S.No.</TableHead>
-                  <TableHead className="w-[150px] border font-black text-[10px] uppercase tracking-widest">Block Name</TableHead>
-                  <TableHead className="w-[100px] border font-black text-[10px] uppercase tracking-widest">Route ID</TableHead>
-                  <TableHead className="w-[150px] border font-black text-[10px] uppercase tracking-widest">Starting GP</TableHead>
-                  <TableHead className="w-[200px] border font-black text-[10px] uppercase tracking-widest">Intermediate GPs</TableHead>
-                  <TableHead className="w-[150px] border font-black text-[10px] uppercase tracking-widest">Destination (MRF)</TableHead>
-                  <TableHead className="w-[70px] border font-black text-[10px] uppercase tracking-widest text-right">Dist. (Km)</TableHead>
-                  <TableHead className="w-[180px] border font-black text-[10px] uppercase tracking-widest">Schedule</TableHead>
-                  {isAuthorized && <TableHead className="w-[80px] border font-black text-[10px] uppercase tracking-widest text-center">Actions</TableHead>}
+                  <TableHead className="w-[50px] text-center border font-black text-[11px] uppercase tracking-widest">S.No.</TableHead>
+                  <TableHead className="w-[130px] border font-black text-[11px] uppercase tracking-widest">Block Name</TableHead>
+                  <TableHead className="w-[100px] border font-black text-[11px] uppercase tracking-widest">Route ID</TableHead>
+                  <TableHead className="w-[120px] border font-black text-[11px] uppercase tracking-widest">Route Name</TableHead>
+                  <TableHead className="w-[130px] border font-black text-[11px] uppercase tracking-widest">Starting GP</TableHead>
+                  <TableHead className="w-[180px] border font-black text-[11px] uppercase tracking-widest">Intermediate GPs</TableHead>
+                  <TableHead className="w-[130px] border font-black text-[11px] uppercase tracking-widest">Destination (MRF)</TableHead>
+                  <TableHead className="w-[70px] border font-black text-[11px] uppercase tracking-widest text-right">Dist. (Km)</TableHead>
+                  <TableHead className="w-[150px] border font-black text-[11px] uppercase tracking-widest">Schedule</TableHead>
+                  {isAuthorized && <TableHead className="w-[80px] border font-black text-[11px] uppercase tracking-widest text-center">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {allRoutes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isAuthorized ? 9 : 8} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={isAuthorized ? 10 : 9} className="text-center py-12 text-muted-foreground">
                       <Navigation className="h-12 w-12 mx-auto mb-3 opacity-50" />
                       No routes found. Click "Add New Entry" to create a route.
                     </TableCell>
@@ -608,9 +643,14 @@ function DistrictRoutePlanningContent() {
                 ) : (
                   allRoutes.map((route, idx) => (
                     <TableRow key={route.id || idx} className="hover:bg-primary/[0.02] border-b transition-colors">
-                      <TableCell className="border text-center font-mono text-xs p-2">{idx + 1}</TableCell>
+                      <TableCell className="border text-center font-mono text-[11px] p-2">{idx + 1}</TableCell>
                       <TableCell className="border text-[11px] font-bold uppercase p-2 break-words">{route.block}</TableCell>
                       <TableCell className="border font-mono text-[11px] font-black text-primary p-2 break-words">{route.routeId}</TableCell>
+                      <TableCell className="border p-2">
+                        <Badge variant="outline" className="text-[10px] font-black border-primary/30 bg-primary/5 whitespace-nowrap">
+                          {route.routeAbbreviation || '-'}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="border text-[11px] font-bold text-green-700 uppercase p-2 break-words">{route.startingGp}</TableCell>
                       <TableCell className="border text-[10px] font-medium italic text-muted-foreground p-2">
                         {route.intermediateGps?.length > 0 ? route.intermediateGps.join(' → ') : 'Direct'}
@@ -681,6 +721,7 @@ function DistrictRoutePlanningContent() {
                 placeholder="Enter block name"
                 disabled={!!editingRoute}
               />
+              {editingRoute && <p className="text-[8px] text-muted-foreground">Block cannot be changed after creation</p>}
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase">ULB Name</Label>
@@ -695,18 +736,20 @@ function DistrictRoutePlanningContent() {
               <Input 
                 value={formData.routeId} 
                 onChange={e => setFormData({...formData, routeId: e.target.value})} 
-                placeholder="Unique route identifier"
+                placeholder="e.g., B-BAN-K-01"
                 disabled={!!editingRoute}
               />
+              <p className="text-[8px] text-muted-foreground">Format: [District]-[Block]-[GP]-[Number]</p>
               {editingRoute && <p className="text-[8px] text-muted-foreground">Route ID cannot be changed after creation</p>}
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase">Route Abbreviation</Label>
+              <Label className="text-[10px] font-black uppercase">Route Name *</Label>
               <Input 
                 value={formData.routeAbbreviation} 
                 onChange={e => setFormData({...formData, routeAbbreviation: e.target.value})} 
-                placeholder="Short code for route"
+                placeholder="e.g., DTDK-01"
               />
+              <p className="text-[8px] text-muted-foreground">Abbreviation using first letters of all GPs along the route</p>
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase">Starting GP *</Label>
